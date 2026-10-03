@@ -116,6 +116,7 @@ version = "0.0.0"
 dependencies = [
  "pii-eval-cli",
  "pii-eval-contracts",
+ "rustix",
  "serde",
  "serde_json",
  "sha2",

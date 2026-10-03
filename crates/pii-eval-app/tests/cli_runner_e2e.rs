@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use pii_eval_app::App;
 use pii_eval_app::checks::{CheckStatus, Conclusion};
-use pii_eval_app::cli_runner::{CliLibraryRunner, CliProfile};
+use pii_eval_app::cli_runner::{CliProfile, InProcessCliRunner};
 use pii_eval_app::jobs::{FailReason, JobState};
 use pii_eval_app::policy::{AppPolicy, InstallationPolicy, Limits, Profile, RepositoryPolicy};
 use pii_eval_app::ports::{CancelFlag, JobRunner, JobSpec, NoCustodian, RunnerError};
@@ -74,8 +74,35 @@ impl Drop for Work {
     }
 }
 
-fn config_path() -> PathBuf {
-    root().join("examples/quickstart/run-config.json")
+/// The quickstart configuration with every `path` and `dir` made absolute (a
+/// staged copy lives elsewhere, so relative paths would not resolve), written to
+/// `dir`. Returns its path and SHA-256.
+fn absolute_config(dir: &Path) -> (PathBuf, String) {
+    fn walk(v: &mut serde_json::Value, base: &Path) {
+        match v {
+            serde_json::Value::Object(m) => {
+                for (k, v) in m.iter_mut() {
+                    match (k.as_str(), v.as_str()) {
+                        ("path" | "dir", Some(rel)) => {
+                            let abs = std::fs::canonicalize(base.join(rel)).unwrap();
+                            *v = abs.to_str().unwrap().into();
+                        }
+                        _ => walk(v, base),
+                    }
+                }
+            }
+            serde_json::Value::Array(a) => a.iter_mut().for_each(|v| walk(v, base)),
+            _ => {}
+        }
+    }
+    let base = root().join("examples/quickstart");
+    let mut doc: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(base.join("run-config.json")).unwrap()).unwrap();
+    walk(&mut doc, &base);
+    let bytes = serde_json::to_vec_pretty(&doc).unwrap();
+    let path = dir.join("run-config.json");
+    std::fs::write(&path, &bytes).unwrap();
+    (path, Sha256Digest::of_bytes(&bytes).as_str().to_owned())
 }
 
 fn profile(config_digest: &str) -> Profile {
@@ -102,13 +129,13 @@ fn identity(p: &Profile) -> JobIdentity {
     }
 }
 
-fn runner(work: &Work, node: PathBuf) -> CliLibraryRunner {
-    CliLibraryRunner::new(
+fn runner(work: &Work, node: PathBuf, config_path: PathBuf) -> InProcessCliRunner {
+    InProcessCliRunner::new(
         work.path().to_path_buf(),
         BTreeMap::from([(
             PUBLIC_PROFILE.to_owned(),
             CliProfile {
-                config_path: config_path(),
+                config_path,
                 node: Some(node),
             },
         )]),
@@ -116,17 +143,13 @@ fn runner(work: &Work, node: PathBuf) -> CliLibraryRunner {
     )
 }
 
-fn good_digest() -> String {
-    Sha256Digest::of_bytes(&std::fs::read(config_path()).unwrap())
-        .as_str()
-        .to_owned()
-}
-
 #[test]
 fn the_quickstart_profile_runs_through_the_cli_library_and_publishes_a_check() {
     let Some(node) = node() else { return };
     let work = Work::new("ok");
-    let p = profile(&good_digest());
+    let src = Work::new("ok-src");
+    let (cfg, digest) = absolute_config(src.path());
+    let p = profile(&digest);
     let policy = AppPolicy {
         installations: vec![InstallationPolicy {
             id: INSTALLATION,
@@ -148,7 +171,7 @@ fn the_quickstart_profile_runs_through_the_cli_library_and_publishes_a_check() {
     let services = Services {
         heads: heads.clone(),
         checks: checks.clone(),
-        runner: Arc::new(runner(&work, node)),
+        runner: Arc::new(runner(&work, node, cfg)),
         custodian: Arc::new(NoCustodian),
         clock: Arc::new(FakeClock::default()),
     };
@@ -191,8 +214,25 @@ fn the_quickstart_profile_runs_through_the_cli_library_and_publishes_a_check() {
 fn a_changed_configuration_is_refused_before_anything_runs() {
     let Some(node) = node() else { return };
     let work = Work::new("changed");
-    let r = runner(&work, node);
+    let src = Work::new("changed-src");
+    let (cfg, digest) = absolute_config(src.path());
+    let r = runner(&work, node, cfg.clone());
     let p = profile(&"0".repeat(64));
+    let spec = JobSpec {
+        job_id: JobId::derive(&identity(&p)),
+        identity: identity(&p),
+        attempt: 1,
+    };
+    assert_eq!(
+        r.run(&spec, &CancelFlag::new()).unwrap_err(),
+        RunnerError::ProfileChanged
+    );
+    assert_eq!(work.entries(), 0);
+    // A swap after the check cannot matter: the digest is verified on the bytes
+    // that are staged. Here the original changes before the run, which is the
+    // same refusal; the staged copy is the only thing the CLI reads.
+    std::fs::write(&cfg, b"{}").unwrap();
+    let p = profile(&digest);
     let spec = JobSpec {
         job_id: JobId::derive(&identity(&p)),
         identity: identity(&p),
@@ -206,11 +246,36 @@ fn a_changed_configuration_is_refused_before_anything_runs() {
 }
 
 #[test]
+fn a_configuration_with_relative_paths_is_refused() {
+    let Some(node) = node() else { return };
+    let work = Work::new("relative");
+    let src = Work::new("relative-src");
+    let path = src.path().join("run-config.json");
+    let bytes = std::fs::read(root().join("examples/quickstart/run-config.json")).unwrap();
+    std::fs::write(&path, &bytes).unwrap();
+    let digest = Sha256Digest::of_bytes(&bytes).as_str().to_owned();
+    let r = runner(&work, node, path);
+    let p = profile(&digest);
+    let spec = JobSpec {
+        job_id: JobId::derive(&identity(&p)),
+        identity: identity(&p),
+        attempt: 1,
+    };
+    assert_eq!(
+        r.run(&spec, &CancelFlag::new()).unwrap_err(),
+        RunnerError::Refused
+    );
+    assert_eq!(work.entries(), 0);
+}
+
+#[test]
 fn unknown_profiles_protected_profiles_and_cancelled_jobs_are_refused() {
     let Some(node) = node() else { return };
     let work = Work::new("refused");
-    let r = runner(&work, node);
-    let p = profile(&good_digest());
+    let src = Work::new("refused-src");
+    let (cfg, digest) = absolute_config(src.path());
+    let r = runner(&work, node, cfg);
+    let p = profile(&digest);
     let mut unknown = identity(&p);
     unknown.profile_id = "not-configured".into();
     let spec = |identity: JobIdentity| JobSpec {

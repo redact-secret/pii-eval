@@ -36,7 +36,10 @@ pub enum Reason {
     ActorNotAuthorized,
     ProfileNotAllowed,
     ForkHeadNotAllowed,
-    // Freshness.
+    // Freshness and replay of a request.
+    CommentTooOld,
+    DuplicateComment,
+    RetryCooldown,
     StaleHead,
     HeadUnresolvable,
     // Capacity.
@@ -70,6 +73,9 @@ impl Reason {
             Reason::ActorNotAuthorized => "actor-not-authorized",
             Reason::ProfileNotAllowed => "profile-not-allowed",
             Reason::ForkHeadNotAllowed => "fork-head-not-allowed",
+            Reason::CommentTooOld => "comment-too-old",
+            Reason::DuplicateComment => "duplicate-comment",
+            Reason::RetryCooldown => "retry-cooldown",
             Reason::StaleHead => "stale-head",
             Reason::HeadUnresolvable => "head-unresolvable",
             Reason::QueueFull => "queue-full",
@@ -90,7 +96,10 @@ impl Reason {
             | Reason::EventInvalid
             | Reason::PayloadMalformed
             | Reason::CommandMalformed => 400,
-            Reason::DuplicateDelivery | Reason::StaleHead => 409,
+            Reason::DuplicateDelivery
+            | Reason::DuplicateComment
+            | Reason::CommentTooOld
+            | Reason::StaleHead => 409,
             Reason::EventNotApproved
             | Reason::ActionNotApproved
             | Reason::NotACommand
@@ -102,7 +111,7 @@ impl Reason {
             | Reason::ActorNotAuthorized
             | Reason::ProfileNotAllowed
             | Reason::ForkHeadNotAllowed => 403,
-            Reason::RetryLimit => 429,
+            Reason::RetryLimit | Reason::RetryCooldown => 429,
             Reason::HeadUnresolvable
             | Reason::QueueFull
             | Reason::JobStoreFull
@@ -224,6 +233,9 @@ mod tests {
             Reason::ActorNotAuthorized,
             Reason::ProfileNotAllowed,
             Reason::ForkHeadNotAllowed,
+            Reason::CommentTooOld,
+            Reason::DuplicateComment,
+            Reason::RetryCooldown,
             Reason::StaleHead,
             Reason::HeadUnresolvable,
             Reason::QueueFull,

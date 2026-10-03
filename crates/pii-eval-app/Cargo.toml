@@ -20,3 +20,8 @@ serde.workspace = true
 serde_json.workspace = true
 # HMAC-SHA256 is built on the reviewed hash (RFC 4231 and GitHub vectors in tests).
 sha2.workspace = true
+
+# Unix only: SIGKILL of a worker's process group (the external runner). Already in
+# the lockfile through the adapters (exact pin, `process` feature only); safe API.
+[target.'cfg(unix)'.dependencies]
+rustix.workspace = true

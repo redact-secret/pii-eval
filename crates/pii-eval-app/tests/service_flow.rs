@@ -328,6 +328,7 @@ fn an_unverifiable_head_fails_closed_and_can_be_retried() {
     );
     assert_eq!(env.runner.calls(), 0);
     env.heads.set_failing(false);
+    env.clock.advance(31); // past the retry cooldown
     let (_, d) = accepted(&env.comment("/pii-eval run"));
     assert_eq!(d, Disposition::Requeued);
     assert_eq!(terminal_after_requeue(&env, &id), JobState::Completed);
@@ -352,6 +353,7 @@ fn a_failed_publish_is_retried_without_running_again() {
     );
     assert!(env.app.job(&id).unwrap().pending.is_some(), "result kept");
     // A redelivery (a new request for the same identity) republishes.
+    env.clock.advance(31); // past the retry cooldown
     let (_, d) = accepted(&env.comment("/pii-eval run"));
     assert_eq!(d, Disposition::Requeued);
     wait_state(&env, &id, "published", |s| s == JobState::Completed);
@@ -374,6 +376,7 @@ fn a_create_whose_response_was_lost_is_reconciled_by_external_id() {
         JobState::Failed(FailReason::PublishFailed)
     );
     assert_eq!(env.checks.runs().len(), 1, "GitHub did create it");
+    env.clock.advance(31); // past the retry cooldown
     accepted(&env.comment("/pii-eval run"));
     wait_state(&env, &id, "completed", |s| s == JobState::Completed);
     let runs = env.checks.runs();
@@ -386,6 +389,7 @@ fn a_create_whose_response_was_lost_is_reconciled_by_external_id() {
 fn retries_are_bounded_by_max_attempts() {
     let limits = Limits {
         max_attempts: 2,
+        retry_cooldown: std::time::Duration::ZERO,
         ..Limits::default()
     };
     let runner = FakeRunner::scripted(|_| Err(RunnerError::Timeout));
@@ -599,6 +603,7 @@ fn an_unavailable_custodian_fails_the_routing_and_never_falls_back_to_running() 
     );
     assert_eq!(env.runner.calls(), 0, "no fallback to a local run");
     env.custodian.set_unavailable(false);
+    env.clock.advance(31); // past the retry cooldown
     let (_, d) = accepted(&env.comment("/pii-eval run protected-main"));
     assert_eq!(d, Disposition::Requeued);
     wait_state(&env, &id, "routed", |s| s == JobState::RoutedToCustodian);
@@ -686,4 +691,126 @@ fn shutdown_stops_admission_and_a_second_start_is_refused() {
     let d = env.comment("/pii-eval run");
     assert_eq!(rejected(&d), Reason::ShuttingDown);
     assert_eq!(env.app.queue_len(), 0);
+}
+
+#[test]
+fn replayed_rerequests_cannot_burn_retry_attempts_faster_than_the_cooldown() {
+    let limits = Limits {
+        max_attempts: 3,
+        ..Limits::default()
+    };
+    let runner = FakeRunner::scripted(|_| Err(RunnerError::Timeout));
+    let env = TestEnv::build(limits, runner);
+    let (id, _) = accepted(&env.comment("/pii-eval run"));
+    let pool = env.app.start_workers().unwrap();
+    assert_eq!(terminal(&env, &id), JobState::Failed(FailReason::Timeout));
+    // A captured check_run payload is replayed under many fresh delivery ids.
+    let body = run_payload(
+        "rerequested",
+        INSTALLATION,
+        REPO,
+        REPO_NAME,
+        ACTOR,
+        &sha('1'),
+        Some(PR),
+        Some(id.as_str()),
+    );
+    for n in 0..20 {
+        let d = env.deliver_with_id("check_run", &format!("replay-{n}"), &body);
+        assert_eq!(rejected(&d), Reason::RetryCooldown, "replay {n}");
+        assert_eq!(d.outcome.http_status(), 429);
+    }
+    assert_eq!(env.runner.calls(), 1, "no attempt was burned");
+    // After the cooldown a retry is allowed, and the cap still holds however
+    // many replays arrive.
+    for expected_calls in [2usize, 3] {
+        env.clock.advance(31);
+        let d = env.deliver("check_run", &body);
+        assert_eq!(accepted(&d).1, Disposition::Requeued);
+        wait_until("attempt finished", || {
+            env.runner.calls() == expected_calls
+                && env.app.job_state(&id) == Some(JobState::Failed(FailReason::Timeout))
+                && env.app.job(&id).unwrap().attempts as usize == expected_calls
+        });
+    }
+    env.clock.advance(31);
+    for n in 0..5 {
+        let d = env.deliver_with_id("check_run", &format!("late-{n}"), &body);
+        assert_eq!(rejected(&d), Reason::RetryLimit);
+    }
+    pool.shutdown();
+    assert_eq!(env.runner.calls(), 3);
+}
+
+#[test]
+fn a_conclusion_that_failed_to_post_is_retried_by_the_reconciliation_tick() {
+    // Stale after the run, and the Check update that concludes it fails.
+    let gate = Arc::new(Gate::default());
+    let runner = FakeRunner::complete().with_gate(Arc::clone(&gate));
+    let env = TestEnv::build(Limits::default(), runner);
+    let (id, _) = accepted(&env.comment("/pii-eval run"));
+    let pool = env.app.start_workers().unwrap();
+    wait_until("running", || env.runner.running() == 1);
+    env.heads
+        .set(REPO, Subject::PullRequest(PR), &sha('8'), REPO);
+    env.checks.fail_next_updates(1);
+    gate.open();
+    assert_eq!(terminal(&env, &id), JobState::Stale);
+    let runs = env.checks.runs();
+    assert_eq!(runs[0].status, CheckStatus::InProgress, "left running");
+    assert!(env.app.job(&id).unwrap().unconcluded.is_some());
+    assert_eq!(env.app.reconcile(), 1);
+    let runs = env.checks.runs();
+    assert_eq!(runs[0].status, CheckStatus::Completed);
+    assert_eq!(runs[0].conclusion, Some(Conclusion::Neutral));
+    assert!(env.app.job(&id).unwrap().unconcluded.is_none());
+    assert_eq!(env.app.reconcile(), 0, "nothing left to do");
+    pool.shutdown();
+}
+
+#[test]
+fn a_failed_publish_is_also_completed_by_the_tick_without_a_new_request() {
+    let env = TestEnv::new();
+    let (id, _) = accepted(&env.comment("/pii-eval run"));
+    env.checks.fail_next_updates(1);
+    let pool = env.app.start_workers().unwrap();
+    assert_eq!(
+        terminal(&env, &id),
+        JobState::Failed(FailReason::PublishFailed)
+    );
+    assert_eq!(env.app.reconcile(), 1);
+    assert_eq!(env.app.job_state(&id), Some(JobState::Completed));
+    let runs = env.checks.runs();
+    assert_eq!(runs[0].conclusion, Some(Conclusion::Success));
+    assert_eq!(env.runner.calls(), 1);
+    pool.shutdown();
+}
+
+#[test]
+fn a_panic_whose_conclusion_fails_to_post_is_retried_too() {
+    let runner = FakeRunner::scripted(|_| panic!("SENTINEL-panic"));
+    let env = TestEnv::build(Limits::default(), runner);
+    let (id, _) = accepted(&env.comment("/pii-eval run"));
+    // The create succeeds, the run panics, the conclusion update fails.
+    // (Updates before the conclusion: the in-progress write happens through
+    // `create`, so the first update is the conclusion.)
+    env.checks.fail_next_updates(1);
+    let pool = env.app.start_workers().unwrap();
+    assert_eq!(terminal(&env, &id), JobState::Failed(FailReason::Internal));
+    assert_eq!(env.checks.runs()[0].status, CheckStatus::InProgress);
+    assert_eq!(env.app.reconcile(), 1);
+    assert_eq!(env.checks.runs()[0].conclusion, Some(Conclusion::Failure));
+    pool.shutdown();
+}
+
+#[test]
+fn the_transport_conformance_helper_passes_fast_fakes_and_the_bound_is_documented() {
+    use pii_eval_app::ports::{HeadResolver, MAX_PORT_CALL_SECS};
+    let env = TestEnv::new();
+    let head = assert_port_call_bounded(
+        "head lookup",
+        std::time::Duration::from_secs(MAX_PORT_CALL_SECS),
+        || env.heads.resolve(REPO, &Subject::PullRequest(PR)),
+    );
+    assert_eq!(head.unwrap().sha, sha('1'));
 }

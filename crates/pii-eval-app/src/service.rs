@@ -17,7 +17,7 @@ use crate::checks::{
     CHECK_NAME, CheckReport, CheckRunCreate, CheckRunId, CheckRunUpdate, CheckStatus, FailureKind,
     ReportContext, RunnerOutcome, report_failure, report_measured, report_stale, report_started,
 };
-use crate::dedupe::{Begin, DeliveryStore};
+use crate::dedupe::DeliveryStore;
 use crate::jobs::{Admission, FailReason, Job, JobState, JobStore, PendingResult};
 use crate::policy::{AppPolicy, PolicyError, Profile, RepositoryPolicy};
 use crate::ports::{
@@ -53,6 +53,7 @@ struct Inner {
     secret: Secret,
     services: Services,
     deliveries: Mutex<DeliveryStore>,
+    comments: Mutex<DeliveryStore>,
     jobs: Mutex<JobStore>,
     queue: JobQueue,
     cancel: CancelFlag,
@@ -90,7 +91,15 @@ impl App {
                 l.delivery_capacity,
                 l.delivery_ttl.as_secs(),
             )),
-            jobs: Mutex::new(JobStore::new(l.job_capacity, l.max_attempts)),
+            comments: Mutex::new(DeliveryStore::new(
+                l.delivery_capacity,
+                (l.comment_max_age + l.clock_skew).as_secs(),
+            )),
+            jobs: Mutex::new(JobStore::new(
+                l.job_capacity,
+                l.max_attempts,
+                l.retry_cooldown.as_secs(),
+            )),
             queue: JobQueue::new(l.queue_capacity),
             cancel: CancelFlag::new(),
             workers_started: AtomicBool::new(false),
@@ -107,18 +116,17 @@ impl App {
     /// lookup of the [`HeadResolver`]; never executes a job.
     pub fn handle_delivery(&self, raw: &RawDelivery<'_>) -> Decision {
         let mut meta = Meta::default();
-        let mut begun = false;
-        let outcome = self.inner.decide(raw, &mut meta, &mut begun);
-        if let Outcome::Rejected(r) = &outcome {
-            // A transient failure must not consume the delivery id, so that
-            // GitHub's redelivery (same id) is processed.
-            if begun && r.is_transient() {
-                if let Some(id) = &meta.delivery_id {
-                    lock(&self.inner.deliveries).forget(id);
-                }
-            }
-        }
+        let outcome = self.inner.decide(raw, &mut meta);
         Decision { outcome, meta }
+    }
+
+    /// Write pending results and conclusions to their Checks (a conclusion that
+    /// failed to post leaves the Check "running" until it is retried). A
+    /// transport should call this periodically (for example every minute);
+    /// workers also call it before each job. Returns how many Checks were
+    /// brought up to date. Bounded: at most 16 jobs per call.
+    pub fn reconcile(&self) -> usize {
+        self.inner.reconcile(16)
     }
 
     /// Start the worker threads (once). Each runs one job at a time, so at most
@@ -217,7 +225,7 @@ impl Inner {
         self.queue.close();
     }
 
-    fn decide(&self, raw: &RawDelivery<'_>, meta: &mut Meta, begun: &mut bool) -> Outcome {
+    fn decide(&self, raw: &RawDelivery<'_>, meta: &mut Meta) -> Outcome {
         // 1. Size, then authenticity, before anything is parsed.
         if raw.body.len() > self.policy.limits.max_body_bytes {
             return Outcome::Rejected(Reason::PayloadTooLarge);
@@ -235,10 +243,15 @@ impl Inner {
             Err(r) => return Outcome::Rejected(r),
         };
         let now = self.services.clock.now_secs();
-        if lock(&self.deliveries).begin(delivery_id, now) == Begin::Duplicate {
+        // Best effort only: the delivery id is not covered by the signature, so
+        // a replayer can resend a captured body under a fresh id. The real
+        // defences are the comment age window, the single use of a comment id
+        // and the deterministic job id with its retry cap and cooldown. An id is
+        // recorded only once a request was admitted (below), so a flood of
+        // replays under distinct ids cannot evict ids of recent admissions.
+        if lock(&self.deliveries).contains(delivery_id, now) {
             return Outcome::Rejected(Reason::DuplicateDelivery);
         }
-        *begun = true;
         let EventClass::Approved(kind) = class else {
             return Outcome::Ignored(Reason::EventNotApproved);
         };
@@ -255,6 +268,27 @@ impl Inner {
             Ok(r) => r,
             Err(r) => return Outcome::Rejected(r),
         };
+        // 4b. A comment is one request: not older than the window, used once.
+        let mut comment_key = None;
+        if let Trigger::Comment {
+            comment_id,
+            created_at_secs,
+            ..
+        } = &event.trigger
+        {
+            let l = &self.policy.limits;
+            if *created_at_secs > now.saturating_add(l.clock_skew.as_secs()) {
+                return Outcome::Rejected(Reason::PayloadMalformed);
+            }
+            if now.saturating_sub(*created_at_secs) > l.comment_max_age.as_secs() {
+                return Outcome::Rejected(Reason::CommentTooOld);
+            }
+            let key = format!("{}:{}", repo.id, comment_id);
+            if lock(&self.comments).contains(&key, now) {
+                return Outcome::Rejected(Reason::DuplicateComment);
+            }
+            comment_key = Some(key);
+        }
         // 5. Request, head, admission.
         let (request, profile) = match self.build_request(&event, repo, delivery_id) {
             Ok(x) => x,
@@ -272,7 +306,7 @@ impl Inner {
         };
         let job_id = JobId::derive(&identity);
         meta.job_id = Some(job_id.clone());
-        let admission = lock(&self.jobs).admit(&identity, &request);
+        let admission = lock(&self.jobs).admit(&identity, &request, now);
         let disposition = match admission {
             Admission::New => match self.queue.try_push(job_id.clone()) {
                 Ok(()) => Disposition::Queued,
@@ -292,8 +326,16 @@ impl Inner {
             Admission::AlreadyComplete => Disposition::AlreadyComplete,
             Admission::AlreadyRouted => Disposition::AlreadyRouted,
             Admission::RetryLimit => return Outcome::Rejected(Reason::RetryLimit),
+            Admission::Cooldown => return Outcome::Rejected(Reason::RetryCooldown),
             Admission::Full => return Outcome::Rejected(Reason::JobStoreFull),
         };
+        // Admitted: now the delivery id and the comment id are spent.
+        if matches!(disposition, Disposition::Queued | Disposition::Requeued) {
+            lock(&self.deliveries).record(delivery_id, now);
+        }
+        if let Some(key) = comment_key {
+            lock(&self.comments).record(&key, now);
+        }
         Outcome::Accepted {
             job_id,
             disposition,
@@ -335,7 +377,9 @@ impl Inner {
     ) -> Result<(EvaluationRequest, &Profile), Reason> {
         let default_profile = repo.profiles[0].as_str();
         let (profile_id, subject, expected) = match &e.trigger {
-            Trigger::Comment { pr_number, command } => {
+            Trigger::Comment {
+                pr_number, command, ..
+            } => {
                 let CommandParse::Run { profile } = command else {
                     return Err(Reason::CommandMalformed);
                 };
@@ -418,9 +462,12 @@ impl Inner {
     // ---- worker side -------------------------------------------------------
 
     fn process(&self, id: &JobId) {
+        self.reconcile(4);
         let Some(job) = lock(&self.jobs).start(id) else {
             return;
         };
+        // This attempt supersedes any conclusion that was still waiting.
+        self.with_job(id, |j| j.unconcluded = None);
         let state = match catch_unwind(AssertUnwindSafe(|| self.execute(&job))) {
             Ok(state) => state,
             Err(_) => {
@@ -430,7 +477,9 @@ impl Inner {
                 JobState::Failed(FailReason::Internal)
             }
         };
+        let ended = self.services.clock.now_secs();
         if let Some(j) = lock(&self.jobs).get_mut(id) {
+            j.last_terminal_at = ended;
             if j.transition(state).is_err() {
                 // Unreachable by construction (execute returns only states the
                 // machine allows from Running); fail closed if it ever happens.
@@ -452,15 +501,78 @@ impl Inner {
             profile,
         };
         let r = report_failure(&ctx, FailureKind::Internal);
-        let _ = self.services.checks.update(&CheckRunUpdate {
+        self.conclude(
+            job,
+            check_run_id,
+            PendingResult {
+                report: r,
+                fail: Some(FailReason::Internal),
+            },
+        );
+    }
+
+    /// Write a final report to a Check; if that fails, keep it so that
+    /// [`Inner::reconcile`] retries instead of leaving the Check "running".
+    fn conclude(&self, job: &Job, check_run_id: CheckRunId, result: PendingResult) {
+        let update = CheckRunUpdate {
             installation_id: job.request.installation_id,
             repository_id: job.request.repository_id,
             check_run_id,
             status: CheckStatus::Completed,
-            conclusion: Some(r.conclusion),
-            output: Some(r.output),
+            conclusion: Some(result.report.conclusion),
+            output: Some(result.report.output.clone()),
             details_url: self.details_url(&job.id),
-        });
+        };
+        if self.services.checks.update(&update).is_err() {
+            self.with_job(&job.id, |j| j.unconcluded = Some(result));
+        }
+    }
+
+    fn reconcile(&self, limit: usize) -> usize {
+        let waiting = lock(&self.jobs).awaiting_check_update(limit);
+        let mut done = 0;
+        for job in waiting {
+            let Some(check_run_id) = job.check_run_id else {
+                continue;
+            };
+            let (result, publish_retry) = match (&job.unconcluded, &job.pending) {
+                (Some(u), _) => (u.clone(), false),
+                (None, Some(p)) if job.state == JobState::Failed(FailReason::PublishFailed) => {
+                    (p.clone(), true)
+                }
+                _ => continue,
+            };
+            let update = CheckRunUpdate {
+                installation_id: job.request.installation_id,
+                repository_id: job.request.repository_id,
+                check_run_id,
+                status: CheckStatus::Completed,
+                conclusion: Some(result.report.conclusion),
+                output: Some(result.report.output.clone()),
+                details_url: self.details_url(&job.id),
+            };
+            if self.services.checks.update(&update).is_err() {
+                continue;
+            }
+            self.with_job(&job.id, |j| {
+                if publish_retry {
+                    // Only if nothing happened to the job in the meantime.
+                    if j.state == JobState::Failed(FailReason::PublishFailed)
+                        && j.pending.as_ref() == Some(&result)
+                    {
+                        j.pending = None;
+                        j.state = match result.fail {
+                            None => JobState::Completed,
+                            Some(r) => JobState::Failed(r),
+                        };
+                    }
+                } else if j.unconcluded.as_ref() == Some(&result) {
+                    j.unconcluded = None;
+                }
+            });
+            done += 1;
+        }
+        done
     }
 
     fn with_job<R>(&self, id: &JobId, f: impl FnOnce(&mut Job) -> R) -> Option<R> {
@@ -618,16 +730,14 @@ impl Inner {
     /// is concluded `neutral` with the superseded text.
     fn stale(&self, job: &Job, ctx: &ReportContext<'_>) -> JobState {
         if let Some(check_run_id) = self.check_id(&job.id) {
-            let r = report_stale(ctx);
-            let _ = self.services.checks.update(&CheckRunUpdate {
-                installation_id: job.request.installation_id,
-                repository_id: job.request.repository_id,
+            self.conclude(
+                job,
                 check_run_id,
-                status: CheckStatus::Completed,
-                conclusion: Some(r.conclusion),
-                output: Some(r.output),
-                details_url: self.details_url(&job.id),
-            });
+                PendingResult {
+                    report: report_stale(ctx),
+                    fail: None,
+                },
+            );
         }
         self.with_job(&job.id, |j| j.pending = None);
         JobState::Stale

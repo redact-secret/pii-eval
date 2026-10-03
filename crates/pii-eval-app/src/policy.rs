@@ -37,8 +37,16 @@ pub struct Limits {
     pub delivery_ttl: Duration,
     /// Jobs remembered (in flight and terminal).
     pub job_capacity: usize,
-    /// Runs of one job identity (the first plus retries).
+    /// Runs of one job identity (the first plus retries). Counted per identity
+    /// for as long as the identity or its tombstone is remembered.
     pub max_attempts: u32,
+    /// A comment request older than this (by the payload's `created_at`) is
+    /// refused, which bounds what a replayed comment can do.
+    pub comment_max_age: Duration,
+    /// Tolerated difference between the payload's clock and ours.
+    pub clock_skew: Duration,
+    /// Minimum time between the end of a failed or stale job and its retry.
+    pub retry_cooldown: Duration,
 }
 
 impl Default for Limits {
@@ -52,6 +60,9 @@ impl Default for Limits {
             delivery_ttl: Duration::from_secs(3 * 24 * 3600),
             job_capacity: 1024,
             max_attempts: 3,
+            comment_max_age: Duration::from_secs(600),
+            clock_skew: Duration::from_secs(60),
+            retry_cooldown: Duration::from_secs(30),
         }
     }
 }
@@ -74,6 +85,12 @@ pub mod ceilings {
     pub const JOB_CAPACITY: usize = 100_000;
     /// Attempts.
     pub const MAX_ATTEMPTS: u32 = 10;
+    /// Comment age in seconds.
+    pub const COMMENT_MAX_AGE_SECS: u64 = 24 * 3600;
+    /// Clock skew in seconds.
+    pub const CLOCK_SKEW_SECS: u64 = 600;
+    /// Retry cooldown in seconds.
+    pub const RETRY_COOLDOWN_SECS: u64 = 3600;
 }
 
 /// An evaluation profile: the immutable identity of what a request runs.
@@ -300,6 +317,13 @@ impl AppPolicy {
                 .map_or(d.delivery_ttl, Duration::from_secs),
             job_capacity: rl.job_capacity.unwrap_or(d.job_capacity),
             max_attempts: rl.max_attempts.unwrap_or(d.max_attempts),
+            comment_max_age: rl
+                .comment_max_age_secs
+                .map_or(d.comment_max_age, Duration::from_secs),
+            clock_skew: rl.clock_skew_secs.map_or(d.clock_skew, Duration::from_secs),
+            retry_cooldown: rl
+                .retry_cooldown_secs
+                .map_or(d.retry_cooldown, Duration::from_secs),
         };
         let mut profiles = Vec::new();
         for p in raw.profiles {
@@ -404,6 +428,9 @@ struct RawLimits {
     delivery_ttl_secs: Option<u64>,
     job_capacity: Option<usize>,
     max_attempts: Option<u32>,
+    comment_max_age_secs: Option<u64>,
+    clock_skew_secs: Option<u64>,
+    retry_cooldown_secs: Option<u64>,
 }
 
 #[cfg(test)]

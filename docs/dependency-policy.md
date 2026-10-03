@@ -193,7 +193,12 @@ guard first. The guard
 reviewed closure and keeps every forbidden fragment forbidden;
 `nothing_in_the_workspace_depends_on_the_app` asserts, for every other crate and
 for normal, build and dev edges, that nothing reaches `pii-eval-app`, so the CLI
-builds and passes its tests without it. MSRV re-verified on 2026-10-03:
+builds and passes its tests without it. `every_workspace_member_is_classified`
+reads the members from `cargo metadata` and fails when a crate is added without
+being classified (and without dependency rules), and the one-way check iterates
+the same list. The app also takes `rustix` as a direct Unix-only dependency
+(group kill for the external worker runner): the same pin, feature and lockfile
+entry the adapters already use, no new crate. MSRV re-verified on 2026-10-03:
 `cargo +1.85.0 test --workspace --locked` passes; the floor stays 1.85.
 
 ## Optional checks

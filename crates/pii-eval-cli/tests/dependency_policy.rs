@@ -364,18 +364,46 @@ fn the_app_adds_no_third_party_crate() {
     }
 }
 
+/// Names of the workspace members, from `cargo metadata` (not a hand-kept list).
+fn workspace_members() -> BTreeSet<String> {
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+    let output = Command::new(cargo)
+        .args(["metadata", "--no-deps", "--locked", "--format-version", "1"])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .output()
+        .expect("cargo metadata runs");
+    assert!(output.status.success(), "cargo metadata failed");
+    let doc: serde_json::Value = serde_json::from_slice(&output.stdout).expect("metadata is JSON");
+    doc["packages"]
+        .as_array()
+        .expect("packages")
+        .iter()
+        .map(|p| p["name"].as_str().expect("name").to_owned())
+        .collect()
+}
+
+/// A crate added to the workspace must be classified here (it appears in
+/// `WORKSPACE_CRATES`, and the rules above are extended or confirmed for it);
+/// otherwise this fails, so a new crate cannot sit outside the guard unnoticed.
+#[test]
+fn every_workspace_member_is_classified() {
+    let members = workspace_members();
+    let known: BTreeSet<String> = WORKSPACE_CRATES.iter().map(|s| (*s).to_owned()).collect();
+    assert_eq!(
+        members, known,
+        "classify new workspace crates in WORKSPACE_CRATES and give them dependency rules"
+    );
+}
+
 /// The dependency points one way: no other workspace crate reaches the app, by
 /// any edge kind (normal, build or dev), so the CLI builds, tests and works with
-/// the app crate absent from its closure (ADR 0011, D1).
+/// the app crate absent from its closure (ADR 0011, D1). Every other member is
+/// taken from `cargo metadata`.
 #[test]
 fn nothing_in_the_workspace_depends_on_the_app() {
-    for package in [
-        "pii-eval-contracts",
-        "pii-eval-kernel",
-        "pii-eval-adapters",
-        "pii-eval-cli",
-        "pii-eval-compat",
-    ] {
+    let members = workspace_members();
+    assert!(members.contains("pii-eval-cli"));
+    for package in members.iter().filter(|m| m.as_str() != "pii-eval-app") {
         for edges in ["normal,build", "all"] {
             assert!(
                 !closure_with_edges(package, edges).contains("pii-eval-app"),

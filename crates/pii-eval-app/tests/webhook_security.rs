@@ -134,12 +134,27 @@ fn a_replayed_delivery_is_rejected_and_adds_nothing() {
     assert_eq!(again.outcome.http_status(), 409);
     assert_eq!(env.app.queue_len(), 1);
     assert!(env.app.job(&id).is_some());
-    // Past the TTL the id is forgotten, but the deterministic job id still
-    // coalesces the work.
+    // Past the id TTL (and the comment window) the same body is refused by the
+    // comment age rule, not by the id store.
     env.clock.advance(Limits::default().delivery_ttl.as_secs());
     let later = env.deliver_with_id("issue_comment", "same-id", &body);
+    assert_eq!(rejected(&later), Reason::CommentTooOld);
+    // A genuinely new comment for the same identity coalesces into the same job.
+    let fresh = env.deliver(
+        "issue_comment",
+        &comment_payload_full(
+            INSTALLATION,
+            REPO,
+            REPO_NAME,
+            ACTOR,
+            PR,
+            "/pii-eval run",
+            777_001,
+            BASE_TIME + Limits::default().delivery_ttl.as_secs(),
+        ),
+    );
     assert_eq!(
-        later.outcome,
+        fresh.outcome,
         Outcome::Accepted {
             job_id: id,
             disposition: Disposition::Coalesced
@@ -540,19 +555,13 @@ fn an_unresolvable_head_is_transient_and_does_not_consume_the_delivery() {
     // GitHub redelivers with the same id: it is processed, not a duplicate.
     let d = env.deliver_with_id("issue_comment", "redelivered", &body);
     assert!(matches!(d.outcome, Outcome::Accepted { .. }), "{d:?}");
-    // A permanent rejection does consume the id.
-    let d = env.deliver_with_id(
-        "issue_comment",
-        "denied",
-        &comment_payload(INSTALLATION, REPO, REPO_NAME, 9999, PR, "/pii-eval run"),
-    );
-    assert_eq!(rejected(&d), Reason::ActorNotAuthorized);
-    let d = env.deliver_with_id(
-        "issue_comment",
-        "denied",
-        &comment_payload(INSTALLATION, REPO, REPO_NAME, 9999, PR, "/pii-eval run"),
-    );
-    assert_eq!(rejected(&d), Reason::DuplicateDelivery);
+    // A permanent rejection is re-evaluated, not remembered: ids are recorded
+    // only for admitted requests, so rejected traffic cannot fill the store.
+    let denied = comment_payload(INSTALLATION, REPO, REPO_NAME, 9999, PR, "/pii-eval run");
+    for _ in 0..2 {
+        let d = env.deliver_with_id("issue_comment", "denied", &denied);
+        assert_eq!(rejected(&d), Reason::ActorNotAuthorized);
+    }
 }
 
 #[test]
@@ -575,4 +584,107 @@ fn metadata_is_bounded_and_secrets_never_appear_in_debug_output() {
         body: b"SENTINEL",
     };
     assert!(!format!("{raw:?}").contains("SENTINEL"));
+}
+
+#[test]
+fn a_captured_comment_replayed_under_fresh_delivery_ids_starts_nothing() {
+    let env = TestEnv::new();
+    let body = good_body();
+    let first = env.deliver("issue_comment", &body);
+    let id = job_id(&first);
+    // The delivery id is not signed, so a replayer picks new ones. The comment
+    // id is the key: one comment is one request.
+    for n in 0..25 {
+        let d = env.deliver_with_id("issue_comment", &format!("fresh-{n}"), &body);
+        assert_eq!(rejected(&d), Reason::DuplicateComment, "replay {n}");
+        assert_eq!(d.outcome.http_status(), 409);
+    }
+    // Even after a new commit lands (a replay would otherwise resolve to the
+    // new head and start a job per commit).
+    env.heads
+        .set(REPO, Subject::PullRequest(PR), &sha('4'), REPO);
+    let d = env.deliver_with_id("issue_comment", "fresh-after-push", &body);
+    assert_eq!(rejected(&d), Reason::DuplicateComment);
+    assert_eq!(env.app.queue_len(), 1, "still the one job");
+    assert!(env.app.job(&id).is_some());
+    // The same comment id in another repository is another request.
+    assert_ne!(
+        format!("{}:{}", REPO, 1),
+        format!("{}:{}", OTHER_REPO, 1),
+        "keys include the repository"
+    );
+}
+
+#[test]
+fn a_comment_outside_the_age_window_is_refused_with_bounded_skew() {
+    let env = TestEnv::new();
+    let l = Limits::default();
+    let (max_age, skew) = (l.comment_max_age.as_secs(), l.clock_skew.as_secs());
+    let at = |created: u64, id: u64| {
+        env.deliver(
+            "issue_comment",
+            &comment_payload_full(
+                INSTALLATION,
+                REPO,
+                REPO_NAME,
+                ACTOR,
+                PR,
+                "/pii-eval run",
+                id,
+                created,
+            ),
+        )
+    };
+    assert_eq!(
+        rejected(&at(BASE_TIME - max_age - 1, 1)),
+        Reason::CommentTooOld
+    );
+    assert!(matches!(
+        at(BASE_TIME - max_age, 2).outcome,
+        Outcome::Accepted { .. }
+    ));
+    assert_eq!(
+        rejected(&at(BASE_TIME + skew + 1, 3)),
+        Reason::PayloadMalformed
+    );
+    assert!(matches!(
+        at(BASE_TIME + skew, 4).outcome,
+        Outcome::Accepted { .. }
+    ));
+    // A timestamp that does not parse is malformed.
+    let mut v: serde_json::Value = serde_json::from_slice(&good_body()).unwrap();
+    v["comment"]["created_at"] = "yesterday".into();
+    assert_eq!(
+        rejected(&env.deliver("issue_comment", v.to_string().as_bytes())),
+        Reason::PayloadMalformed
+    );
+}
+
+#[test]
+fn floods_under_distinct_delivery_ids_cannot_evict_recent_legitimate_ids() {
+    let limits = Limits {
+        delivery_capacity: 8,
+        ..Limits::default()
+    };
+    let env = TestEnv::build(limits, FakeRunner::complete());
+    let body = good_body();
+    assert!(matches!(
+        env.deliver_with_id("issue_comment", "legit", &body).outcome,
+        Outcome::Accepted { .. }
+    ));
+    // A replayer with a captured body, and an unauthorized-but-validly-signed
+    // sender, each try to push "legit" out of an 8-entry store.
+    let denied = comment_payload(INSTALLATION, REPO, REPO_NAME, 9999, PR, "/pii-eval run");
+    for n in 0..100 {
+        let d = env.deliver_with_id("issue_comment", &format!("flood-a-{n}"), &body);
+        assert_eq!(rejected(&d), Reason::DuplicateComment);
+        let d = env.deliver_with_id("issue_comment", &format!("flood-b-{n}"), &denied);
+        assert_eq!(rejected(&d), Reason::ActorNotAuthorized);
+    }
+    let d = env.deliver_with_id("issue_comment", "legit", &body);
+    assert_eq!(
+        rejected(&d),
+        Reason::DuplicateDelivery,
+        "the id survived the floods"
+    );
 }

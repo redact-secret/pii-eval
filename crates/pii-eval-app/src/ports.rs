@@ -7,6 +7,19 @@
 //! profiles, a [`CustodianRouter`]. No credential type appears in any
 //! signature: a transport mints installation tokens itself, so a runner, a
 //! worker or a job specification cannot receive one.
+//!
+//! # Timeout contract (every implementation)
+//!
+//! The core calls these traits from the handler thread ([`HeadResolver`] at
+//! admission) and from worker threads, and it cannot interrupt a call: a call
+//! that never returns occupies that thread for good. Every implementation MUST
+//! therefore set connect, read and total timeouts, return within
+//! [`MAX_PORT_CALL_SECS`] seconds in all cases (a timeout is
+//! `Err(PortError::Unavailable)`), never retry internally beyond that bound, and
+//! never block on a lock held across such a call. The core assumes it and does
+//! not wrap calls; a transport is accepted only if it passes the checks in
+//! [`crate::testing::assert_port_call_bounded`] against a server that stalls,
+//! and the header rules of [`crate::webhook::select_single_header`].
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -24,6 +37,9 @@ pub enum PortError {
     /// The installation lacks permission or the object is gone.
     Denied,
 }
+
+/// The longest any port call may take (see the module's timeout contract).
+pub const MAX_PORT_CALL_SECS: u64 = 30;
 
 /// Time source (seconds since the Unix epoch).
 pub trait Clock: Send + Sync {

@@ -17,12 +17,14 @@ protected run and is not an authorization authority. The CLI works without it
 
 | Part | State |
 | --- | --- |
-| Signature verification, size cap, delivery replay store, strict parsing | Implemented, tested |
+| Signature verification, size cap, strict parsing | Implemented, tested |
+| Replay defences: comment age window, single use of a comment id, retry cooldown and cap, best-effort delivery-id store | Implemented, tested (see "Replay" below for what each does and does not give) |
 | Allowlist authorization (installation, repository id, actor id, profile) | Implemented, tested |
 | Deterministic job ids, job state machine, bounded store and queue, limited workers | Implemented, tested |
-| Stale-head handling, retry and publish reconciliation | Implemented, tested against fakes |
+| Stale-head handling, retry and publish reconciliation, a tick that finishes Checks whose last update failed (`App::reconcile`) | Implemented, tested against fakes |
 | Sanitized Check summaries (`pii-eval-check-summary/1`) | Implemented, tested |
-| Runner: public profile through `pii_eval_cli::execute` | Implemented, tested end to end on the quickstart example |
+| Runner for production: `ExternalProcessRunner` starts a configured worker command as a separate process (scrubbed environment, no inherited secrets, bounded output, time limit, process-group kill) | Implemented, tested with shell-script workers; separating the OS user or container is the deployment's |
+| Runner for tests and development only: `InProcessCliRunner` (`pii_eval_cli::execute` inside the App process) | Implemented, tested end to end on the quickstart example; **never for production**: the scanner would run in the process that holds the secrets |
 | Protected routing to private-custodian | Interface only (`CustodianRouter`); no custodian client |
 | HTTP server, GitHub REST client (`ChecksApi`, `HeadResolver`), App JWT and installation tokens | **Not implemented** (deployment follow-up, ADR 0011 D3) |
 | Durable state, metrics, log sink | Not implemented |
@@ -38,13 +40,41 @@ step before the next):
 1. Body size cap (413).
 2. HMAC-SHA256 over the raw bytes, constant-time comparison (401).
 3. Delivery id and event name syntax (400).
-4. Replay: a repeated delivery id within the TTL is `duplicate-delivery` (409).
+4. Replay, part one: a delivery id seen on an *admitted* request within the TTL is
+   `duplicate-delivery` (409). Best effort only, see "Replay" below.
 5. Event class: `issue_comment`, `check_suite`, `check_run`; anything else
    authentic is ignored (`event-not-approved`, 200). A label on a pull request, a
    push, a ping and `workflow_dispatch` are all in that group.
 6. Strict parsing of only the fields used (400 `payload-malformed`).
 7. Authorization against the policy (403).
-8. Profile, current head, fork and stale checks, admission, enqueue (202).
+8. For a comment: its `created_at` must be within `commentMaxAgeSecs` (and not
+   more than `clockSkewSecs` in the future) and its id must not have been used
+   (`comment-too-old`, `duplicate-comment`, 409).
+9. Profile, current head, fork and stale checks, admission (a failed or stale job
+   is retried only after `retryCooldownSecs` and at most `maxAttempts` times:
+   `retry-cooldown`, `retry-limit`, 429), enqueue (202).
+
+### Replay
+
+`X-GitHub-Delivery` is not covered by the HMAC. Anyone who captured one valid
+delivery can resend the body under a fresh delivery id, so the id store is a
+convenience (it makes GitHub's own redelivery of an admitted request a clean
+409), **not** a replay defence. What actually bounds a replayer:
+
+| Replay | Outcome |
+| --- | --- |
+| A captured comment, any delivery id, inside the age window | `duplicate-comment`: a comment id starts at most one request (kept for the window plus the skew; keys are repository and comment id) |
+| A captured comment after the window | `comment-too-old`; so a replay can never start a job against a newer head than the comment's own time allows |
+| A captured `check_suite` / `check_run` rerequest | They name their commit: `stale-head` once the head moved; otherwise the deterministic job id coalesces them or, for a failed or stale job, `retry-cooldown` and `retry-limit` apply |
+| Many fresh delivery ids to evict the store | Ids are recorded only for admitted requests, which are bounded by the queue, the job store and the identities above; rejected traffic records nothing |
+
+Limits stated plainly: there are no per-source quotas (the service sees no
+source address; a transport or reverse proxy should rate-limit). The retry cap
+and cooldown are kept per job identity and survive eviction of the job through a
+bounded tombstone map (four times the job capacity, oldest dropped first), so the
+cap is exact for the most recent `4 * jobCapacity` failed identities and
+approximate beyond that. A redelivery by GitHub of a request older than the
+comment window is refused; ask for the run again with a new comment.
 
 Approved requests:
 
@@ -62,8 +92,9 @@ Reason codes (stable, never carry text): `payload-too-large`,
 `installation-not-allowlisted`, `installation-repository-mismatch`,
 `repository-not-allowlisted`, `repository-name-mismatch`,
 `actor-not-authorized`, `profile-not-allowed`, `fork-head-not-allowed`,
-`stale-head`, `head-unresolvable`, `queue-full`, `job-store-full`,
-`retry-limit`, `shutting-down`. Transient ones (`head-unresolvable`,
+`comment-too-old`, `duplicate-comment`, `retry-cooldown`, `stale-head`,
+`head-unresolvable`, `queue-full`, `job-store-full`, `retry-limit`,
+`shutting-down`. Transient ones (`head-unresolvable`,
 `queue-full`, `job-store-full`, `shutting-down`) do not consume the delivery id,
 so GitHub's redelivery is processed.
 
@@ -92,7 +123,8 @@ one installation. The first profile of a repository is its default. `class` is
 ceilings: `maxBodyBytes` (default 1 MiB, at most 4 MiB), `queueCapacity` (16,
 1024), `workers` (2, 8), `jobTimeoutSecs` (900, 3600), `deliveryCapacity` (4096,
 1,000,000), `deliveryTtlSecs` (3 days, 14 days), `jobCapacity` (1024, 100,000),
-`maxAttempts` (3, 10).
+`maxAttempts` (3, 10), `commentMaxAgeSecs` (600, 86,400), `clockSkewSecs` (60, 600),
+`retryCooldownSecs` (30, 3,600).
 
 ## Check summary (`pii-eval-check-summary/1`)
 
@@ -125,7 +157,7 @@ repository, CI, logs, issues, a job specification or a worker:
 
 | Secret | Use | Custody |
 | --- | --- | --- |
-| Webhook secret | HMAC of deliveries | Loaded by `Secret::from_file` (regular file, mode `0600` or stricter) or `Secret::from_env`; at least 32 bytes; random, unique to this App |
+| Webhook secret | HMAC of deliveries | Loaded by `Secret::from_file` only (regular file, mode `0600` or stricter); at least 32 bytes; random, unique to this App. There is no environment loader: an environment is inherited by every child and visible to same-user tools, a file with owner-only permissions is not |
 | App private key | RS256 JWT (at most ten minutes) to obtain an installation token | Transport follow-up; a secret manager or a root-owned `0600` file; never in a worker's environment |
 | Installation token | Checks and head lookups, one hour | Transport follow-up; request it narrowed to one repository and the permissions below; never persisted |
 
@@ -163,13 +195,38 @@ all repositories.
 6. Prepare the profiles: pin the run configuration, snapshot, manifest and
    scanner package, compute the configuration digest and the population digest,
    and put both in the profile (`docs/cli.md`).
-7. Build the transport follow-up (HTTP listener that passes headers and the
-   unmodified raw body to `handle_delivery`, `ChecksApi`, `HeadResolver`, token
-   exchange), review its dependencies under docs/dependency-policy.md and add it
-   to the guard.
-8. Run the worker (`CliLibraryRunner`) as an OS user that holds none of the
-   secrets above, with a read-only configuration directory, a private work
-   directory and Node and `ps` available as the CLI requires.
+7. Build the transport follow-up (HTTP listener, `ChecksApi`, `HeadResolver`,
+   token exchange), review its dependencies under docs/dependency-policy.md and
+   add it to the guard. Transport requirements (checklist, each testable):
+   - pass the exact, unmodified raw body to `handle_delivery`;
+   - take `X-Hub-Signature-256`, `X-GitHub-Delivery` and `X-GitHub-Event`
+     through `webhook::select_single_header`: a header that is repeated, empty
+     of a value or not printable ASCII is passed as absent (the first and last
+     occurrence of a duplicated header may otherwise disagree);
+   - reject a body over the cap while reading it, before buffering it all;
+   - answer with `Decision::outcome.http_status()` and nothing from the body;
+   - keep every port call within `ports::MAX_PORT_CALL_SECS` (connect, read and
+     total timeouts; a stalled upstream is `Err(PortError::Unavailable)`) and
+     check it with `testing::assert_port_call_bounded` against a server that
+     stalls; the core cannot interrupt a call, a hung one occupies its thread;
+   - call `App::reconcile` periodically;
+   - rate-limit by source (the core has no per-source quotas).
+8. Run jobs with `ExternalProcessRunner`, never `InProcessCliRunner`. What the
+   crate guarantees for the worker it starts: a fixed absolute program and
+   structured arguments, a cleared environment holding only the variables the
+   profile names (credential-looking names are refused), stdin and stderr
+   `/dev/null`, a bounded stdout pipe, no descriptor opened by this crate
+   inherited, a private `0700` per-job directory holding a verified `0600` copy of
+   the run configuration, its own process group killed on timeout, cancel and
+   exit. What the deployment must provide, because the crate cannot: run that
+   command as an operating-system user (or in a container or sandbox) that cannot
+   read the webhook secret file, the private key, the installation tokens or the
+   App process's memory; make `{config}` and `{out}` usable by that user; keep
+   the host binary free of descriptors opened without close-on-exec; give the
+   worker only the network and file access it needs; keep Node and `ps` available
+   as the CLI requires. A wrapper that changes user must stay in its process group
+   (or the cleanup cannot reach it) and print exactly the CLI's one summary line
+   on stdout.
 9. Protected profiles additionally need private-custodian's intake
    ([private-custodian#4](https://github.com/redact-secret/private-custodian/issues/4))
    and a `CustodianRouter`; until then they fail closed.
@@ -181,13 +238,16 @@ all repositories.
 | Actor | Can | Cannot |
 | --- | --- | --- |
 | Malicious webhook sender (no secret) | Send bytes; cost one size check and one HMAC per request | Be parsed, attributed or counted (nothing before the signature), consume a delivery id, queue a job |
-| Replayer holding a captured valid delivery | Resend it | Get a second job: the id store rejects it, and after the TTL the deterministic job id coalesces it |
+| Replayer holding a captured valid delivery | Resend it, under any delivery id | Start a second job from a comment (single-use comment id, age window), re-run a failed job faster than the cooldown or beyond the cap, or evict recent delivery ids (only admitted requests are recorded). It can cost one HMAC and one parse per request: rate-limiting is the transport's |
 | Allowlisted but wrong-scope sender (another repository's actor or installation) | Be rejected with a stable code | Use installation A for repository B: the repository must belong to the delivering installation, by id |
 | Malicious pull request author | Choose a branch, commit, comment text, labels, a fork | Select code to run (jobs run pinned profiles only), choose a profile outside the repository's list, request anything without being on the actor list, grant protected access with a comment or a label, get fork heads evaluated by default, inject text into a Check (fixed template) |
 | Allowlisted actor | Request public synthetic profiles of their repositories, within queue and retry limits | Request a protected run (it can only be routed, and the custodian decides), see anything from a protected population |
-| Malicious scanner (a pinned build gone bad) | What the CLI threat model allows (SECURITY.md): resources within limits, children in its process group, network and files readable by the worker user | Change what a Check says beyond the validated fields (its output is projected, not copied), read App secrets if the deployment follows step 8 (the code gives it none; the OS user separation is the deployment's) |
+| Malicious scanner (a pinned build gone bad) | What the CLI threat model allows (SECURITY.md): resources within limits, children in its process group, network and files readable by the worker's OS user | Change what a Check says beyond the validated fields (its output is projected, not copied). Whether it can read App secrets depends on the deployment: this crate passes none (scrubbed environment, no inherited descriptors, no secret in arguments), but only running the worker as another user or in a container (step 8) stops it reading secret files or memory of the same user |
 | Misconfigured deployment | Widen the allowlist, run workers with secrets, skip TLS | Be detected by this crate; the policy and this document are the controls |
 
-Limits stated plainly: a scanner shares the worker's OS user and is not
-sandboxed; GitHub deliveries carry no signed timestamp; state is in memory; the
-transport against GitHub is unbuilt and untested.
+Limits stated plainly: the scanner is not sandboxed by this crate and shares
+the worker's OS user unless the deployment separates it; the delivery id and
+GitHub deliveries carry no signed timestamp (see "Replay"); state is in memory;
+a window remains between the final head check and the Check update (the Check is
+attached to its own commit, so a late result is correctly labeled, not
+misattributed); the transport against GitHub is unbuilt and untested.

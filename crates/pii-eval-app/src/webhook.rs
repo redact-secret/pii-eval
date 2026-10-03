@@ -16,8 +16,9 @@ use crate::reason::Reason;
 use crate::request::{CommandParse, CommitSha, EventKind, parse_command};
 use crate::secret::Secret;
 
-/// One delivery as the transport saw it. Header values are `None` when absent
-/// or not UTF-8.
+/// One delivery as the transport saw it. A header value must be `None` unless
+/// the header occurred exactly once with a printable-ASCII value: transports use
+/// [`select_single_header`] (a repeated or non-ASCII header is treated as absent).
 pub struct RawDelivery<'a> {
     /// `X-GitHub-Event`.
     pub event: Option<&'a str>,
@@ -51,6 +52,61 @@ pub fn verify_signature(secret: &Secret, header: Option<&str>, body: &[u8]) -> R
         Ok(())
     } else {
         Err(Reason::SignatureMismatch)
+    }
+}
+
+/// Parse `YYYY-MM-DDTHH:MM:SSZ` (the only form GitHub emits for these fields)
+/// into Unix seconds. Anything else, and dates before 1970 or after 9999, is
+/// `None`.
+pub fn parse_utc_timestamp(text: &str) -> Option<u64> {
+    let b = text.as_bytes();
+    if b.len() != 20
+        || b[4] != b'-'
+        || b[7] != b'-'
+        || b[10] != b'T'
+        || b[13] != b':'
+        || b[16] != b':'
+        || b[19] != b'Z'
+    {
+        return None;
+    }
+    let num = |r: std::ops::Range<usize>| -> Option<i64> {
+        let d = &b[r];
+        d.iter()
+            .all(u8::is_ascii_digit)
+            .then(|| d.iter().fold(0i64, |a, c| a * 10 + i64::from(c - b'0')))
+    };
+    let (y, mo, d) = (num(0..4)?, num(5..7)?, num(8..10)?);
+    let (h, mi, s) = (num(11..13)?, num(14..16)?, num(17..19)?);
+    let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+    let month_len = match mo {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 => 28 + i64::from(leap),
+        _ => return None,
+    };
+    if !(1..=month_len).contains(&d) || h > 23 || mi > 59 || s > 59 || y < 1970 {
+        return None;
+    }
+    // Days from civil (Howard Hinnant's algorithm).
+    let y2 = if mo <= 2 { y - 1 } else { y };
+    let era = y2 / 400;
+    let yoe = y2 - era * 400;
+    let doy = (153 * (if mo > 2 { mo - 3 } else { mo + 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe - 719_468;
+    u64::try_from(days * 86_400 + h * 3600 + mi * 60 + s).ok()
+}
+
+/// Pick the value of a header that must occur exactly once. A transport MUST
+/// use this (or an equivalent) for `X-Hub-Signature-256`, `X-GitHub-Delivery`
+/// and `X-GitHub-Event`: a header that is repeated, or whose value is not
+/// printable ASCII, is `None`, so a proxy or client cannot make the first and
+/// the last occurrence disagree about what was signed or deduplicated.
+pub fn select_single_header<'a>(values: &[&'a [u8]]) -> Option<&'a str> {
+    match values {
+        [one] if one.iter().all(|b| (0x20..0x7f).contains(b)) => std::str::from_utf8(one).ok(),
+        _ => None,
     }
 }
 
@@ -97,6 +153,11 @@ pub enum Trigger {
         pr_number: u64,
         /// The parsed command (`Run`; other values are filtered earlier).
         command: CommandParse,
+        /// The comment's id: one comment is one request, however often its
+        /// body is delivered.
+        comment_id: u64,
+        /// The comment's `created_at` as Unix seconds (UTC).
+        created_at_secs: u64,
     },
     /// A rerequested check suite.
     Suite {
@@ -185,7 +246,9 @@ struct Issue {
 
 #[derive(Deserialize)]
 struct Comment {
+    id: u64,
     body: String,
+    created_at: String,
     user: User,
 }
 
@@ -284,6 +347,9 @@ pub fn parse_payload(kind: EventKind, body: &[u8]) -> Result<Parsed, Reason> {
                 Trigger::Comment {
                     pr_number: p.issue.number,
                     command,
+                    comment_id: p.comment.id,
+                    created_at_secs: parse_utc_timestamp(&p.comment.created_at)
+                        .ok_or(Reason::PayloadMalformed)?,
                 },
             )
         }
@@ -421,6 +487,42 @@ mod tests {
         let text = format!("{d:?}");
         assert!(!text.contains("SENTINEL"));
         assert!(text.contains("body_len"));
+    }
+
+    #[test]
+    fn timestamps_parse_strictly() {
+        assert_eq!(parse_utc_timestamp("1970-01-01T00:00:00Z"), Some(0));
+        assert_eq!(
+            parse_utc_timestamp("2000-02-29T12:34:56Z"),
+            Some(951_827_696)
+        );
+        assert_eq!(
+            parse_utc_timestamp("2026-10-03T00:00:00Z"),
+            Some(1_790_985_600)
+        );
+        for bad in [
+            "",
+            "2026-10-03 00:00:00Z",
+            "2026-10-03T00:00:00+00:00",
+            "2026-10-03T00:00:00.000Z",
+            "2026-13-03T00:00:00Z",
+            "2026-02-29T00:00:00Z",
+            "2026-10-03T24:00:00Z",
+            "1969-12-31T23:59:59Z",
+            "2026-1a-03T00:00:00Z",
+        ] {
+            assert_eq!(parse_utc_timestamp(bad), None, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn a_header_must_occur_exactly_once_and_be_printable() {
+        assert_eq!(select_single_header(&[b"abc"]), Some("abc"));
+        assert_eq!(select_single_header(&[]), None);
+        assert_eq!(select_single_header(&[b"a", b"a"]), None);
+        assert_eq!(select_single_header(&[b"a\x00b"]), None);
+        assert_eq!(select_single_header(&[b"caf\xc3\xa9"]), None);
+        assert_eq!(select_single_header(&[b"a\r\nb"]), None);
     }
 
     #[test]

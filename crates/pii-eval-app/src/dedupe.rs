@@ -65,6 +65,17 @@ impl DeliveryStore {
         Begin::New
     }
 
+    /// Whether `id` is remembered at `now` (does not record it).
+    pub fn contains(&mut self, id: &str, now: u64) -> bool {
+        self.expire(now);
+        self.seen.contains_key(id)
+    }
+
+    /// Remember `id` at `now` (no effect if it is already remembered).
+    pub fn record(&mut self, id: &str, now: u64) {
+        let _ = self.begin(id, now);
+    }
+
     /// Forget `id` (a transient failure: GitHub's redelivery must be accepted).
     pub fn forget(&mut self, id: &str) {
         self.seen.remove(id);

@@ -27,7 +27,7 @@ guard forbids network and server crates) or in the CLI (which must stay fully
 usable with no App). A new crate `pii-eval-app` is justified by that
 separation. It depends on `pii-eval-contracts` (digest type), `pii-eval-cli`
 (the library entry point `execute`, and the summary schema constant), `serde`,
-`serde_json` and `sha2`. **No other workspace crate depends on it**, by any edge
+`serde_json`, `sha2` and, on Unix, `rustix` (group kill; already in the lockfile). **No other workspace crate depends on it**, by any edge
 kind. `nothing_in_the_workspace_depends_on_the_app` in
 `crates/pii-eval-cli/tests/dependency_policy.rs` runs `cargo tree` for every other
 crate with normal, build and dev edges, so the CLI builds and passes its tests
@@ -84,10 +84,13 @@ drop (best effort, not a guarantee against copies).
    produced before this passes.
 3. Delivery id syntax and event name syntax (400). Only now is anything
    attributed to the delivery.
-4. Replay: the delivery id is recorded in a bounded TTL store; a repeat within
-   the TTL is rejected as `duplicate-delivery` (409). The store is only
-   consulted after authenticity, so forged requests cannot fill it or consume a
-   real delivery id.
+4. Replay, part one: a delivery id is looked up in a bounded TTL store and
+   recorded only once a request was *admitted*; a repeat within the TTL is
+   `duplicate-delivery` (409). The store is only consulted after authenticity.
+   **This is best effort**: `X-GitHub-Delivery` is not covered by the HMAC, so a
+   replayer sends a captured body under a fresh id, and a store that records every
+   id could be flushed by distinct ids. Ids are therefore recorded only for
+   admitted requests, and the real defences are the next rules (D5a).
 5. Event class: only `issue_comment`, `check_suite` and `check_run` are
    approved; every other well-formed event (a label on a pull request, `push`,
    `ping`, `workflow_dispatch`) is `ignored/event-not-approved`.
@@ -105,9 +108,27 @@ drop (best effort, not a guarantee against copies).
    role claim in the payload are never read.
 8. Profile selection, current head resolution, stale and fork checks, admission.
 
-A transient failure (head lookup failed, queue full, store full, shutdown) does
-not consume the delivery id, so GitHub's redelivery with the same id is
-processed. A permanent rejection does.
+Rejected requests record nothing, so GitHub's redelivery of a transiently
+failed request (head lookup failed, queue full, store full, shutdown) is simply
+processed again.
+
+### D5a. Replay defences that do not depend on the delivery id
+
+- A comment is one request: its `created_at` (strict UTC form) must be within
+  `commentMaxAgeSecs` (default 600 s) and at most `clockSkewSecs` (60 s) in the
+  future, and its repository-qualified id is spent for the window plus the skew
+  (`comment-too-old`, `duplicate-comment`). Without this, a replayed comment
+  resolves to the *current* head and would start a job per new commit.
+- Check events name their commit and are `stale-head` once it moved. They carry no
+  trustworthy timestamp, so they rely on the next rule.
+- Per job identity: `retryCooldownSecs` (30 s) after a failed or stale job ends
+  and `maxAttempts` runs in total (`retry-cooldown`, `retry-limit`). Evicting a
+  job keeps its attempts and end time in a bounded tombstone map (four times the
+  job capacity, oldest dropped first), so eviction by a flood of other identities
+  does not reset the cap. The cap is exact for the most recent `4 * jobCapacity`
+  failed or stale identities and approximate beyond that.
+- There are no per-source quotas: the core never sees a source address. Rate
+  limiting belongs to the transport (docs/github-app.md).
 
 ### D6. Job identity is the SHA-256 of length-prefixed immutable fields
 
@@ -156,7 +177,7 @@ repository may request.
 The handler never runs a job: it admits and enqueues. A bounded FIFO
 (`queue_capacity`, a hard ceiling in the policy) answers `queue-full` (503) when
 full, and rolls the admission back. `workers` threads (1 to 8) each run one job
-at a time, so at most that many jobs run at once; the CLI runner adds its own
+at a time, so at most that many jobs run at once; the in-process runner adds its own
 watchdog (job timeout, cooperative cancel that makes the executor kill the
 scanner tree) and removes the per-job output directory. The job store, the
 delivery store and every limit are bounded; evicting the oldest terminal job or
@@ -177,9 +198,16 @@ commit is `stale-head`), again before the run (a job whose head moved while
 queued never runs and publishes nothing), and again after it (the result is
 dropped, and an existing Check is concluded `neutral`/superseded with identities
 only). A head that cannot be resolved fails closed
-(`failed(head-unverifiable)`). A short window remains between the final check
-and the update, which is inherent; the Check is attached to its own commit
-either way, so a late result is correctly labeled, not misattributed.
+(`failed(head-unverifiable)`). **Residual window**: the head can still move
+between the final head check and the Check update (and between any lookup and the
+upstream state), which no client-side check can close. The consequence is
+limited: a Check is created on, and updated for, its own commit SHA, so a result
+that arrives after the head moved is attached to the commit it was measured on
+and is never attributed to the newer one. Writes that fail (the stale or
+internal-error conclusion, or a publish) are kept on the job and retried by
+`App::reconcile` (called by workers before each job and, in a deployment, on a
+timer), so a Check is not left "running" forever; at most 16 are retried per
+call.
 
 ### D11. Check summaries are fixed templates over validated fields
 
@@ -201,17 +229,45 @@ runners return typed identities and statuses, and the CLI already withholds them
 from its summary. A run whose reported class is not `public-synthetic` is
 rejected by the projection.
 
+### D11a. Two runners; only one is for production
+
+`InProcessCliRunner` runs `pii_eval_cli::execute` inside the App process. The
+scanner is then a child of the process that holds the webhook secret (and, in a
+deployment, the private key and tokens) under the same OS user, which this crate
+cannot separate, so it is labeled test and development only.
+`ExternalProcessRunner` starts a configured worker command as a separate process
+(the `pii-eval` binary, or a wrapper that changes user, enters a container or
+sandboxes): fixed absolute program, structured arguments with `{config}`, `{out}`,
+`{job_id}`, `{attempt}` placeholders, **cleared environment plus only the
+variables the profile names** (names that look like credentials are refused),
+stdin and stderr `/dev/null`, stdout read to a fixed bound, a private per-job
+directory, its own process group sent `SIGKILL` on timeout, cancel and exit.
+The standard library opens every descriptor it creates close-on-exec, so none of
+this crate's (the secret file among them) is inherited; a descriptor created
+without close-on-exec by other code in the host process cannot be closed from
+safe Rust, so the host must not create any (a test compares the worker's
+descriptors with those of a plain child). This crate guarantees those properties;
+**separating the worker's OS user or container is the deployment's
+responsibility** and nothing here verifies it. `rustix` (already in the lockfile
+through the adapters, same pin and feature) is added as a direct Unix-only
+dependency of the app for the group kill; no new crate enters the lockfile.
+Both runners verify the run configuration's digest on the bytes they stage and
+hand the worker a private `0600` copy in a `0700` directory (so a swap of the
+original after the check changes nothing); the copy requires every `path` and
+`dir` in the document to be absolute.
+
 ### D12. Credentials and custody (specified, not implemented)
 
 The App needs three secrets: the webhook secret (this crate loads it from a file
 with owner-only permissions or from the environment into a `Secret`), the App
 private key and the short-lived installation tokens (both owned by the transport
 follow-up). None is in the repository, CI, a log line or a job specification; the
-runner receives identities only. The scanner is a child process of the worker
-and the same OS user (process hygiene, ADR 0009, not isolation), so the
-deployment must run workers as a user that holds no credential and keep the run
-configuration directory read-only for them; docs/github-app.md lists this as a
-deployment requirement rather than claiming it.
+runner receives identities only. The webhook secret is loaded only from an owner-only
+file (`Secret::from_file`); an environment-variable loader was removed because an
+environment is inherited by every child process and visible to same-user tools.
+The scanner is process-hygiene-controlled (ADR 0009), not isolated: the
+deployment must run the worker command (D11a) as another user or in a container,
+which docs/github-app.md lists as a requirement and this crate cannot check.
 
 ## Alternatives considered
 
@@ -253,7 +309,15 @@ deployment requirement rather than claiming it.
   (reconciliation by `external_id` recovers Checks).
 - No signed-timestamp replay window: GitHub does not sign one; protection is the
   delivery-id store plus idempotent job ids (D5, D6).
-- Process hygiene, not isolation, for the scanner (D12).
+- Process hygiene, not isolation, for the scanner; separating its OS user or
+  container is the deployment's (D11a, D12).
+- Port calls are not interruptible: a hung transport call occupies its thread.
+  The timeout contract (`ports::MAX_PORT_CALL_SECS`) and a conformance helper are
+  the control; a transport must pass them.
+- The transport must reject repeated or non-ASCII signature, delivery and event
+  headers (`webhook::select_single_header`); the core accepts `Option<&str>` and
+  cannot see duplicates.
+- Per-source rate limiting is not available in the core.
 - No metrics or log sink: the crate emits nothing; a deployment logs `Decision`
   codes and metadata, which are safe by construction.
 - Evaluation of a candidate scanner supplied by a pull request (D7).

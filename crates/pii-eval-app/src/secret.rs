@@ -2,8 +2,9 @@
 //! key). A [`Secret`] cannot be cloned, printed, serialized or compared; its
 //! `Debug` is fixed text, it is overwritten when dropped (best effort: Rust
 //! gives no guarantee against copies the allocator or the OS made), and it is
-//! loaded only from a file with owner-only permissions or from the environment
-//! by the deployment. It is never part of a job specification, so a worker
+//! loaded only from a file with owner-only permissions
+//! by the deployment (there is no environment-variable loader: an environment
+//! is inherited by children and visible to same-user tools, a file is not). It is never part of a job specification, so a worker
 //! cannot receive it.
 
 use std::fmt;
@@ -54,12 +55,6 @@ impl Secret {
             return Err(SecretError::TooLong);
         }
         Ok(Self { bytes })
-    }
-
-    /// Read an environment variable (one trailing newline is removed).
-    pub fn from_env(name: &str) -> Result<Self, SecretError> {
-        let value = std::env::var_os(name).ok_or(SecretError::Unavailable)?;
-        Self::new(strip_newline(value.into_encoded_bytes()))
     }
 
     /// Read a file. On Unix it must be a regular file that group and others

@@ -19,6 +19,8 @@
 pub mod checks;
 pub mod cli_runner;
 pub mod dedupe;
+#[cfg(unix)]
+pub mod external_runner;
 pub mod hmac;
 pub mod jobs;
 pub mod policy;
@@ -28,6 +30,7 @@ pub mod reason;
 pub mod request;
 pub mod secret;
 pub mod service;
+pub mod staging;
 pub mod testing;
 pub mod webhook;
 
