@@ -24,8 +24,8 @@ use std::process::{Command, Output};
 
 use cli_support::*;
 use pii_eval_contracts::{
-    CorpusSnapshot, ENGINE_VERSION, RunClass, RunManifest, Visibility, parse_default, seal,
-    to_pretty_json,
+    ActivationSelector, CorpusSnapshot, ENGINE_VERSION, RunArtifact, RunClass, RunManifest,
+    ScannerConfiguration, Visibility, parse_default, seal, to_pretty_json,
 };
 use serde_json::{Value, json};
 
@@ -65,6 +65,10 @@ enum Mismatch {
     Manifest,
     RunClass,
     Incomplete,
+    /// The engine's own verifier (digest, bindings, accounting) refused the artifact.
+    EngineVerification,
+    /// A run measures exactly one scanner; another count is not supported.
+    ScannerCount,
 }
 
 struct SyntheticCustodian {
@@ -134,11 +138,23 @@ impl SyntheticCustodian {
         Ok(path)
     }
 
-    /// Verify the engine's INTERNAL artifact against the approval.
-    fn verify_internal(&self, out: &Path) -> Result<Verified, Mismatch> {
-        let a = &self.approval;
+    /// Verify the engine's INTERNAL artifact: cheap binding checks against the
+    /// approval, then the engine's own verifier (strict parse, digest, bindings
+    /// to the snapshot and manifest, accounting recomputed from the rows) run
+    /// inside a validation context. A `Verified` value exists only after both,
+    /// and `release` takes nothing else, so an artifact edited after the run
+    /// (re-sealed or not) cannot reach release even if the caller skips a step.
+    fn verify_internal(&self, job: &Job, out: &Path) -> Result<Verified, Mismatch> {
+        let bytes = std::fs::read(out.join("run-artifact.json")).unwrap();
         let artifact: Value =
-            serde_json::from_slice(&std::fs::read(out.join("run-artifact.json")).unwrap()).unwrap();
+            serde_json::from_slice(&bytes).map_err(|_| Mismatch::EngineVerification)?;
+        self.check_bindings(&artifact)?;
+        self.engine_validate(job, out, &bytes, &artifact)?;
+        Ok(Verified { artifact })
+    }
+
+    fn check_bindings(&self, artifact: &Value) -> Result<(), Mismatch> {
+        let a = &self.approval;
         let sem = &artifact["semantic"];
         // Domain: the protocol the artifact claims must be the one the approved
         // domain maps to.
@@ -159,6 +175,12 @@ impl SyntheticCustodian {
         if sem["manifestDigest"] != a.manifest_digest {
             return Err(Mismatch::Manifest);
         }
+        // Exactly one scanner per run (docs/cli.md known limits); every scanner
+        // block present is bound, and a different count is refused.
+        let scanners = sem["scanners"].as_array().map_or(0, Vec::len);
+        if scanners != 1 || sem["scannerMetrics"].as_array().map_or(0, Vec::len) != 1 {
+            return Err(Mismatch::ScannerCount);
+        }
         let identity = &sem["scanners"][0]["identity"];
         if identity["product"]["candidateDigest"] != a.candidate_digest {
             return Err(Mismatch::Candidate);
@@ -166,10 +188,64 @@ impl SyntheticCustodian {
         if identity["activationDigest"] != a.activation_digest {
             return Err(Mismatch::Activation);
         }
+        if sem["scannerMetrics"][0]["scannerId"] != identity["scannerId"] {
+            return Err(Mismatch::ScannerCount);
+        }
         if sem["completeness"] != "complete" || sem["scanners"][0]["status"] != "complete" {
             return Err(Mismatch::Incomplete);
         }
-        Ok(Verified { artifact })
+        Ok(())
+    }
+
+    fn engine_validate(
+        &self,
+        job: &Job,
+        out: &Path,
+        artifact_bytes: &[u8],
+        artifact: &Value,
+    ) -> Result<(), Mismatch> {
+        static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let staging = job.ws.tmp.0.join(format!("validate-in-{n}"));
+        std::fs::create_dir_all(&staging).unwrap();
+        std::fs::copy(&job.snapshot, staging.join("snapshot.json")).unwrap();
+        std::fs::copy(out.join("manifest.json"), staging.join("manifest.json")).unwrap();
+        std::fs::write(staging.join("run-artifact.json"), artifact_bytes).unwrap();
+        let context = job.ws.tmp.0.join(format!("validate-{n}.job-context.json"));
+        let text = serde_json::to_string_pretty(&json!({
+            "schema": "pii-eval-job-context/1",
+            "jobId": self.approval.job_id,
+            "custodian": "synthetic-custodian-stub",
+            "runClass": "protected",
+            "populationDigest": self.approval.population_digest,
+            "manifestDigest": self.approval.manifest_digest,
+            "candidateDigest": self.approval.candidate_digest,
+            "inputRoot": s(&std::fs::canonicalize(&staging).unwrap()),
+            "outputRoot": s(&std::fs::canonicalize(&job.output_root).unwrap()),
+        }))
+        .unwrap();
+        write_private(&context, &text);
+        let checked = run_cli(&[
+            "validate",
+            s(&staging.join("run-artifact.json")),
+            "--snapshot",
+            s(&staging.join("snapshot.json")),
+            "--manifest",
+            s(&staging.join("manifest.json")),
+            "--job-context",
+            s(&context),
+        ]);
+        if code(&checked) != 0 {
+            return Err(Mismatch::EngineVerification);
+        }
+        let v = summary(&checked);
+        // The engine verified exactly the document that is being released.
+        if v["semantic"]["verification"] != "verified"
+            || v["semantic"]["semanticDigest"] != artifact["semanticDigest"]
+        {
+            return Err(Mismatch::EngineVerification);
+        }
+        Ok(())
     }
 
     /// Release decision, taken at release time against CURRENT state: a prior
@@ -379,22 +455,69 @@ fn reason(v: &Value) -> &str {
     v["error"]["reason"].as_str().unwrap_or_default()
 }
 
-/// The activation digest the run records, learned from a first successful run of
-/// the same inputs (the approval of a real custodian carries it from its
-/// activation record; the stub has none, so it reads it from a rehearsal).
-fn approved_activation(job: &Job) -> String {
-    let rehearsal_context = SyntheticCustodian::new(job.approval("0".repeat(64).as_str()))
-        .issue_job_context("pii", 0, job)
-        .unwrap();
-    let out = job.output_root.join("rehearsal");
-    let result = job.run(Some(&rehearsal_context), &out);
-    assert_eq!(code(&result), 0, "{}", stderr(&result));
-    let artifact: Value =
-        serde_json::from_slice(&std::fs::read(out.join("run-artifact.json")).unwrap()).unwrap();
-    artifact["semantic"]["scanners"][0]["identity"]["activationDigest"]
-        .as_str()
-        .unwrap()
-        .to_owned()
+/// The approved scanner activation, derived INDEPENDENTLY of any run from the
+/// activation selectors the custodian approved (the contracts' own activation
+/// digest function), so the binding check is not a comparison of the engine's
+/// output with itself.
+fn approved_activation() -> String {
+    activation_of(&["pii:global", "pii:us"])
+}
+
+fn activation_of(selectors: &[&str]) -> String {
+    ScannerConfiguration {
+        parameters: core_configuration().parameters,
+        activation: selectors
+            .iter()
+            .map(|s| ActivationSelector::new(*s).unwrap())
+            .collect(),
+    }
+    .activation_digest()
+    .unwrap()
+    .as_str()
+    .to_owned()
+}
+
+/// Case ids, variant ids, texts, digests and source identities of the population.
+fn collect_values(v: &Value, out: &mut Vec<String>) {
+    match v {
+        Value::Object(m) => {
+            for (k, x) in m {
+                let wanted = [
+                    "caseId",
+                    "variantId",
+                    "occurrenceId",
+                    "text",
+                    "textDigest",
+                    "sourceId",
+                    "sourceDigest",
+                ];
+                if let (true, Value::String(s)) = (wanted.contains(&k.as_str()), x) {
+                    out.push(s.clone());
+                }
+                collect_values(x, out);
+            }
+        }
+        Value::Array(a) => a.iter().for_each(|x| collect_values(x, out)),
+        _ => {}
+    }
+}
+
+fn collect_seeds(v: &Value, out: &mut Vec<String>) {
+    match v {
+        Value::Object(m) => {
+            for (k, x) in m {
+                if let (true, Value::String(s)) = (k.to_lowercase().contains("seed"), x) {
+                    // `seedDerivation` names a rule, not a seed value.
+                    if k != "seedDerivation" {
+                        out.push(s.clone());
+                    }
+                }
+                collect_seeds(x, out);
+            }
+        }
+        Value::Array(a) => a.iter().for_each(|x| collect_seeds(x, out)),
+        _ => {}
+    }
 }
 
 fn consume(args: &[&str]) -> (i32, Value) {
@@ -418,7 +541,7 @@ fn consume(args: &[&str]) -> (i32, Value) {
 fn a_protected_job_round_trips_and_only_the_custodian_projection_may_leave() {
     let node = node_or_return!();
     let job = protected_job("rt-ok", &node);
-    let activation = approved_activation(&job);
+    let activation = approved_activation();
     let custodian = SyntheticCustodian::new(job.approval(&activation));
     let context = custodian.issue_job_context("pii", 1_000, &job).unwrap();
     let out = job.output_root.join("run");
@@ -438,39 +561,11 @@ fn a_protected_job_round_trips_and_only_the_custodian_projection_may_leave() {
     );
     assert!(summary["semantic"].get("populationCounts").is_none());
 
-    // The custodian verifies every binding before it believes the result.
-    let verified = custodian.verify_internal(&out).expect("bindings match");
-    // The engine's own verifier agrees (custodian re-runs it inside the context).
-    let staging = job.ws.tmp.0.join("validate-in");
-    std::fs::create_dir_all(&staging).unwrap();
-    for (from, to) in [
-        (&job.snapshot, "snapshot.json"),
-        (&out.join("manifest.json"), "manifest.json"),
-        (&out.join("run-artifact.json"), "run-artifact.json"),
-    ] {
-        std::fs::copy(from, staging.join(to)).unwrap();
-    }
-    let validation = job.ws.tmp.0.join("validate.job-context.json");
-    let ctx_text = std::fs::read_to_string(&context).unwrap().replace(
-        s(&std::fs::canonicalize(&job.input_root).unwrap()),
-        s(&std::fs::canonicalize(&staging).unwrap()),
-    );
-    write_private(&validation, &ctx_text);
-    let checked = run_cli(&[
-        "validate",
-        s(&staging.join("run-artifact.json")),
-        "--snapshot",
-        s(&staging.join("snapshot.json")),
-        "--manifest",
-        s(&staging.join("manifest.json")),
-        "--job-context",
-        s(&validation),
-    ]);
-    assert_eq!(code(&checked), 0, "{}", stderr(&checked));
-    assert_eq!(
-        self::summary(&checked)["semantic"]["verification"],
-        "verified"
-    );
+    // The custodian verifies every binding AND runs the engine's verifier on the
+    // exact document before it believes the result.
+    let verified = custodian
+        .verify_internal(&job, &out)
+        .expect("bindings match and the engine verifies");
 
     // Release: custodian-side projection, within the documented bounds.
     let projection = custodian.release(&verified, 1_500).expect("release");
@@ -481,14 +576,38 @@ fn a_protected_job_round_trips_and_only_the_custodian_projection_may_leave() {
     // It carries no case identity, text, seed or range from the population.
     let leaked = serde_json::to_string(&projection.aggregates).unwrap()
         + &serde_json::to_string(&projection.worker_result).unwrap();
-    let snapshot_text = std::fs::read_to_string(&job.snapshot).unwrap();
-    let snapshot: Value = serde_json::from_str(&snapshot_text).unwrap();
-    for case in snapshot["semantic"]["cases"].as_array().unwrap() {
-        assert!(!leaked.contains(case["caseId"].as_str().unwrap()));
-        for v in case["variants"].as_array().unwrap() {
-            assert!(!leaked.contains(v["variantId"].as_str().unwrap()));
-            assert!(!leaked.contains(v["text"].as_str().unwrap()));
-        }
+    let snapshot: Value =
+        serde_json::from_str(&std::fs::read_to_string(&job.snapshot).unwrap()).unwrap();
+    let mut protected_values = Vec::new();
+    collect_values(&snapshot, &mut protected_values);
+    assert!(
+        protected_values.len() > 20,
+        "the check has population values to look for"
+    );
+    for value in &protected_values {
+        assert!(
+            !leaked.contains(value.as_str()),
+            "a population value reached the projection"
+        );
+    }
+    // Seeds too: from every document of the run that records one (a snapshot of
+    // authored cases records none; the check is that no `seed` string, wherever
+    // the population or the artifact keeps one, appears in the projection).
+    let mut seeds = Vec::new();
+    for name in [
+        "manifest.json",
+        "observation-redact-secret-core.json",
+        "run-artifact.json",
+    ] {
+        let doc: Value = serde_json::from_slice(&std::fs::read(out.join(name)).unwrap()).unwrap();
+        collect_seeds(&doc, &mut seeds);
+    }
+    collect_seeds(&snapshot, &mut seeds);
+    for seed in &seeds {
+        assert!(
+            !leaked.contains(seed.as_str()),
+            "a seed reached the projection"
+        );
     }
     // The consumer example never reads the internal artifact: the benchmarks
     // side receives only what the custodian releases.
@@ -620,7 +739,7 @@ fn wrong_population_candidate_or_manifest_in_the_context_is_refused_by_the_engin
 fn the_custodian_rejects_a_result_whose_activation_domain_or_other_binding_differs() {
     let node = node_or_return!();
     let job = protected_job("rt-verify", &node);
-    let activation = approved_activation(&job);
+    let activation = approved_activation();
     let context = SyntheticCustodian::new(job.approval(&activation))
         .issue_job_context("pii", 1, &job)
         .unwrap();
@@ -631,7 +750,7 @@ fn the_custodian_rejects_a_result_whose_activation_domain_or_other_binding_diffe
     let wrong = |edit: &dyn Fn(&mut Approval)| {
         let mut a = job.approval(&activation);
         edit(&mut a);
-        SyntheticCustodian::new(a).verify_internal(&out).err()
+        SyntheticCustodian::new(a).verify_internal(&job, &out).err()
     };
     assert_eq!(wrong(&|_| {}), None, "the unedited approval verifies");
     assert_eq!(
@@ -651,6 +770,27 @@ fn the_custodian_rejects_a_result_whose_activation_domain_or_other_binding_diffe
         Some(Mismatch::Manifest)
     );
     assert_eq!(wrong(&|a| a.domain = "credential"), Some(Mismatch::Domain));
+    // An activation the custodian approved that is a REAL, different one (derived
+    // from other selectors), not just a random digest.
+    let narrower = activation_of(&["pii:global"]);
+    assert_ne!(narrower, activation);
+    assert_eq!(
+        wrong(&|a| a.activation_digest = narrower.clone()),
+        Some(Mismatch::Activation)
+    );
+    // Exactly one scanner per run: a second block is refused, not silently ignored.
+    let custodian = SyntheticCustodian::new(job.approval(&activation));
+    let mut artifact: Value =
+        serde_json::from_slice(&std::fs::read(out.join("run-artifact.json")).unwrap()).unwrap();
+    let scanner = artifact["semantic"]["scanners"][0].clone();
+    artifact["semantic"]["scanners"]
+        .as_array_mut()
+        .unwrap()
+        .push(scanner);
+    assert_eq!(
+        custodian.check_bindings(&artifact),
+        Err(Mismatch::ScannerCount)
+    );
 
     // A public-synthetic artifact is not a protected result.
     let public = Workspace::new("rt-verify-public", &node);
@@ -658,7 +798,7 @@ fn the_custodian_rejects_a_result_whose_activation_domain_or_other_binding_diffe
     assert_eq!(code(&public.run(&public_out)), 0);
     assert_eq!(
         SyntheticCustodian::new(job.approval(&activation))
-            .verify_internal(&public_out)
+            .verify_internal(&job, &public_out)
             .err(),
         Some(Mismatch::RunClass)
     );
@@ -669,7 +809,7 @@ fn an_expired_wrong_domain_or_revoked_job_is_never_started_and_a_revoked_result_
 {
     let node = node_or_return!();
     let job = protected_job("rt-state", &node);
-    let activation = approved_activation(&job);
+    let activation = approved_activation();
     let custodian = SyntheticCustodian::new(job.approval(&activation));
     // Expired: the stub writes no context, so the engine, run anyway, refuses.
     assert_eq!(
@@ -691,7 +831,7 @@ fn an_expired_wrong_domain_or_revoked_job_is_never_started_and_a_revoked_result_
     let context = custodian.issue_job_context("pii", 1_000, &job).unwrap();
     let run_out = job.output_root.join("run");
     assert_eq!(code(&job.run(Some(&context), &run_out)), 0);
-    let verified = custodian.verify_internal(&run_out).unwrap();
+    let verified = custodian.verify_internal(&job, &run_out).unwrap();
     custodian.revoke();
     assert_eq!(
         custodian.release(&verified, 1_001).err(),
@@ -703,7 +843,7 @@ fn an_expired_wrong_domain_or_revoked_job_is_never_started_and_a_revoked_result_
     );
     // Expiry at release time is enforced too, independently of revocation.
     let fresh = SyntheticCustodian::new(job.approval(&activation));
-    let verified = fresh.verify_internal(&run_out).unwrap();
+    let verified = fresh.verify_internal(&job, &run_out).unwrap();
     assert_eq!(
         fresh.release(&verified, 2_001).err(),
         Some(Refusal::Expired)
@@ -711,45 +851,56 @@ fn an_expired_wrong_domain_or_revoked_job_is_never_started_and_a_revoked_result_
 }
 
 #[test]
-fn a_tampered_internal_artifact_does_not_survive_the_engine_verifier() {
+fn a_tampered_internal_artifact_never_reaches_release() {
     let node = node_or_return!();
     let job = protected_job("rt-tamper", &node);
-    let activation = approved_activation(&job);
-    let context = SyntheticCustodian::new(job.approval(&activation))
-        .issue_job_context("pii", 1, &job)
-        .unwrap();
+    let activation = approved_activation();
+    let custodian = SyntheticCustodian::new(job.approval(&activation));
+    let context = custodian.issue_job_context("pii", 1, &job).unwrap();
     let out = job.output_root.join("run");
     assert_eq!(code(&job.run(Some(&context), &out)), 0);
-    let staging = job.ws.tmp.0.join("tamper-in");
-    std::fs::create_dir_all(&staging).unwrap();
-    std::fs::copy(&job.snapshot, staging.join("snapshot.json")).unwrap();
-    std::fs::copy(out.join("manifest.json"), staging.join("manifest.json")).unwrap();
+    assert!(custodian.verify_internal(&job, &out).is_ok());
+
+    let tamper_dir = |name: &str, artifact: &[u8]| {
+        let dir = job.output_root.join(name);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::copy(out.join("manifest.json"), dir.join("manifest.json")).unwrap();
+        std::fs::write(dir.join("run-artifact.json"), artifact).unwrap();
+        dir
+    };
     let text = std::fs::read_to_string(out.join("run-artifact.json")).unwrap();
-    // A metric count edited after the fact, digest left alone.
-    let tampered = text.replacen("\"numerator\": 1", "\"numerator\": 2", 1);
-    assert_ne!(tampered, text, "the fixture has a numerator to edit");
-    std::fs::write(staging.join("run-artifact.json"), tampered).unwrap();
-    let ctx = std::fs::read_to_string(&context).unwrap().replace(
-        s(&std::fs::canonicalize(&job.input_root).unwrap()),
-        s(&std::fs::canonicalize(&staging).unwrap()),
-    );
-    let ctx_path = job.ws.tmp.0.join("tamper.job-context.json");
-    write_private(&ctx_path, &ctx);
-    let checked = run_cli(&[
-        "validate",
-        s(&staging.join("run-artifact.json")),
-        "--snapshot",
-        s(&staging.join("snapshot.json")),
-        "--manifest",
-        s(&staging.join("manifest.json")),
-        "--job-context",
-        s(&ctx_path),
-    ]);
+
+    // 1. A metric count edited after the fact, digest left alone: the engine's
+    //    strict parse refuses it.
+    let edited = text.replacen("\"numerator\": 1", "\"numerator\": 2", 1);
+    assert_ne!(edited, text, "the fixture has a numerator to edit");
+    let dir = tamper_dir("tamper-stale-digest", edited.as_bytes());
     assert_eq!(
-        code(&checked),
-        3,
-        "{}",
-        String::from_utf8_lossy(&checked.stdout)
+        custodian.verify_internal(&job, &dir).err(),
+        Some(Mismatch::EngineVerification)
     );
-    assert_eq!(reason(&summary(&checked)), "document-invalid");
+
+    // 2. The same edit RE-SEALED with a correct digest: the document is
+    //    well-formed, so only the accounting verifier (metrics recomputed from
+    //    the rows against the snapshot) can refuse it.
+    let mut doc: RunArtifact = parse_default(text.as_bytes()).unwrap();
+    // A metric with room in its numerator, so the edit stays structurally valid.
+    let metric = doc.semantic.scanner_metrics[0]
+        .metrics
+        .iter_mut()
+        .find(|m| m.counts.numerator < m.counts.measured)
+        .expect("a metric with a non-numerator sample");
+    metric.counts.numerator += 1;
+    seal(&mut doc).unwrap();
+    let resealed = to_pretty_json(&doc).unwrap();
+    assert!(
+        parse_default::<RunArtifact>(resealed.as_bytes()).is_ok(),
+        "a valid, re-sealed document"
+    );
+    let dir = tamper_dir("tamper-resealed", resealed.as_bytes());
+    assert_eq!(
+        custodian.verify_internal(&job, &dir).err(),
+        Some(Mismatch::EngineVerification)
+    );
+    // Without a Verified value there is nothing to pass to release().
 }

@@ -5,7 +5,8 @@
 // the positive tests have shown to reproduce the engine's digests exactly.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -240,6 +241,58 @@ test("pins that are not exact are refused", () => {
   assert.throws(() => loadPins(JSON.stringify({ ...p, requireComplete: "yes" })), { code: "pins-require-complete" });
   const dup = { ...p, populations: [p.populations[0], p.populations[0]] };
   assert.throws(() => loadPins(JSON.stringify(dup)), { code: "pins-label" });
+});
+
+test("pins are validated strictly: unusable pins are never partially applied", () => {
+  const edit = (f) => {
+    const p = JSON.parse(pinsText);
+    f(p);
+    return JSON.stringify(p);
+  };
+  const bad = {
+    "pins-artifact-schema": (p) => (p.artifactSchema.version = "1.0"),
+    "pins-run-class": (p) => (p.populations[0].runClass = "protected"),
+    "pins-population": (p) => (p.populations[0].population.visibility = "protected"),
+    "pins-digests": (p) => (p.populations[0].artifactDigest = "abc"),
+    "pins-head-retired": (p) => p.populations[0].retiredArtifactDigests.push(p.populations[0].artifactDigest),
+    "pins-scanner": (p) => delete p.populations[0].scanners[0].activationDigest,
+    "pins-scanners": (p) => (p.populations[0].scanners = []),
+  };
+  for (const [code, f] of Object.entries(bad)) assert.throws(() => loadPins(edit(f)), { code }, code);
+  const noAdapter = edit((p) => delete p.populations[1].scanners[0].adapter);
+  assert.throws(() => loadPins(noAdapter), { code: "pins-scanner" });
+});
+
+test("an injected top-level member is rejected, not accepted unchecked", () => {
+  const doc = JSON.parse(read(A2));
+  doc.rawOutput = "secret";
+  const report = consume(pins(), [art(A2, JSON.stringify(doc)), art(B1)]);
+  assert.deepEqual(codesOf(report, A2), ["unexpected-top-level-field"]);
+  assert.equal(report.rejections[0].reasons[0].field, "rawOutput");
+  assert.equal(report.populations[0].status, "missing");
+});
+
+test("unreadable, oversized and non-UTF-8 files carry their explicit codes", () => {
+  const dir = mkdtempSync(join(tmpdir(), "consume-test-"));
+  try {
+    const big = join(dir, "big.json");
+    writeFileSync(big, Buffer.alloc(33 * 1024 * 1024, 0x20));
+    const badUtf8 = join(dir, "bad-utf8.json");
+    writeFileSync(badUtf8, Buffer.from([0x7b, 0x22, 0x61, 0x22, 0x3a, 0x22, 0xff, 0x22, 0x7d]));
+    const surrogate = join(dir, "surrogate.json");
+    writeFileSync(surrogate, '{"a":"\\ud800"}');
+    const out = run(["--pins", join(fixtures, "pins.json"), big, join(dir, "missing.json"), badUtf8, surrogate, join(fixtures, A2), join(fixtures, B1)]);
+    assert.equal(out.status, 1);
+    const report = JSON.parse(out.stdout);
+    const by = Object.fromEntries(report.rejections.map((r) => [r.file, r.reasons[0]]));
+    assert.deepEqual(by["big.json"], { code: "document-too-large" });
+    assert.deepEqual(by["missing.json"], { code: "document-unreadable" });
+    assert.deepEqual(by["bad-utf8.json"], { code: "document-malformed", field: "invalid-utf8" });
+    assert.deepEqual(by["surrogate.json"], { code: "document-malformed", field: "invalid-unicode" });
+    assert.equal(report.populations.every((p) => p.status === "accepted"), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 // -- command line and independence ----------------------------------------

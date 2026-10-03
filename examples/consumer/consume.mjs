@@ -29,6 +29,9 @@ export const INTERNAL_SCHEMA = "pii-eval.run-artifact";
 /** Document size cap of the format (docs/adr/0003). */
 export const MAX_DOCUMENT_BYTES = 32 * 1024 * 1024;
 const MAX_DEPTH = 32;
+// The public artifact has exactly these members (schemas/public-synthetic-artifact.v1.schema.json,
+// additionalProperties false); `diagnostics` exists only on the internal artifact, which is refused.
+const TOP_LEVEL_FIELDS = ["schema", "schemaVersion", "semantic", "semanticDigest"];
 const MAX_SAFE = Number.MAX_SAFE_INTEGER;
 
 /** The ten metric ids of protocol pii-v1 (docs/migration/ownership-map.md). */
@@ -77,6 +80,7 @@ export const REASON_CODES = [
   "scanner-version-mismatch",
   "schema-unsupported",
   "schema-version-unsupported",
+  "unexpected-top-level-field",
 ];
 
 // ---------------------------------------------------------------------------
@@ -167,11 +171,15 @@ export function parseStrictJson(text) {
     }
     if (i >= text.length) throw new FormatError("malformed-json");
     i++;
+    let s;
     try {
-      return JSON.parse(text.slice(start, i));
+      s = JSON.parse(text.slice(start, i));
     } catch {
       throw new FormatError("malformed-json");
     }
+    // A lone surrogate escape is not a valid Unicode string (the engine's parser refuses it).
+    if (!s.isWellFormed()) throw new FormatError("invalid-unicode");
+    return s;
   };
   const number = () => {
     const m = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/.exec(text.slice(i, i + 40));
@@ -270,6 +278,14 @@ export function verifyArtifact(doc, pins) {
     return { pin: undefined, reasons: [reason("document-malformed", "semantic")] };
   }
   const sem = doc.semantic;
+  // 0. Only the four members of the format. Anything outside `semantic` is not
+  //    covered by the digest, so an extra member would travel unchecked.
+  for (const k of Object.keys(doc)) {
+    if (!TOP_LEVEL_FIELDS.includes(k)) {
+      reasons.push(reason("unexpected-top-level-field", k));
+      break;
+    }
+  }
   // 1. The stated digest is the digest of the body. Without this check every
   //    other field could be edited and still compare equal to a pin.
   let recomputed;
@@ -405,29 +421,61 @@ function dedupe(reasons) {
 // Pins.
 // ---------------------------------------------------------------------------
 
-/** Validate and normalize the caller's pin document. Throws FormatError. */
+const HEX64 = /^[0-9a-f]{64}$/;
+export const PUBLIC_SCHEMA_VERSION = "1.1";
+
+/**
+ * Validate and normalize the caller's pin document, strictly: an unusable pin
+ * file is a usage error (exit 2), never a quiet partial pin. Throws FormatError.
+ */
 export function loadPins(text) {
   const p = parseStrictJson(text);
   const need = (cond, code) => {
     if (!cond) throw new FormatError(code);
   };
+  const str = (v) => typeof v === "string" && v.length > 0;
   need(isObject(p) && p.schema === PINS_SCHEMA, "pins-schema");
   need(isObject(p.engine) && isObject(p.protocol), "pins-identity");
-  need(isObject(p.artifactSchema) && p.artifactSchema.id === PUBLIC_SCHEMA && typeof p.artifactSchema.version === "string", "pins-artifact-schema");
+  need(
+    isObject(p.artifactSchema) && p.artifactSchema.id === PUBLIC_SCHEMA && p.artifactSchema.version === PUBLIC_SCHEMA_VERSION,
+    "pins-artifact-schema",
+  );
   need(typeof p.requireComplete === "boolean", "pins-require-complete");
   need(Array.isArray(p.populations) && p.populations.length > 0, "pins-populations");
   const labels = new Set();
   const ids = new Set();
   for (const q of p.populations) {
-    need(isObject(q) && typeof q.label === "string" && !labels.has(q.label), "pins-label");
+    need(isObject(q) && str(q.label) && !labels.has(q.label), "pins-label");
     labels.add(q.label);
-    need(isObject(q.population) && typeof q.population.populationId === "string" && !ids.has(q.population.populationId), "pins-population");
-    ids.add(q.population.populationId);
-    need(typeof q.artifactDigest === "string" && typeof q.manifestDigest === "string" && typeof q.runClass === "string", "pins-digests");
+    const pop = q.population;
+    need(
+      isObject(pop) && str(pop.populationId) && !ids.has(pop.populationId) && Number.isSafeInteger(pop.populationVersion) &&
+        HEX64.test(pop.populationDigest) && pop.visibility === "public-synthetic",
+      "pins-population",
+    );
+    ids.add(pop.populationId);
+    need(q.runClass === "public-synthetic", "pins-run-class");
+    need(HEX64.test(q.artifactDigest) && HEX64.test(q.manifestDigest), "pins-digests");
     q.retiredArtifactDigests ??= [];
     q.retiredManifestDigests ??= [];
-    need(Array.isArray(q.retiredArtifactDigests) && Array.isArray(q.retiredManifestDigests), "pins-retired");
-    need(Array.isArray(q.scanners) && q.scanners.length > 0 && q.scanners.every((s) => isObject(s) && typeof s.scannerId === "string"), "pins-scanners");
+    need(
+      Array.isArray(q.retiredArtifactDigests) && Array.isArray(q.retiredManifestDigests) &&
+        [...q.retiredArtifactDigests, ...q.retiredManifestDigests].every((d) => HEX64.test(d)),
+      "pins-retired",
+    );
+    // A digest cannot be both the head and retired.
+    need(!q.retiredArtifactDigests.includes(q.artifactDigest) && !q.retiredManifestDigests.includes(q.manifestDigest), "pins-head-retired");
+    need(Array.isArray(q.scanners) && q.scanners.length > 0, "pins-scanners");
+    const scannerIds = new Set();
+    for (const s of q.scanners) {
+      need(
+        isObject(s) && str(s.scannerId) && !scannerIds.has(s.scannerId) && isObject(s.product) && str(s.product.kind) &&
+          HEX64.test(s.artifactDigest) && HEX64.test(s.configurationDigest) && HEX64.test(s.activationDigest) &&
+          isObject(s.adapter) && str(s.scannerVersion),
+        "pins-scanner",
+      );
+      scannerIds.add(s.scannerId);
+    }
   }
   return p;
 }
@@ -437,7 +485,7 @@ export function loadPins(text) {
 // ---------------------------------------------------------------------------
 
 /**
- * `artifacts` is an ordered list of `{ name, text }`. Returns the report. The
+ * `artifacts` is a list of `{ name, text }` or `{ name, failure }` (a reason object). Returns the report. The
  * report depends on the pins and on the artifacts' content only, not on the
  * order in which they were supplied.
  */
@@ -449,7 +497,10 @@ export function consume(pins, artifacts) {
     let doc;
     let reasons;
     let pin;
-    if (Buffer.byteLength(art.text, "utf8") > MAX_DOCUMENT_BYTES) {
+    if (art.failure) {
+      // The file could not be read as a bounded UTF-8 document: carry the explicit code.
+      reasons = [art.failure];
+    } else if (Buffer.byteLength(art.text, "utf8") > MAX_DOCUMENT_BYTES) {
       reasons = [reason("document-too-large")];
     } else {
       try {
@@ -521,10 +572,28 @@ export function renderReport(report) {
 // Command line.
 // ---------------------------------------------------------------------------
 
+/** Read a bounded, strictly valid UTF-8 file. Throws FormatError with the explicit failure code. */
 function readBounded(path) {
-  const st = statSync(path);
-  if (!st.isFile() || st.size > MAX_DOCUMENT_BYTES) throw new FormatError("input-unusable");
-  return readFileSync(path, "utf8");
+  let bytes;
+  try {
+    const st = statSync(path);
+    if (!st.isFile()) throw new FormatError("document-unreadable");
+    if (st.size > MAX_DOCUMENT_BYTES) throw new FormatError("document-too-large");
+    bytes = readFileSync(path);
+  } catch (e) {
+    throw e instanceof FormatError ? e : new FormatError("document-unreadable");
+  }
+  if (bytes.length > MAX_DOCUMENT_BYTES) throw new FormatError("document-too-large");
+  try {
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+  } catch {
+    throw new FormatError("invalid-utf8");
+  }
+}
+
+function failureOf(e) {
+  const code = e instanceof FormatError ? e.code : "document-unreadable";
+  return code === "invalid-utf8" ? reason("document-malformed", "invalid-utf8") : reason(code);
 }
 
 export function main(argv, stdout = process.stdout, stderr = process.stderr) {
@@ -551,9 +620,9 @@ export function main(argv, stdout = process.stdout, stderr = process.stderr) {
   const artifacts = files.map((f) => {
     try {
       return { name: basename(f), text: readBounded(f) };
-    } catch {
-      // An unreadable file is reported as a rejected artifact, not skipped.
-      return { name: basename(f), text: "\u0000unreadable" };
+    } catch (e) {
+      // An unreadable or oversized file is a rejected artifact, never skipped.
+      return { name: basename(f), failure: failureOf(e) };
     }
   });
   const report = consume(pins, artifacts);

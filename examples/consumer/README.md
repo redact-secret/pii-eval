@@ -66,7 +66,19 @@ report (`pooling: "none"`, `decision: "none"`).
 `scanner-activation-mismatch`, `scanner-adapter-mismatch`,
 `scanner-artifact-mismatch`, `scanner-configuration-mismatch`,
 `scanner-missing`, `scanner-not-pinned`, `scanner-product-mismatch`,
-`scanner-version-mismatch`, `schema-unsupported`, `schema-version-unsupported`.
+`scanner-version-mismatch`, `schema-unsupported`, `schema-version-unsupported`,
+`unexpected-top-level-field`.
+
+`document-too-large` and `document-unreadable` come from reading the file (over 32
+MiB, missing, not a regular file); `document-malformed` with field `invalid-utf8` or
+`invalid-unicode` is invalid UTF-8 or a lone surrogate escape. A public artifact has
+exactly four members (`schema`, `schemaVersion`, `semantic`, `semanticDigest`); any
+other member is rejected because only `semantic` is covered by the digest.
+
+Pins are validated strictly and an unusable pin file is exit 2: the artifact schema
+version must be exactly `1.1`, the run class `public-synthetic`, every digest 64 hex
+characters, every scanner field present, and a digest cannot be both the head and
+retired.
 
 A test (`consumer_handoff_docs.rs`) fails when this list and the program differ.
 

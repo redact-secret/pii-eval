@@ -116,6 +116,22 @@ stdout is never parsed (its `docs/worker-isolation.md`, section 7).
 | Protected context missing, invalid, mismatching, path outside | 9 | Nothing written, no input read in the missing case | `Failed` | **Budget consequence:** the custodian records exposure before it opens the corpus, so an engine refusal after staging is still a consumed attempt. Verify the context locally before dispatch |
 | Internal error | 1 | Nothing | `Failed` | Never caused by a scanner |
 
+The custodian's outcome classes (its `docs/worker-isolation.md`, section 7): a
+clean exit whose stdout is malformed, oversized, of the wrong domain or protocol, or
+whose roster counters differ from the authorized roster is **Rejected** (reason
+`result_*` or `roster_mismatch`), and a Rejected attempt is consumed; a crash, signal,
+timeout, non-zero exit or output over its bound is **Failed**; neither is ever parsed
+into a measurement. An engine that prints a wrong roster therefore costs the attempt
+just as a refusal after exposure does.
+
+**Reason names.** The custodian's own rejection names for the engine's refusals,
+`population-binding-mismatch` and `run-class-mismatch` (its
+`docs/benchmarks-integration.md`, section 4), are **not** used by the engine or by the
+test stub, which use the engine's frozen vocabulary (`protected-context-mismatch`,
+exit 9; the stub's `Mismatch` variants). Adopting the custodian's names in the
+launcher's or the stub's mapping is an **open deliverable** (open question Q10 below),
+not done here.
+
 Every refusal is a closed reason code; no text carries a value, a path or scanner
 output (docs/cli.md).
 
@@ -168,6 +184,7 @@ Open questions for the joint design (nothing below is decided):
 | Q7 | Does the isolation self-check cover pii-eval with Node? The engine needs Node and `ps`, and samples memory with `ps`; the custodian applies `RLIMIT_AS`, which a Node runtime may not tolerate | **Untested**; this repository ran no sandbox and makes no claim |
 | Q8 | Defence in depth for a stale context file: an optional `notAfter` in a future `pii-eval-job-context/2`, or the custodian removing the file | Not needed for correctness while the custodian owns freshness |
 | Q9 | Where the staged scanner package, shim and Node live under `/stage` | The allowlist hashes artifacts by file; the engine pins a package tree |
+| Q10 | Adopt the custodian's rejection names (`population-binding-mismatch`, `run-class-mismatch`) in the launcher and the stub | Today the stub and the engine use their own vocabulary; the custodian's benchmarks-integration document lists these names as a pii-eval deliverable |
 
 ## 7. Raw and internal versus public artifacts
 

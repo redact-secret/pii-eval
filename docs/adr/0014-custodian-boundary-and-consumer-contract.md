@@ -58,7 +58,7 @@ bound in the round trip, under their own names; the engine attests only the firs
 The engine does not speak `worker-job/1` and does not emit `worker-result/1` or
 `aggregates/1`. The shape that fits (an engine-owned `pii-eval worker --job`
 launcher; roster, stratum and delivery mapping) is written down as a proposal with
-nine open questions (boundary document, section 6). It is not implemented here
+ten open questions (boundary document, section 6). It is not implemented here
 because three of the questions (roster unit, aggregates delivery, strata labels)
 are the custodian's to settle and a guess would be an invented custodian
 behavior that would later have to be un-built; the delivery question (Q2) shows

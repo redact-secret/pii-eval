@@ -75,7 +75,9 @@ fn the_documented_reason_codes_are_exactly_the_programs() {
         .split("## Reason codes")
         .nth(1)
         .unwrap()
-        .split("A test (")
+        .trim_start()
+        // The list is the first paragraph; later paragraphs explain some codes.
+        .split("\n\n")
         .next()
         .unwrap();
     let documented: BTreeSet<&str> = section.split('`').skip(1).step_by(2).collect();

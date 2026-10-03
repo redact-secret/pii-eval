@@ -95,25 +95,43 @@ pii-eval produces additive, immutable documents and never modifies the oracle or
 the benchmarks repository, so rolling back is a benchmarks action and removes nothing
 here.
 
-1. **Authority switch**: benchmarks returns its PII authority setting to the pinned
-   oracle path (commit `4b846967346505baca11e0b98cab1475fbce6773`, unchanged). The
-   oracle's code and evidence are not deleted by anything in this repository (ADR
-   0001).
-2. **Pins**: restore the previous pin file; engine artifacts stay on disk as history.
-   To quarantine an engine artifact found wrong, put its digest in
-   `retiredArtifactDigests` (the consumer then reports `superseded`, not "unknown"). A
-   defect is fixed by a new protocol or schema revision and a new digest, never by
-   editing a published artifact in place.
-3. **CI**: PR CI can validate artifacts without running scanners
-   (`pii-eval validate`, the pin check); the official measurement workflow is the part
-   to disable or keep on the oracle path.
-4. **Protected populations**: rollback follows the custodian's rules (a population
-   moves whole to one authority; rollback preserves every receipt and never resets a
-   budget: private-custodian ADR 0092, `docs/legacy-migration.md`). It never reruns
-   protected data.
-5. **Rehearsal**: **not performed** by pii-eval. The rollback rehearsal is a #666
-   acceptance item and benchmarks' evidence; record the commands and the resulting pin
-   file there.
+Steps marked **(engine side)** can be done and checked from this repository;
+steps marked **(benchmarks-owned, unverified)** are described only as what must
+happen. No setting, script or workflow name of benchmarks is asserted here, and none
+of the benchmarks-owned steps was run or checked by pii-eval.
+
+1. **(engine side) Stop consuming revision-2 artifacts.** Remove the pii-eval pin file
+   from the consumer and delete or ignore the pii-eval output directories
+   (`manifest.json`, `observation-*.json`, `run-artifact.json`,
+   `public-synthetic-artifact.json`); nothing else in this repository references them,
+   and `pii-eval` itself is not installed anywhere (no published binary). To
+   quarantine one artifact instead of all, add its digest to the pin's
+   `retiredArtifactDigests` (and its manifest digest to `retiredManifestDigests`): the
+   example consumer then reports `artifact-superseded` rather than "unknown"; verify
+   with `node examples/consumer/consume.mjs --pins PINS ARTIFACT` (exit 1, reason
+   listed). A defect is fixed by a new protocol or schema revision and a new digest,
+   never by editing a published artifact.
+2. **(engine side) The oracle plan is unchanged.** The oracle is the commit
+   `4b846967346505baca11e0b98cab1475fbce6773` of redact-secret-benchmarks; nothing in
+   this repository modifies or deletes it (ADR 0001). To re-establish what that plan
+   produces without pii-eval, check out that commit in a benchmarks checkout and use
+   its own commands; which commands and settings are benchmarks' to name. The
+   compatibility protocol evidence for the same inputs is
+   `fixtures/oracle-parity/` (`cargo test -p pii-eval-cli --locked --test oracle_parity`).
+3. **(benchmarks-owned, unverified) Authority switch.** Whatever records which engine
+   is authoritative for PII is returned to the oracle path and the change recorded
+   (the #666 text asks to "record the active PII source" and to rehearse rollback).
+   Which file or setting that is, is not known here.
+4. **(benchmarks-owned, unverified) CI.** Measurement that was moved to artifact
+   consumption is moved back, or the consumer step is disabled, in whatever workflow
+   benchmarks used. pii-eval can contribute only the scanner-free checks
+   (`pii-eval validate ARTIFACT --snapshot SNAPSHOT`, the consumer pin check).
+5. **(custodian-owned, unverified here) Protected populations.** Rollback follows the
+   custodian's rules: a population moves whole to one authority, rollback preserves
+   every receipt and never resets a budget (private-custodian ADR 0092,
+   `docs/legacy-migration.md`), and no protected data is rerun.
+6. **(benchmarks-owned) Rehearsal: not performed.** The rollback rehearsal is a #666
+   acceptance item; its commands and resulting pin file are benchmarks' evidence.
 
 ## 5. Compatibility inventory and retirement gate
 
@@ -123,11 +141,30 @@ exit, caller inventory, rehearsed rollback, #666); pii-eval changes nothing here
 
 | Item | Paths | Used by | Must stay until | Removal |
 | --- | --- | --- | --- | --- |
-| Compat crate: `legacy-first-overlap` matching, `legacy_accounting` (binary64), `legacy_any_row_passes` | `crates/pii-eval-compat/` | The oracle-parity suite and the kernel/compat difference tests (dev-dependency of the CLI crate and the smoke test only) | The oracle exit: while benchmarks may still need to reproduce or re-run the compatibility protocol against the oracle | Delete the crate, its workspace member and dependency lines in `Cargo.toml`, the dev-dependency in `crates/pii-eval-cli/Cargo.toml`, the one smoke assertion, and the tests below |
-| Oracle parity evidence | `fixtures/oracle-parity/`, `tools/oracle-parity/`, `crates/pii-eval-cli/tests/oracle_parity*.rs`, `tests/parity/`, `tests/real_scanner.rs`, the CI steps named "Oracle parity" | Benchmarks' parity acceptance (#664) and any re-run | Parity acceptance and the oracle exit | Delete with the compat crate; the committed export is the only reproducible record, so archive it first |
+| Compat crate: `legacy-first-overlap` matching, `legacy_accounting` (binary64), `legacy_any_row_passes` | `crates/pii-eval-compat/` | The oracle-parity suite and the kernel/compat difference tests (dev-dependency of the CLI crate and the smoke test only) | The oracle exit: while benchmarks may still need to reproduce or re-run the compatibility protocol against the oracle | Delete the crate, its workspace member and dependency lines in `Cargo.toml`, the dev-dependency in `crates/pii-eval-cli/Cargo.toml`, the compat references in the files of the reference list below, and the tests below |
+| Oracle parity evidence | `fixtures/oracle-parity/`, `tools/oracle-parity/`, `crates/pii-eval-cli/tests/oracle_parity*.rs`, `crates/pii-eval-cli/tests/parity/`, `crates/pii-eval-cli/tests/real_scanner.rs`, the CI steps named "Oracle parity" | Benchmarks' parity acceptance (#664) and any re-run | Parity acceptance and the oracle exit | Delete with the compat crate; the committed export is the only reproducible record, so archive it first |
 | Legacy revision-1 readability (not in the compat crate) | `ProtocolIdentity::LEGACY_V1` and the revision-1 paths of `pii-eval-contracts`, kernel verifier `UnsupportedRevision`, CLI exit 11 `valid-legacy-not-verifiable`, `compare` refusal `legacy-protocol-revision` | Anyone holding stored revision-1 documents | Until no revision-1 document is consumed. This is a **schema-major decision separate from the compat crate** | Not removable by deleting compat; needs its own ADR and a major version |
 | Oracle seed compatibility (not in the compat crate) | `legacy_contract_seed` in `pii-eval-kernel` (methods) | Variant provenance for oracle-derived populations | Until oracle-derived populations are re-authored or retired | Kernel change with a difference report |
 | Pinned oracle identity | ADR 0001, `tools/oracle-parity/oracle-files.json` | The parity tooling | The oracle exit | Document the exit in a new ADR |
+
+**Reference list for removing the compat crate** (generated on 2026-10-03 with
+`grep -rIl "pii-eval-compat\|pii_eval_compat" . --exclude-dir=target --exclude-dir=.git --exclude-dir=graft`
+and `grep -rIln "legacy-first-overlap\|legacy_accounting\|legacy-accounting" crates schemas docs/adr README.md ARCHITECTURE.md`;
+**re-run both before removing anything**, the list is not guarded by a test). Code and
+configuration to edit:
+
+- `Cargo.toml` (workspace member and dependency lines, 8 and 23), `Cargo.lock` (regenerate, never hand-edit), `crates/pii-eval-cli/Cargo.toml` (dev-dependency, 30)
+- `crates/pii-eval-cli/tests/dependency_policy.rs` (crate name lists at about 120, 251 and the guard `only_the_cli_test_graph_reaches_compat` at about 417)
+- `crates/pii-eval-cli/tests/oracle_parity_docs.rs`, `tests/smoke.rs`, `tests/parity/{report,compare,rows}.rs` (users of the crate; delete or rewrite with the parity suite)
+- `.github/workflows/ci.yml` (line about 50, `cargo test -p pii-eval-kernel -p pii-eval-compat`, and the "Oracle parity" steps)
+- doc comments that name the crate or the legacy rules: `crates/pii-eval-contracts/src/protocol.rs`, `crates/pii-eval-kernel/src/{lib,matching,stats}.rs`, and the registry text `schemas/registry/pii-v1.registry.json` (a schema-registry text change: regenerate and re-run the drift test, and check whether it changes a digest)
+- the crate itself: `crates/pii-eval-compat/` (`src`, `tests`, `Cargo.toml`)
+
+Documents to update in the same change: `README.md`, `ARCHITECTURE.md`, `CONVENTIONS.md`, `AGENTS.md`, `docs/dependency-policy.md`,
+`docs/migration/{ownership-map,benchmarks-handoff-664,oracle-parity-report,consumer-handoff-665-666}.md`, ADRs 0001, 0004, 0005, 0008, 0012
+(ADRs are history: add a superseding note rather than rewriting them), `.agents/skills/oracle-parity-check/SKILL.md`, and the generated
+`fixtures/oracle-parity/report.json`. After removal, `cargo test --workspace --locked` and the two greps must show no remaining reference
+outside archived ADRs.
 
 **Retirement gate (downstream exit criteria, owned by benchmarks).** Compat is
 removed only when all of these are recorded by benchmarks: the bounded oracle period

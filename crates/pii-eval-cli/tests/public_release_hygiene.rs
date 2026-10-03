@@ -5,31 +5,35 @@
 //! `scan-secrets-in-history` skill before publication, SECURITY.md).
 //!
 //! Scope of the tree walk: every file below the repository root except build
-//! output and tool state. It does not read `.git`.
+//! output and tool state at the ROOT only (`target`, `.git`, `.claude`,
+//! `node_modules`, `graft`). It does not read `.git`. The detectors are pure
+//! functions with a negative control, so the scan is shown able to fail.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
+const SELF: &str = "crates/pii-eval-cli/tests/public_release_hygiene.rs";
+
+/// Directories skipped, at the repository root only.
+const ROOT_SKIPS: [&str; 5] = ["target", ".git", ".claude", "node_modules", "graft"];
+
 fn root() -> PathBuf {
     std::fs::canonicalize(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
         .expect("repository root")
 }
 
-fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+fn walk(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
     for entry in std::fs::read_dir(dir).unwrap() {
         let entry = entry.unwrap();
         let name = entry.file_name().to_string_lossy().into_owned();
-        if matches!(
-            name.as_str(),
-            "target" | ".git" | ".claude" | "node_modules" | "graft"
-        ) {
+        if depth == 0 && ROOT_SKIPS.contains(&name.as_str()) {
             continue;
         }
         let path = entry.path();
         if entry.file_type().unwrap().is_dir() {
-            walk(&path, out);
+            walk(&path, depth + 1, out);
         } else {
             out.push(path);
         }
@@ -38,7 +42,7 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
 
 fn files() -> Vec<PathBuf> {
     let mut all = Vec::new();
-    walk(&root(), &mut all);
+    walk(&root(), 0, &mut all);
     all.sort();
     assert!(all.len() > 100, "the walk found the repository");
     all
@@ -49,20 +53,6 @@ fn rel(p: &Path) -> String {
         .unwrap()
         .to_string_lossy()
         .replace('\\', "/")
-}
-
-fn keys_and_strings(v: &Value, keys: &mut BTreeSet<String>, strings: &mut Vec<String>) {
-    match v {
-        Value::Object(m) => {
-            for (k, x) in m {
-                keys.insert(k.clone());
-                keys_and_strings(x, keys, strings);
-            }
-        }
-        Value::Array(a) => a.iter().for_each(|x| keys_and_strings(x, keys, strings)),
-        Value::String(s) => strings.push(s.clone()),
-        _ => {}
-    }
 }
 
 /// Field names of private-custodian's INTERNAL records (its contracts doc lists
@@ -83,10 +73,111 @@ const LEDGER_KEYS: [&str; 12] = [
     "attempt",
 ];
 
-/// Where a protected-visibility document is allowed to appear: the negative
-/// contract fixtures, whose whole purpose is to be rejected.
+/// Where a protected document is allowed to appear: the negative contract
+/// fixtures, whose whole purpose is to be rejected.
 fn protected_allowed(path: &str) -> bool {
     path.starts_with("fixtures/contracts/v1/negative/")
+}
+
+/// Every object member name, and whether any object says it is protected
+/// (`visibility` or `runClass` equal to `protected`) or is a custodian job
+/// context (which carries input and output roots).
+struct Facts {
+    keys: BTreeSet<String>,
+    strings: Vec<String>,
+    protected: bool,
+    job_context: bool,
+}
+
+fn facts(v: &Value, f: &mut Facts) {
+    match v {
+        Value::Object(m) => {
+            for (k, x) in m {
+                f.keys.insert(k.clone());
+                if (k == "visibility" || k == "runClass") && x == "protected" {
+                    f.protected = true;
+                }
+                if k == "schema" && x == "pii-eval-job-context/1" {
+                    f.job_context = true;
+                }
+                facts(x, f);
+            }
+        }
+        Value::Array(a) => a.iter().for_each(|x| facts(x, f)),
+        Value::String(s) => f.strings.push(s.clone()),
+        _ => {}
+    }
+}
+
+/// Violations of one committed JSON document; empty when it is clean.
+fn json_violations(name: &str, text: &str) -> Vec<String> {
+    let Ok(doc) = serde_json::from_str::<Value>(text) else {
+        return Vec::new();
+    };
+    let mut f = Facts {
+        keys: BTreeSet::new(),
+        strings: Vec::new(),
+        protected: false,
+        job_context: false,
+    };
+    facts(&doc, &mut f);
+    let mut out = Vec::new();
+    for key in LEDGER_KEYS {
+        if f.keys.contains(key) {
+            out.push(format!("{name} has the custody-ledger field name `{key}`"));
+        }
+    }
+    if !protected_allowed(name) {
+        if f.protected {
+            out.push(format!("{name} is, or names, a protected document"));
+        }
+        if f.job_context {
+            out.push(format!("{name} is a custodian job context"));
+        }
+    }
+    // Custodian document tags other than the engine-facing inputs would mean a
+    // ledger or receipt document was committed.
+    for s in &f.strings {
+        if let Some(tag) = s.strip_prefix("private-custodian.") {
+            let ok = ["worker-result/", "aggregates/", "worker-job/"]
+                .iter()
+                .any(|p| tag.starts_with(p));
+            if !ok {
+                out.push(format!("{name} carries a custodian document tag `{s}`"));
+            }
+        }
+    }
+    out
+}
+
+const KEY_MARKERS: [&str; 4] = [
+    "-----BEGIN PRIVATE KEY",
+    "-----BEGIN RSA PRIVATE KEY",
+    "-----BEGIN OPENSSH PRIVATE KEY",
+    "-----BEGIN EC PRIVATE KEY",
+];
+
+const INTERNAL_TAGS: [&str; 4] = [
+    "private-custodian.internal-receipt/",
+    "private-custodian.execution/",
+    "private-custodian.reservation/",
+    "private-custodian.approval/",
+];
+
+/// Violations of one committed text file.
+fn text_violations(name: &str, text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for marker in KEY_MARKERS {
+        if text.contains(marker) {
+            out.push(format!("{name} contains key material"));
+        }
+    }
+    for tag in INTERNAL_TAGS {
+        if text.contains(tag) {
+            out.push(format!("{name} contains the custodian internal tag {tag}"));
+        }
+    }
+    out
 }
 
 #[test]
@@ -100,35 +191,11 @@ fn no_committed_json_document_is_protected_or_carries_ledger_fields() {
         let Ok(text) = std::fs::read_to_string(&path) else {
             continue;
         };
-        let Ok(doc) = serde_json::from_str::<Value>(&text) else {
-            continue;
-        };
-        checked += 1;
-        let (mut keys, mut strings) = (BTreeSet::new(), Vec::new());
-        keys_and_strings(&doc, &mut keys, &mut strings);
-        for key in LEDGER_KEYS {
-            assert!(
-                !keys.contains(key),
-                "{name} has the custody-ledger field name `{key}`"
-            );
+        if serde_json::from_str::<Value>(&text).is_ok() {
+            checked += 1;
         }
-        if !protected_allowed(&name) {
-            let protected = keys.contains("visibility") && strings.iter().any(|s| s == "protected")
-                || strings.iter().any(|s| s == "job-context-protected");
-            assert!(!protected, "{name} is, or names, a protected document");
-        }
-        // Custodian document tags other than the two engine-facing inputs would mean a
-        // ledger or receipt document was committed.
-        for s in &strings {
-            if let Some(tag) = s.strip_prefix("private-custodian.") {
-                assert!(
-                    tag.starts_with("worker-result/")
-                        || tag.starts_with("aggregates/")
-                        || tag.starts_with("worker-job/"),
-                    "{name} carries a custodian document tag `{s}`"
-                );
-            }
-        }
+        let v = json_violations(&name, &text);
+        assert!(v.is_empty(), "{v:?}");
     }
     assert!(
         checked > 50,
@@ -143,33 +210,52 @@ fn no_committed_file_holds_key_material_or_a_custodian_internal_record() {
         let Ok(text) = std::fs::read_to_string(&path) else {
             continue;
         };
-        // This test names the markers it looks for; it is the only file that may.
-        if name.ends_with("public_release_hygiene.rs") {
+        // This file names the markers it looks for; it is the only exemption, by exact path.
+        if name == SELF {
             continue;
         }
-        for marker in [
-            "-----BEGIN PRIVATE KEY",
-            "-----BEGIN RSA PRIVATE KEY",
-            "-----BEGIN OPENSSH PRIVATE KEY",
-            "-----BEGIN EC PRIVATE KEY",
-        ] {
-            assert!(!text.contains(marker), "{name} contains key material");
-        }
-        // A custodian INTERNAL schema tag in any committed file would mean a
-        // ledger record was copied here (documents may name the contracts by
-        // their public names; the internal tags are listed in custodian docs).
-        for tag in [
-            "private-custodian.internal-receipt/",
-            "private-custodian.execution/",
-            "private-custodian.reservation/",
-            "private-custodian.approval/",
-        ] {
-            assert!(
-                !text.contains(tag),
-                "{name} contains the custodian internal tag {tag}"
-            );
-        }
+        let v = text_violations(&name, &text);
+        assert!(v.is_empty(), "{v:?}");
     }
+}
+
+#[test]
+fn the_detectors_can_fail_negative_control() {
+    // The same functions the tree scan uses, over in-memory documents that must be flagged.
+    let protected = r#"{"semantic":{"population":{"visibility":"protected"}}}"#;
+    assert!(!json_violations("x.json", protected).is_empty());
+    let protected_class = r#"{"semantic":{"runClass":"protected"}}"#;
+    assert!(!json_violations("x.json", protected_class).is_empty());
+    // ...but the negative contract fixtures may be protected.
+    assert!(json_violations("fixtures/contracts/v1/negative/a.json", protected_class).is_empty());
+    let job = r#"{"schema":"pii-eval-job-context/1","jobId":"x"}"#;
+    assert!(!json_violations("x.json", job).is_empty());
+    for key in LEDGER_KEYS {
+        let doc = format!(r#"{{"a":{{"{key}":1}}}}"#);
+        assert!(!json_violations("x.json", &doc).is_empty(), "{key}");
+    }
+    let tag = r#"{"schema":"private-custodian.internal-receipt/1"}"#;
+    assert!(!json_violations("x.json", tag).is_empty());
+    let allowed = r#"{"schema":"private-custodian.worker-result/1"}"#;
+    assert!(json_violations("x.json", allowed).is_empty());
+    assert!(!text_violations("x.txt", &format!("{}\nabc", KEY_MARKERS[0])).is_empty());
+    assert!(!text_violations("x.txt", INTERNAL_TAGS[1]).is_empty());
+    assert!(text_violations("x.txt", "plain text").is_empty());
+
+    // The walk itself: a directory of the same name is skipped at the root only.
+    let tmp = std::env::temp_dir().join(format!("pii-eval-hygiene-{}", std::process::id()));
+    std::fs::create_dir_all(tmp.join("target")).unwrap();
+    std::fs::create_dir_all(tmp.join("docs/target")).unwrap();
+    std::fs::write(tmp.join("target/skipped.json"), "{}").unwrap();
+    std::fs::write(tmp.join("docs/target/seen.json"), "{}").unwrap();
+    let mut found = Vec::new();
+    walk(&tmp, 0, &mut found);
+    let names: Vec<String> = found
+        .iter()
+        .map(|p| p.strip_prefix(&tmp).unwrap().to_string_lossy().into_owned())
+        .collect();
+    std::fs::remove_dir_all(&tmp).unwrap();
+    assert_eq!(names, ["docs/target/seen.json"]);
 }
 
 #[test]
@@ -219,7 +305,8 @@ fn the_public_artifact_schema_cannot_represent_protected_or_raw_data() {
         );
     }
     // The class and the visibility are single-valued types: a protected population cannot be represented.
-    let class = &schema["$defs"]["PublicSyntheticClass"];
+    let defs = &schema["$defs"];
+    let class = &defs["PublicSyntheticClass"];
     let values: Vec<&Value> = class
         .get("enum")
         .and_then(Value::as_array)
@@ -237,6 +324,25 @@ fn the_public_artifact_schema_cannot_represent_protected_or_raw_data() {
         [&Value::String("public-synthetic".into())],
         "{class}"
     );
+    // ...and the two fields that could carry a class reference exactly that type.
+    let single = "#/$defs/PublicSyntheticClass";
+    assert_eq!(
+        defs["PublicSyntheticArtifactBody"]["properties"]["runClass"]["$ref"],
+        single
+    );
+    assert_eq!(
+        defs["PublicPopulationBinding"]["properties"]["visibility"]["$ref"],
+        single
+    );
+    // Every object type of the artifact is closed: an extra member cannot ride along.
+    let mut open = Vec::new();
+    for (name, def) in defs.as_object().unwrap() {
+        if def.get("properties").is_some() && def["additionalProperties"] != false {
+            open.push(name.clone());
+        }
+    }
+    assert_eq!(schema["additionalProperties"], false, "top level is closed");
+    assert!(open.is_empty(), "open object types: {open:?}");
 }
 
 #[test]
