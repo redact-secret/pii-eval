@@ -20,6 +20,12 @@ pii-eval-contracts = { path = "crates/pii-eval-contracts" }
 pii-eval-kernel = { path = "crates/pii-eval-kernel" }
 pii-eval-adapters = { path = "crates/pii-eval-adapters" }
 pii-eval-compat = { path = "crates/pii-eval-compat" }
+# Reviewed third-party crates (docs/dependency-policy.md). Exact pins: they
+# determine serialization, schema output and digests.
+serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
+serde_json = { version = "=1.0.151", default-features = false, features = ["std"] }
+schemars = { version = "=1.2.2", default-features = false, features = ["derive", "std"] }
+sha2 = { version = "=0.11.0", default-features = false, features = ["alloc"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

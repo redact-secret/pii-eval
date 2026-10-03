@@ -1,8 +1,88 @@
-//! Typed contracts for `pii-eval`.
+//! Typed contracts for `pii-eval`: versioned input, observation and artifact
+//! documents, the frozen `pii-v1` protocol registry, structural validation,
+//! canonical serialization and the semantic digest.
 //!
-//! Bootstrap placeholder: only crate identity exists here. `CorpusSnapshot`,
-//! `RunPlan`, `ObservationSet` and `RunArtifact` are proposed and are frozen in
-//! a later phase (P2). Nothing in this crate is a consumer contract.
+//! Status: schema 1.0 is frozen by P2 (issue #3); see ADR 0002 for the change
+//! rules and ADR 0003 for the canonical serialization. The Rust API of this
+//! crate is internal. The versioned JSON documents and the committed JSON
+//! Schemas under `schemas/` are the consumer contracts.
+//!
+//! This crate contains types, validation and digests only. It performs no
+//! matching, scoring, scanner execution or I/O.
+
+#![forbid(unsafe_code)]
+
+pub mod artifact;
+pub mod axes;
+pub mod binding;
+pub mod canonical;
+mod check;
+pub mod corpus;
+pub mod decimal;
+pub mod document;
+pub mod ident;
+pub mod limits;
+pub mod manifest;
+pub mod observation;
+pub mod protocol;
+pub mod reason;
+pub mod scanner;
+pub mod schema;
+pub mod version;
+
+pub use artifact::{
+    ArtifactScanner, CaseOutcome, Completeness, FailureCode, MeasurementFailure, MethodCoverage,
+    MetricCounts, MetricResult, MetricValue, ObservedSummary, Phase, PhaseTiming, PopulationCounts,
+    PublicOutcome, PublicScannerSummary, PublicSyntheticArtifact, PublicSyntheticArtifactBody,
+    PublicSyntheticClass, RunArtifact, RunArtifactBody, RunDiagnostics, serialize_internal,
+    serialize_public_synthetic,
+};
+pub use axes::{
+    ActionExpectation, ActionKind, ActionOutcome, AxisStatus, ContextClass, ContextObligation,
+    ExpectedType, OutputVerification, RangeState, SensitivityExpectation, SensitivityState,
+    TypeState, validate_outcome_lattice,
+};
+pub use binding::{
+    validate_artifact_against_manifest, validate_artifact_against_snapshot,
+    validate_manifest_against_snapshot, validate_observation_against_manifest,
+    validate_observation_against_snapshot,
+};
+pub use canonical::{
+    DIGEST_CONSTRUCTION, ParseLimits, canonical_bytes, canonical_bytes_of, parse_strict,
+    semantic_digest,
+};
+pub use corpus::{
+    Case, Collision, CorpusSnapshot, CorpusSnapshotBody, Derivation, Expectation, GenerationRules,
+    Lineage, OperatorRef, Population, Strategy, ValidatorRef, Variant, Visibility,
+};
+pub use decimal::{ByteRange, ScaledDecimal};
+pub use document::{
+    Document, compute_digest, digest_domain, parse, parse_default, seal, to_pretty_json, validate,
+};
+pub use ident::{
+    ActivationSelector, ConfigKey, FamilyId, FamilyScope, Id, IdentError, JurisdictionCode,
+    LanguageTag, ScannerId, Seed, Sha256Digest, TimestampUtc, VersionString, is_jurisdiction,
+};
+pub use manifest::{
+    ExecutionLimits, PopulationBinding, RunClass, RunManifest, RunManifestBody, Scope,
+};
+pub use observation::{
+    Finding, InputObservation, ObservationDiagnostics, ObservationSet, ObservationSetBody,
+    ReplayRecord,
+};
+pub use protocol::{
+    ACCOUNTING_VERSION, AccountingId, Applicability, BoundDirection, EffectiveNBasis, METHODS,
+    METRICS, Mechanics, MethodDefinition, MethodId, MethodRef, MetricDefinition, MetricId,
+    MetricRef, MetricStatus, MetricUnit, PROTOCOL_ID, PROTOCOL_VERSION, ProtocolId,
+    ProtocolIdentity, SampleUnit, WithheldReason, registry_json,
+};
+pub use reason::{Collector, ContractError, Meta, Path, ReasonCode, Violations};
+pub use scanner::{
+    ActionCapability, AdapterIdentity, CapabilityState, ConfigParameter, ConfigValue,
+    EngineIdentity, EngineName, FamilyCapability, JurisdictionCapability, ProductIdentity,
+    ScannerCapabilities, ScannerConfiguration, ScannerIdentity, ScannerPlan, ScannerStatus,
+};
+pub use version::{DocumentKind, SCHEMA_MAJOR, SCHEMA_MINOR, SchemaVersion, check_envelope};
 
 /// Product name used in identity output.
 pub const ENGINE_NAME: &str = "pii-eval";

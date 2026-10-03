@@ -1,7 +1,8 @@
 # Toolchain, MSRV and dependency policy
 
-Status: implemented for the bootstrap workspace (all five crates have zero
-third-party dependencies). Rules below govern future additions.
+Status: implemented. Since P2 only `pii-eval-contracts` has third-party
+dependencies (table at the end); the other four crates have none. Rules below
+govern future additions.
 
 ## Toolchain and MSRV
 
@@ -16,7 +17,7 @@ third-party dependencies). Rules below govern future additions.
   - `cargo +1.85.0 test --workspace --locked` passes (all tests).
   - 1.85.0 is the first release that stabilizes edition 2024, so it is the floor
     for this workspace regardless of code.
-- The MSRV is valid only for the current dependency set (none). Adding or
+- The MSRV is valid only for the current dependency set (re-verified at P2, see the table). Adding or
   upgrading a dependency requires re-running the MSRV test (the `msrv` CI job
   does this) and either keeping 1.85 or recording the new floor and why.
 - MSRV is a build-compatibility statement for this repository, not a
@@ -41,10 +42,10 @@ measured need (CONVENTIONS.md).
    filesystem-walking or credential/Git crates, nor on `pii-eval-adapters`,
    `pii-eval-cli` or `pii-eval-compat`. Third-party crates they may use are
    listed in `ALLOWED_THIRD_PARTY` in
-   `crates/pii-eval-cli/tests/dependency_policy.rs` (currently empty); a name
+   `crates/pii-eval-cli/tests/dependency_policy.rs`; a name
    outside that list fails the test, as does a name containing a forbidden
    fragment (`tokio`, `reqwest`, `hyper`, `libc`, ...). The test uses
-   `cargo tree` offline and runs under `cargo test --workspace --locked`.
+   `cargo tree` (`--locked`, all targets; it may fetch crate metadata from crates.io, which is already allowed) and runs under `cargo test --workspace --locked`.
 4. `pii-eval-compat` is reachable only from tests of the CLI crate (a
    dev-dependency); no production crate may depend on it. It is deleted by
    removing the crate, its workspace entries and one smoke assertion.
@@ -70,4 +71,24 @@ and is outside the current network allowance. Both are proposed follow-ups.
 
 | Crate | Used by | Why | Version | Reviewed |
 | --- | --- | --- | --- | --- |
-| (none) | | | | |
+| `serde` (with `derive`) | contracts | Typed (de)serialization of every contract; the derive gives closed, exhaustive types. No std alternative. | =1.0.229 | P2; no I/O, no process or network code |
+| `serde_json` | contracts | JSON parsing and value model for strict parsing, canonical form and schema output. Pinned exactly: parsing and number handling are semantic. `arbitrary_precision` and `preserve_order` are not enabled; the canonical writer sorts keys itself. | =1.0.151 | P2 |
+| `schemars` | contracts | Deterministic JSON Schema generation from the same types, so schemas cannot drift from code (drift test). Pinned exactly: output is committed. Derive and std features only. | =1.2.2 | P2 |
+| `sha2` | contracts | SHA-256 for the semantic digest and input identities; a reviewed RustCrypto implementation is preferred over hand-rolled hashing. Pinned exactly. `alloc` feature only. | =0.11.0 | P2 |
+
+Transitive crates (all in `ALLOWED_THIRD_PARTY` in the guard): `serde_core`,
+`serde_derive`, `serde_derive_internals`, `schemars_derive`, `syn`, `quote`,
+`proc-macro2`, `unicode-ident`, `ref-cast`, `ref-cast-impl`, `dyn-clone`,
+`itoa`, `memchr`, `zmij`, `digest`, `block-buffer`, `crypto-common`,
+`hybrid-array`, `typenum`, `cfg-if`, `cpufeatures` and `libc`.
+
+`libc` matches a forbidden fragment and is a reviewed exception: it is reached
+only through `cpufeatures` (CPU feature detection used by `sha2`). The guard
+(`FRAGMENT_EXCEPTIONS`) asserts that `cpufeatures` is its only direct
+dependent in each pure crate's graph, and the other fragments stay forbidden.
+No crate in the closure spawns processes or opens sockets. Hand-written SHA-256
+was considered and rejected to avoid maintaining cryptographic code.
+
+MSRV re-verified after these additions on 2026-10-02:
+`cargo +1.85.0 test --workspace --locked` passes; the floor stays 1.85
+(`sha2` 0.11, `serde_json` 1.0.151, `schemars` 1.2.2 declare 1.85, 1.71, 1.74).

@@ -1,0 +1,118 @@
+{
+  "schema": "pii-eval.run-manifest",
+  "schemaVersion": "1.0",
+  "semantic": {
+    "engine": {
+      "name": "pii-eval",
+      "version": "0.0.0"
+    },
+    "generation": {
+      "generator": "synthetic-generator",
+      "generatorVersion": 1,
+      "seedDerivation": "seed-v1"
+    },
+    "limits": {
+      "batchVariants": 128,
+      "maxMemoryBytes": 1073741824,
+      "maxStderrBytes": 1048576,
+      "maxStdoutBytes": 1048576,
+      "maxTemporaryBytes": 268435456,
+      "pendingTasks": 64,
+      "perScannerParallelism": 2,
+      "scannerTimeoutMs": 30000,
+      "workers": 4
+    },
+    "mechanics": {
+      "intervalPrecision": 6,
+      "intervalZ": {
+        "mantissa": 196,
+        "scale": 2
+      },
+      "minDenominator": 4,
+      "replays": 2
+    },
+    "methods": [
+      {
+        "id": "context-discrimination",
+        "version": 2
+      },
+      {
+        "id": "jurisdiction-collision",
+        "version": 3
+      },
+      {
+        "id": "pii-benign",
+        "version": 3
+      },
+      {
+        "id": "type-validation",
+        "version": 2
+      }
+    ],
+    "metrics": [
+      {
+        "id": "benign-suppression-rate",
+        "version": 1
+      },
+      {
+        "id": "context-discrimination-rate",
+        "version": 1
+      },
+      {
+        "id": "jurisdiction-collision-rate",
+        "version": 1
+      },
+      {
+        "id": "measurable-share",
+        "version": 1
+      },
+      {
+        "id": "non-sensitive-flag-rate",
+        "version": 1
+      },
+      {
+        "id": "range-collateral-rate",
+        "version": 1
+      },
+      {
+        "id": "sensitive-miss-rate",
+        "version": 1
+      },
+      {
+        "id": "type-miss-rate",
+        "version": 1
+      },
+      {
+        "id": "wrong-family-rate",
+        "version": 1
+      },
+      {
+        "id": "wrong-jurisdiction-rate",
+        "version": 1
+      }
+    ],
+    "population": {
+      "populationDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae",
+      "populationId": "synthetic-demo-population",
+      "populationVersion": 1,
+      "visibility": "public-synthetic"
+    },
+    "protocol": {
+      "accounting": "pii-v1",
+      "id": "pii-v1",
+      "version": 1
+    },
+    "runClass": "public-synthetic",
+    "scanners": [],
+    "scope": {
+      "jurisdictions": [
+        "US"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ]
+    }
+  },
+  "semanticDigest": "0e91d3f8a669df9dc9b2a61cf8e8d28dbfa2c282e8bbd165fc96d3a3859572be"
+}

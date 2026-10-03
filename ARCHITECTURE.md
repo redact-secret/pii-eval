@@ -39,7 +39,7 @@ Public review records (what a maintainer or reviewer may see and discuss) and pr
 
 ## Contracts and identities
 
-Proposed contracts are `CorpusSnapshot`, `RunPlan`, `ObservationSet`, and `RunArtifact`; names and fields are frozen through contract tests before implementation.
+Contracts are frozen at schema 1.0 (P2, [ADR 0002](docs/adr/0002-freeze-pii-contracts-v1.md)): `CorpusSnapshot`, `RunManifest` (the plan, formerly `RunPlan`), `ObservationSet`, `RunArtifact` (internal) and `PublicSyntheticArtifact`. Canonical serialization and the semantic digest are specified in [ADR 0003](docs/adr/0003-canonical-serialization-and-semantic-digest.md). JSON Schemas are committed under `schemas/` and guarded by a drift test. The bullets below describe the intended binding; the types implement them.
 
 - A snapshot binds population identity, authored cases, source lineage, expected ranges, context groups, language/jurisdiction, and deterministic generation rules.
 - A plan binds engine/protocol, snapshot, scanner binaries/packages, adapters, enable sets, activation/configuration, seed derivation, replay count, and execution limits.

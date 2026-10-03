@@ -420,6 +420,11 @@ Listed by glob rather than per file (85 PII-named files under `evidence/`, 9 und
 
 ## Gaps and decisions for later phases
 
+P2 recorded the contract-bearing `mixed-split` decisions in
+[ADR 0002](../adr/0002-freeze-pii-contracts-v1.md) (versions and metric
+definitions are frozen in `schemas/registry/pii-v1.registry.json` and checked
+against the tables above by a test).
+
 - `mixed-split` rows (profile, qualification, populations, identity oracle,
   holdout, validator qualification, `candidate.mjs`, `families.mjs`, port-suffix
   scoring, population schemas) need an explicit neutral/product split before

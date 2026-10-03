@@ -1,0 +1,105 @@
+{
+  "schema": "pii-eval.corpus-snapshot",
+  "schemaVersion": "1.0",
+  "semantic": {
+    "cases": [
+      {
+        "caseId": "collision-us-ssn-demo",
+        "collision": {
+          "competingFamilies": [
+            "pii:global:phone"
+          ],
+          "targetFamily": "pii:us:ssn"
+        },
+        "jurisdiction": "US",
+        "language": "en",
+        "lineage": {
+          "sourceDigest": "7f7199ac24f76bbbd960e68dc14c672f92416eeed61dbbe3661114600256eac5",
+          "sourceId": "synthetic-source-collision"
+        },
+        "method": "jurisdiction-collision",
+        "variants": [
+          {
+            "derivation": {
+              "strategy": "authored"
+            },
+            "expectations": [
+              {
+                "action": "redact",
+                "contextClass": "sensitive",
+                "contextObligation": "none",
+                "family": "pii:us:ssn",
+                "occurrenceId": "occurrence-1",
+                "range": {
+                  "end": 21,
+                  "start": 10
+                },
+                "sensitivity": "sensitive",
+                "typeExpectation": "valid"
+              }
+            ],
+            "text": "reference 000-12-3456 synthetic sample",
+            "textDigest": "70527ca5333da39768bfb52f3eab56f978c7bddfcd84173797658e951601094e",
+            "variantId": "collision-us-ssn-demo-authored"
+          }
+        ]
+      },
+      {
+        "caseId": "context-email-ko-demo",
+        "language": "ko",
+        "lineage": {
+          "sourceDigest": "73a11ebc172571e8c1e2fed95ab59d311bf4c76cd18930a9d3f50748e22c9040",
+          "sourceId": "synthetic-source-context"
+        },
+        "method": "context-discrimination",
+        "variants": [
+          {
+            "derivation": {
+              "strategy": "authored"
+            },
+            "expectations": [
+              {
+                "action": "redact",
+                "contextClass": "neutral",
+                "contextObligation": "none",
+                "family": "pii:global:email",
+                "occurrenceId": "occurrence-1",
+                "range": {
+                  "end": 34,
+                  "start": 14
+                },
+                "sensitivity": "not-established",
+                "typeExpectation": "valid"
+              }
+            ],
+            "text": "예시 주소 user@example.invalid 참고",
+            "textDigest": "0d9fb37c9ad6fe31e9340ce4428423b7603d24cadca70c2caa2d586408231012",
+            "variantId": "context-email-ko-demo-neutral"
+          },
+          {
+            "derivation": {
+              "strategy": "authored"
+            },
+            "expectations": [
+              {
+                "action": "redact",
+                "contextClass": "non-sensitive",
+                "contextObligation": "none",
+                "family": "pii:global:email",
+                "occurrenceId": "occurrence-1",
+                "range": {
+                  "end": 34,
+                  "start": 14
+                },
+                "sensitivity": "non-sensitive",
+                "typeExpectation": "valid"
+              }
+            ],
+            "text": "문서 샘플 user@example.invalid 입니다",
+            "textDigest": "397927b42dad0f52e9f7ff64d184d602627f460c63b8fc0fcbf4abe934e3a23a",
+            "variantId": "context-email-ko-demo-non-sensitive"
+          },
+          {
+            "derivation": {
+              "strategy": "authored"
+            

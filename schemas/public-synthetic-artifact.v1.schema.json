@@ -1,0 +1,1157 @@
+{
+  "$defs": {
+    "AccountingId": {
+      "description": "Accounting identity enum (one variant today).",
+      "oneOf": [
+        {
+          "const": "pii-v1",
+          "description": "The `pii-v1` accounting rules.",
+          "type": "string"
+        }
+      ]
+    },
+    "ActionCapability": {
+      "description": "What the scanner can say about action.",
+      "enum": [
+        "unavailable",
+        "reported-action",
+        "sanitized-output"
+      ],
+      "type": "string"
+    },
+    "ActionKind": {
+      "description": "Action a scanner reports for a finding, as a neutral kind. Adapter\nvocabulary maps onto these; anything else is `other`.",
+      "enum": [
+        "redact",
+        "preserve",
+        "other"
+      ],
+      "type": "string"
+    },
+    "ActionOutcome": {
+      "description": "What was observed about action. Never inferred from a finding flag: removal\nis asserted only by `output-verified`, which requires sanitized output.\n\nDeserialization and the JSON Schema go through [`ActionOutcomeWire`], whose\nvariants are closed structs: serde would otherwise ignore extra keys on the\nunit variants of an internally tagged enum.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "See [`ActionOutcome::NotMeasured`].",
+          "properties": {
+            "state": {
+              "const": "not-measured",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "See [`ActionOutcome::NoActionReported`].",
+          "properties": {
+            "state": {
+              "const": "no-action-reported",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "See [`ActionOutcome::Reported`].",
+          "properties": {
+            "action": {
+              "$ref": "#/$defs/ActionKind",
+              "description": "The reported action kind."
+            },
+            "state": {
+              "const": "reported",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "action"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "See [`ActionOutcome::OutputVerified`].",
+          "properties": {
+            "state": {
+              "const": "output-verified",
+              "type": "string"
+            },
+            "verification": {
+              "$ref": "#/$defs/OutputVerification",
+              "description": "Verification result."
+            }
+          },
+          "required": [
+            "state",
+            "verification"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AdapterIdentity": {
+      "additionalProperties": false,
+      "description": "Adapter identity: how scanner output was normalized into findings.",
+      "properties": {
+        "adapterId": {
+          "$ref": "#/$defs/ScannerId",
+          "description": "Adapter identifier."
+        },
+        "adapterVersion": {
+          "$ref": "#/$defs/VersionString",
+          "description": "Adapter implementation version."
+        },
+        "normalizationVersion": {
+          "description": "Version of the normalization contract the adapter applies.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "adapterId",
+        "adapterVersion",
+        "normalizationVersion"
+      ],
+      "type": "object"
+    },
+    "CapabilityState": {
+      "description": "Whether a scanner declares a capability. `undeclared` is the default\nfor anything not stated and is never treated as `supported`.",
+      "enum": [
+        "supported",
+        "unsupported",
+        "undeclared"
+      ],
+      "type": "string"
+    },
+    "Completeness": {
+      "description": "Coverage of the outcome matrix. `complete` means every scanner and\nexpected occurrence has an outcome row (possibly `not-measured`); it\ndoes not mean every scanner worked or that results are acceptable.",
+      "enum": [
+        "complete",
+        "partial"
+      ],
+      "type": "string"
+    },
+    "EngineIdentity": {
+      "additionalProperties": false,
+      "description": "Engine implementation identity bound into plans and artifacts.",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/EngineName",
+          "description": "Engine name."
+        },
+        "version": {
+          "$ref": "#/$defs/VersionString",
+          "description": "Engine implementation version."
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "EngineName": {
+      "description": "Engine identity.",
+      "oneOf": [
+        {
+          "const": "pii-eval",
+          "description": "This engine.",
+          "type": "string"
+        }
+      ]
+    },
+    "FailureCode": {
+      "description": "Sanitized reason a scanner run did not measure.",
+      "enum": [
+        "unsupported",
+        "unavailable",
+        "execution-error",
+        "timeout",
+        "output-limit-exceeded",
+        "malformed-output",
+        "replay-disagreement",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "FamilyCapability": {
+      "additionalProperties": false,
+      "description": "Capability of one family.",
+      "properties": {
+        "family": {
+          "$ref": "#/$defs/FamilyId",
+          "description": "The family."
+        },
+        "state": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Declared state."
+        }
+      },
+      "required": [
+        "family",
+        "state"
+      ],
+      "type": "object"
+    },
+    "FamilyId": {
+      "maxLength": 80,
+      "minLength": 8,
+      "pattern": "^pii:(global|[a-z]{2}):[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "Id": {
+      "maxLength": 80,
+      "minLength": 2,
+      "pattern": "^[a-z][a-z0-9-]{1,79}$",
+      "type": "string"
+    },
+    "JurisdictionCapability": {
+      "additionalProperties": false,
+      "description": "Capability of one jurisdiction.",
+      "properties": {
+        "jurisdiction": {
+          "$ref": "#/$defs/JurisdictionCode",
+          "description": "The jurisdiction."
+        },
+        "state": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Declared state."
+        }
+      },
+      "required": [
+        "jurisdiction",
+        "state"
+      ],
+      "type": "object"
+    },
+    "JurisdictionCode": {
+      "maxLength": 2,
+      "minLength": 2,
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "MeasurementFailure": {
+      "additionalProperties": false,
+      "description": "A recorded measurement failure.",
+      "properties": {
+        "affectedInputs": {
+          "description": "Number of inputs affected.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "code": {
+          "$ref": "#/$defs/FailureCode",
+          "description": "Sanitized reason; never raw scanner output."
+        },
+        "scannerId": {
+          "$ref": "#/$defs/ScannerId",
+          "description": "Scanner that failed."
+        }
+      },
+      "required": [
+        "scannerId",
+        "code",
+        "affectedInputs"
+      ],
+      "type": "object"
+    },
+    "Mechanics": {
+      "additionalProperties": false,
+      "description": "Neutral accounting mechanics. They are part of protocol and configuration\nidentity and are always recorded in the plan.",
+      "properties": {
+        "intervalPrecision": {
+          "description": "Decimal places of published values, 1 to 12.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "intervalZ": {
+          "$ref": "#/$defs/ScaledDecimal",
+          "description": "Wilson interval z value; positive."
+        },
+        "minDenominator": {
+          "description": "Smallest effective N for which a value is published (at least 1).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "replays": {
+          "description": "Stability replays per scanner and input (at least 2). Not extra samples.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "minDenominator",
+        "replays",
+        "intervalZ",
+        "intervalPrecision"
+      ],
+      "type": "object"
+    },
+    "MethodCoverage": {
+      "additionalProperties": false,
+      "description": "Coverage of one method.",
+      "properties": {
+        "cases": {
+          "description": "Authored cases of this method.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "method": {
+          "$ref": "#/$defs/MethodRef",
+          "description": "Method and version."
+        },
+        "variants": {
+          "description": "Variants of those cases.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "method",
+        "cases",
+        "variants"
+      ],
+      "type": "object"
+    },
+    "MethodId": {
+      "description": "The seven preserved methods.",
+      "enum": [
+        "type-validation",
+        "context-discrimination",
+        "pii-benign",
+        "jurisdiction-collision",
+        "mutation",
+        "reference-differential",
+        "schema-only"
+      ],
+      "type": "string"
+    },
+    "MethodRef": {
+      "additionalProperties": false,
+      "description": "A method selected by a plan, with the version the plan expects.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/MethodId",
+          "description": "Method identifier."
+        },
+        "version": {
+          "description": "Method version; must equal the frozen version.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    },
+    "MetricCounts": {
+      "additionalProperties": false,
+      "description": "Row counts behind a metric. Retained unrounded; rounding happens only in the\npublished value.",
+      "properties": {
+        "eligible": {
+          "description": "Rows eligible for the metric (not `not-applicable`).",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "measured": {
+          "description": "Rows with a resolved numerator or non-numerator outcome.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "notApplicable": {
+          "description": "Rows outside the metric's population.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "notMeasured": {
+          "description": "Eligible rows that were not measured.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "numerator": {
+          "description": "Rows in the numerator.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "description": "All rows considered.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unresolved": {
+          "description": "Eligible rows whose axis needs review.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "eligible",
+        "measured",
+        "numerator",
+        "unresolved",
+        "notMeasured",
+        "notApplicable",
+        "total"
+      ],
+      "type": "object"
+    },
+    "MetricId": {
+      "description": "The ten preserved `pii-v1` metrics.",
+      "enum": [
+        "type-miss-rate",
+        "wrong-family-rate",
+        "wrong-jurisdiction-rate",
+        "sensitive-miss-rate",
+        "non-sensitive-flag-rate",
+        "context-discrimination-rate",
+        "benign-suppression-rate",
+        "jurisdiction-collision-rate",
+        "range-collateral-rate",
+        "measurable-share"
+      ],
+      "type": "string"
+    },
+    "MetricRef": {
+      "additionalProperties": false,
+      "description": "A metric selected by a plan, with the version the plan expects.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/MetricId",
+          "description": "Metric identifier."
+        },
+        "version": {
+          "description": "Metric version; must equal the frozen version.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    },
+    "MetricResult": {
+      "additionalProperties": false,
+      "description": "One metric result.",
+      "properties": {
+        "counts": {
+          "$ref": "#/$defs/MetricCounts",
+          "description": "Counts."
+        },
+        "effectiveN": {
+          "description": "Effective N (distinct from authored and variant counts).",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "metric": {
+          "$ref": "#/$defs/MetricRef",
+          "description": "Metric and version."
+        },
+        "status": {
+          "$ref": "#/$defs/MetricStatus",
+          "description": "Accounting status, derived from the counts."
+        },
+        "value": {
+          "$ref": "#/$defs/MetricValue",
+          "description": "Value or withheld reason."
+        }
+      },
+      "required": [
+        "metric",
+        "status",
+        "counts",
+        "effectiveN",
+        "value"
+      ],
+      "type": "object"
+    },
+    "MetricStatus": {
+      "description": "Accounting status of a metric.",
+      "enum": [
+        "measured",
+        "partial",
+        "unresolved",
+        "not-measured",
+        "not-applicable"
+      ],
+      "type": "string"
+    },
+    "MetricValue": {
+      "description": "A metric value, or the reason it is withheld.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "Published point estimate and pessimistic interval bound.",
+          "properties": {
+            "bound": {
+              "$ref": "#/$defs/ScaledDecimal",
+              "description": "Wilson interval endpoint on the side the metric's direction names, in `[0, 1]`."
+            },
+            "point": {
+              "$ref": "#/$defs/ScaledDecimal",
+              "description": "Point estimate in `[0, 1]`."
+            },
+            "state": {
+              "const": "measured",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "point",
+            "bound"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "No value is published.",
+          "properties": {
+            "reason": {
+              "$ref": "#/$defs/WithheldReason",
+              "description": "Why."
+            },
+            "state": {
+              "const": "withheld",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "OutputVerification": {
+      "description": "Result of verifying sanitized output where the scanner provides it.",
+      "enum": [
+        "removed",
+        "residual-present",
+        "collateral-change"
+      ],
+      "type": "string"
+    },
+    "PopulationCounts": {
+      "additionalProperties": false,
+      "description": "Authored counts, kept apart from metric effective N.",
+      "properties": {
+        "authoredCases": {
+          "description": "Authored cases.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "occurrences": {
+          "description": "Expected occurrences.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "variants": {
+          "description": "Variants (derived variants are not independent samples).",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "authoredCases",
+        "variants",
+        "occurrences"
+      ],
+      "type": "object"
+    },
+    "ProductIdentity": {
+      "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.\n\nDeserialization and the JSON Schema go through [`ProductIdentityWire`]:\nserde ignores extra keys on an internally tagged unit variant, so the wire\nform uses an empty struct variant that `deny_unknown_fields` closes.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A released build.",
+          "properties": {
+            "kind": {
+              "const": "released",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A candidate build.",
+          "properties": {
+            "candidateDigest": {
+              "$ref": "#/$defs/Sha256Digest",
+              "description": "Digest of the candidate artifact."
+            },
+            "kind": {
+              "const": "candidate",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "candidateDigest"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ProtocolId": {
+      "description": "Protocol identifier enum (one variant today, so unknown protocols fail to parse).",
+      "oneOf": [
+        {
+          "const": "pii-v1",
+          "description": "The `pii-v1` protocol.",
+          "type": "string"
+        }
+      ]
+    },
+    "ProtocolIdentity": {
+      "additionalProperties": false,
+      "description": "Protocol identity bound into every plan and artifact.",
+      "properties": {
+        "accounting": {
+          "$ref": "#/$defs/AccountingId",
+          "description": "Accounting identity."
+        },
+        "id": {
+          "$ref": "#/$defs/ProtocolId",
+          "description": "Protocol identifier."
+        },
+        "version": {
+          "description": "Protocol revision.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "accounting"
+      ],
+      "type": "object"
+    },
+    "PublicOutcome": {
+      "additionalProperties": false,
+      "description": "The outcome axes for one scanner and expected occurrence, without anything\nscanner-reported beyond the four axes. This is the public shape.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/ActionOutcome",
+          "description": "Action axis."
+        },
+        "caseId": {
+          "$ref": "#/$defs/Id",
+          "description": "Authored case."
+        },
+        "method": {
+          "$ref": "#/$defs/MethodId",
+          "description": "Method of the case."
+        },
+        "occurrenceId": {
+          "$ref": "#/$defs/Id",
+          "description": "Expected occurrence."
+        },
+        "range": {
+          "$ref": "#/$defs/RangeState",
+          "description": "Range axis."
+        },
+        "scannerId": {
+          "$ref": "#/$defs/ScannerId",
+          "description": "Scanner."
+        },
+        "sensitivityContext": {
+          "$ref": "#/$defs/SensitivityState",
+          "description": "Sensitivity-context axis."
+        },
+        "typeIdentity": {
+          "$ref": "#/$defs/TypeState",
+          "description": "Type-identity axis."
+        },
+        "variantId": {
+          "$ref": "#/$defs/Id",
+          "description": "Variant."
+        }
+      },
+      "required": [
+        "scannerId",
+        "caseId",
+        "variantId",
+        "occurrenceId",
+        "method",
+        "typeIdentity",
+        "sensitivityContext",
+        "range",
+        "action"
+      ],
+      "type": "object"
+    },
+    "PublicPopulationBinding": {
+      "additionalProperties": false,
+      "description": "Population binding of a public-synthetic artifact. Its visibility type has\none value, so a protected population cannot be represented.",
+      "properties": {
+        "populationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Semantic digest of the corpus snapshot."
+        },
+        "populationId": {
+          "$ref": "#/$defs/Id",
+          "description": "Population identifier."
+        },
+        "populationVersion": {
+          "description": "Population revision.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "visibility": {
+          "$ref": "#/$defs/PublicSyntheticClass",
+          "description": "Always `public-synthetic`."
+        }
+      },
+      "required": [
+        "populationId",
+        "visibility",
+        "populationVersion",
+        "populationDigest"
+      ],
+      "type": "object"
+    },
+    "PublicScannerSummary": {
+      "additionalProperties": false,
+      "description": "Scanner record in a public-synthetic artifact: no observation digest.",
+      "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/ScannerCapabilities",
+          "description": "Declared capabilities."
+        },
+        "identity": {
+          "$ref": "#/$defs/ScannerIdentity",
+          "description": "Bound identity."
+        },
+        "replays": {
+          "$ref": "#/$defs/ReplayRecord",
+          "description": "Replay record."
+        },
+        "status": {
+          "$ref": "#/$defs/ScannerStatus",
+          "description": "Run outcome."
+        }
+      },
+      "required": [
+        "identity",
+        "status",
+        "capabilities",
+        "replays"
+      ],
+      "type": "object"
+    },
+    "PublicSyntheticArtifactBody": {
+      "additionalProperties": false,
+      "description": "The semantic content of a public-synthetic artifact. Aggregates and\nper-occurrence axis states only.",
+      "properties": {
+        "completeness": {
+          "$ref": "#/$defs/Completeness",
+          "description": "Coverage of the outcome matrix."
+        },
+        "engine": {
+          "$ref": "#/$defs/EngineIdentity",
+          "description": "Engine identity."
+        },
+        "failures": {
+          "description": "Failures.",
+          "items": {
+            "$ref": "#/$defs/MeasurementFailure"
+          },
+          "type": "array"
+        },
+        "manifestDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the manifest."
+        },
+        "mechanics": {
+          "$ref": "#/$defs/Mechanics",
+          "description": "Mechanics used."
+        },
+        "methodCoverage": {
+          "description": "Method coverage.",
+          "items": {
+            "$ref": "#/$defs/MethodCoverage"
+          },
+          "type": "array"
+        },
+        "metrics": {
+          "description": "Metrics.",
+          "items": {
+            "$ref": "#/$defs/MetricResult"
+          },
+          "type": "array"
+        },
+        "outcomes": {
+          "description": "Per-occurrence axis states.",
+          "items": {
+            "$ref": "#/$defs/PublicOutcome"
+          },
+          "type": "array"
+        },
+        "population": {
+          "$ref": "#/$defs/PublicPopulationBinding",
+          "description": "The population measured."
+        },
+        "populationCounts": {
+          "$ref": "#/$defs/PopulationCounts",
+          "description": "Authored counts."
+        },
+        "protocol": {
+          "$ref": "#/$defs/ProtocolIdentity",
+          "description": "Protocol identity."
+        },
+        "runClass": {
+          "$ref": "#/$defs/PublicSyntheticClass",
+          "description": "Always `public-synthetic`."
+        },
+        "scanners": {
+          "description": "Scanners.",
+          "items": {
+            "$ref": "#/$defs/PublicScannerSummary"
+          },
+          "type": "array"
+        },
+        "sourceArtifactDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the internal artifact this was projected from."
+        }
+      },
+      "required": [
+        "runClass",
+        "engine",
+        "protocol",
+        "sourceArtifactDigest",
+        "manifestDigest",
+        "population",
+        "mechanics",
+        "populationCounts",
+        "scanners",
+        "methodCoverage",
+        "outcomes",
+        "metrics",
+        "failures",
+        "completeness"
+      ],
+      "type": "object"
+    },
+    "PublicSyntheticArtifactSchema": {
+      "description": "`schema` value of a public-synthetic artifact.",
+      "oneOf": [
+        {
+          "const": "pii-eval.public-synthetic-artifact",
+          "description": "The only value.",
+          "type": "string"
+        }
+      ]
+    },
+    "PublicSyntheticClass": {
+      "description": "The only run class a public-synthetic artifact can carry. A protected\nrun class has no representation here.",
+      "oneOf": [
+        {
+          "const": "public-synthetic",
+          "description": "The only value.",
+          "type": "string"
+        }
+      ]
+    },
+    "RangeState": {
+      "description": "Relationship between the reported range and the expected range.",
+      "enum": [
+        "exact",
+        "overbroad",
+        "partial",
+        "miss",
+        "not-applicable"
+      ],
+      "type": "string"
+    },
+    "ReplayRecord": {
+      "additionalProperties": false,
+      "description": "Stability replays of the same input. Replays are a stability check, not\nextra samples.",
+      "properties": {
+        "agreed": {
+          "description": "Whether all replays produced identical normalized findings.",
+          "type": "boolean"
+        },
+        "count": {
+          "description": "Number of replays performed (at least 1).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "count",
+        "agreed"
+      ],
+      "type": "object"
+    },
+    "ScaledDecimal": {
+      "additionalProperties": false,
+      "description": "`mantissa / 10^scale`, always non-negative.\n\nNormalized form: the mantissa has no trailing decimal zero unless the scale\nis zero, so every value has exactly one representation (`1.96` is\n`{mantissa: 196, scale: 2}`; `0` is `{mantissa: 0, scale: 0}`).",
+      "properties": {
+        "mantissa": {
+          "description": "Unsigned integer mantissa, at most 2^53 - 1.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "scale": {
+          "description": "Number of decimal places, at most 12.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mantissa",
+        "scale"
+      ],
+      "type": "object"
+    },
+    "ScannerCapabilities": {
+      "additionalProperties": false,
+      "description": "What a scanner adapter declares it can report. Missing capability must stay\nvisible downstream as `not-measured`, never as a pass.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/ActionCapability",
+          "description": "Action evidence available."
+        },
+        "families": {
+          "description": "Per-family declarations, ascending by family, unique.",
+          "items": {
+            "$ref": "#/$defs/FamilyCapability"
+          },
+          "type": "array"
+        },
+        "familyClassification": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Reports a family for a finding."
+        },
+        "jurisdictionReporting": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Reports a jurisdiction for a finding."
+        },
+        "jurisdictions": {
+          "description": "Per-jurisdiction declarations, ascending by jurisdiction, unique.",
+          "items": {
+            "$ref": "#/$defs/JurisdictionCapability"
+          },
+          "type": "array"
+        },
+        "ranges": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Reports byte ranges into the original input."
+        },
+        "sensitivityClassification": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Reports a sensitivity classification for a finding."
+        }
+      },
+      "required": [
+        "ranges",
+        "familyClassification",
+        "sensitivityClassification",
+        "jurisdictionReporting",
+        "action",
+        "families",
+        "jurisdictions"
+      ],
+      "type": "object"
+    },
+    "ScannerId": {
+      "maxLength": 80,
+      "minLength": 2,
+      "pattern": "^[a-z][a-z0-9.-]{1,79}$",
+      "type": "string"
+    },
+    "ScannerIdentity": {
+      "additionalProperties": false,
+      "description": "Everything that identifies one scanner run configuration.",
+      "properties": {
+        "activationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the activation selectors."
+        },
+        "adapter": {
+          "$ref": "#/$defs/AdapterIdentity",
+          "description": "Adapter identity."
+        },
+        "artifactDigest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sha256Digest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Digest of the scanner binary or package, when pinned."
+        },
+        "configurationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the scanner configuration parameters."
+        },
+        "product": {
+          "$ref": "#/$defs/ProductIdentity",
+          "description": "Released or candidate."
+        },
+        "scannerId": {
+          "$ref": "#/$defs/ScannerId",
+          "description": "Scanner identifier."
+        },
+        "scannerVersion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionString"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Scanner version, when it has one."
+        }
+      },
+      "required": [
+        "scannerId",
+        "adapter",
+        "product",
+        "configurationDigest",
+        "activationDigest"
+      ],
+      "type": "object"
+    },
+    "ScannerStatus": {
+      "description": "Outcome of one scanner run. Anything but `complete` means nothing was\nmeasured for that scanner; it is not a scan with no findings.",
+      "enum": [
+        "complete",
+        "unsupported",
+        "unavailable",
+        "error",
+        "unstable"
+      ],
+      "type": "string"
+    },
+    "SchemaVersion": {
+      "pattern": "^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})$",
+      "type": "string"
+    },
+    "SensitivityState": {
+      "description": "Observed sensitivity-context state for one occurrence.",
+      "enum": [
+        "correct",
+        "miss",
+        "false-positive",
+        "unresolved",
+        "not-measured"
+      ],
+      "type": "string"
+    },
+    "Sha256Digest": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "TypeState": {
+      "description": "Observed type-identity state for one occurrence.",
+      "enum": [
+        "correct",
+        "miss",
+        "invalid-correct",
+        "invalid-accepted",
+        "wrong-family",
+        "wrong-jurisdiction",
+        "not-measured"
+      ],
+      "type": "string"
+    },
+    "VersionString": {
+      "maxLength": 64,
+      "minLength": 5,
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][A-Za-z0-9.-]+)?$",
+      "type": "string"
+    },
+    "WithheldReason": {
+      "description": "Why a metric value is withheld. `zero-denominator` is the legacy `null`\nrate; `insufficient-evidence` is the legacy string of the same name.",
+      "enum": [
+        "zero-denominator",
+        "insufficient-evidence"
+      ],
+      "type": "string"
+    }
+  },
+  "$id": "urn:pii-eval:schema:public-synthetic-artifact:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A public-synthetic artifact document.",
+  "properties": {
+    "schema": {
+      "$ref": "#/$defs/PublicSyntheticArtifactSchema",
+      "description": "Document kind tag."
+    },
+    "schemaVersion": {
+      "$ref": "#/$defs/SchemaVersion",
+      "description": "Schema version."
+    },
+    "semantic": {
+      "$ref": "#/$defs/PublicSyntheticArtifactBody",
+      "description": "The digested body."
+    },
+    "semanticDigest": {
+      "$ref": "#/$defs/Sha256Digest",
+      "description": "Semantic digest of `semantic`."
+    }
+  },
+  "required": [
+    "schema",
+    "schemaVersion",
+    "semanticDigest",
+    "semantic"
+  ],
+  "title": "PublicSyntheticArtifact",
+  "type": "object"
+}

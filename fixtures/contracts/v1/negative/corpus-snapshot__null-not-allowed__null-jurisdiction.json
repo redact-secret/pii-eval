@@ -1,0 +1,210 @@
+{
+  "schema": "pii-eval.corpus-snapshot",
+  "schemaVersion": "1.0",
+  "semantic": {
+    "cases": [
+      {
+        "caseId": "collision-us-ssn-demo",
+        "collision": {
+          "competingFamilies": [
+            "pii:global:phone"
+          ],
+          "targetFamily": "pii:us:ssn"
+        },
+        "jurisdiction": null,
+        "language": "en",
+        "lineage": {
+          "sourceDigest": "7f7199ac24f76bbbd960e68dc14c672f92416eeed61dbbe3661114600256eac5",
+          "sourceId": "synthetic-source-collision"
+        },
+        "method": "jurisdiction-collision",
+        "variants": [
+          {
+            "derivation": {
+              "strategy": "authored"
+            },
+            "expectations": [
+              {
+                "action": "redact",
+                "contextClass": "sensitive",
+                "contextObligation": "none",
+                "family": "pii:us:ssn",
+                "occurrenceId": "occurrence-1",
+                "range": {
+                  "end": 21,
+                  "start": 10
+                },
+                "sensitivity": "sensitive",
+                "typeExpectation": "valid"
+              }
+            ],
+            "text": "reference 000-12-3456 synthetic sample",
+            "textDigest": "70527ca5333da39768bfb52f3eab56f978c7bddfcd84173797658e951601094e",
+            "variantId": "collision-us-ssn-demo-authored"
+          }
+        ]
+      },
+      {
+        "caseId": "context-email-ko-demo",
+        "language": "ko",
+        "lineage": {
+          "sourceDigest": "73a11ebc172571e8c1e2fed95ab59d311bf4c76cd18930a9d3f50748e22c9040",
+          "sourceId": "synthetic-source-context"
+        },
+        "method": "context-discrimination",
+        "variants": [
+          {
+            "derivation": {
+              "strategy": "authored"
+            },
+            "expectations": [
+              {
+                "action": "redact",
+                "contextClass": "neutral",
+                "contextObligation": "none",
+                "family": "pii:global:email",
+                "occurrenceId": "occurrence-1",
+                "range": {
+                  "end": 34,
+                  "start": 14
+                },
+                "sensitivity": "not-established",
+                "typeExpectation": "valid"
+              }
+            ],
+            "text": "예시 주소 user@example.invalid 참고",
+            "textDigest": "0d9fb37c9ad6fe31e9340ce4428423b7603d24cadca70c2caa2d586408231012",
+            "variantId": "context-email-ko-demo-neutral"
+          },
+          {
+            "derivation": {
+              "strategy": "authored"
+            },
+            "expectations": [
+              {
+                "action": "redact",
+                "contextClass": "non-sensitive",
+                "contextObligation": "none",
+                "family": "pii:global:email",
+                "occurrenceId": "occurrence-1",
+                "range": {
+                  "end": 34,
+                  "start": 14
+                },
+                "sensitivity": "non-sensitive",
+                "typeExpectation": "valid"
+              }
+            ],
+            "text": "문서 샘플 user@example.invalid 입니다",
+            "textDigest": "397927b42dad0f52e9f7ff64d184d602627f460c63b8fc0fcbf4abe934e3a23a",
+            "variantId": "context-email-ko-demo-non-sensitive"
+          },
+          {
+            "derivation": {
+              "strategy": "authored"
+            },
+            "expectations": [
+              {
+                "action": "redact",
+                "contextClass": "sensitive",
+                "contextObligation": "none",
+                "family": "pii:global:email",
+                "occurrenceId": "occurrence-1",
+                "range": {
+                  "end": 31,
+                  "start": 11
+                },
+                "sensitivity": "sensitive",
+                "typeExpectation": "valid"
+              }
+            ],
+            "text": "연락처: user@example.invalid 로 회신 바랍니다",
+            "textDigest": "555a0f01ed6b053e8128a821983ead9735c5ba11d9cda629cbf8d935f5972c07",
+            "variantId": "context-email-ko-demo-sensitive"
+          }
+        ]
+      },
+      {
+        "caseId": "type-card-demo",
+        "language": "en",
+        "lineage": {
+          "sourceDigest": "ced2915fa5f98fde382c985124eed950117f20b8425724004e5802df13f477a9",
+          "sourceId": "synthetic-source-type"
+        },
+        "method": "type-validation",
+        "variants": [
+          {
+            "derivation": {
+              "strategy": "authored"
+            },
+            "expectations": [
+              {
+                "action": "redact",
+                "contextClass": "sensitive",
+                "contextObligation": "none",
+                "family": "pii:global:payment-card",
+                "occurrenceId": "occurrence-1",
+                "range": {
+                  "end": 24,
+                  "start": 5
+                },
+                "sensitivity": "sensitive",
+                "typeExpectation": "valid",
+                "validator": {
+                  "id": "synthetic-mod10",
+                  "version": 1
+                }
+              }
+            ],
+            "text": "card 4111 1111 1111 1111 on file",
+            "textDigest": "e4c7e641accb72a14097558ee3bc4f162ab73bdb8fcfe469575529c9b0bfbb5c",
+            "variantId": "type-card-demo-authored"
+          },
+          {
+            "derivation": {
+              "operator": {
+                "id": "invalidate-final-digit",
+                "version": 1
+              },
+              "seed": "seed-0001",
+              "strategy": "derived"
+            },
+            "expectations": [
+              {
+                "action": "redact",
+                "contextClass": "non-sensitive",
+                "contextObligation": "none",
+                "family": "pii:global:payment-card",
+                "occurrenceId": "occurrence-1",
+                "range": {
+                  "end": 24,
+                  "start": 5
+                },
+                "sensitivity": "non-sensitive",
+                "typeExpectation": "invalid",
+                "validator": {
+                  "id": "synthetic-mod10",
+                  "version": 1
+                }
+              }
+            ],
+            "text": "card 4111 1111 1111 1112 on file",
+            "textDigest": "f2bd0528f1e9bc81207372421322e8f5b6d44df7887a7316f63889cd0d921822",
+            "variantId": "type-card-demo-mutated"
+          }
+        ]
+      }
+    ],
+    "generation": {
+      "generator": "synthetic-generator",
+      "generatorVersion": 1,
+      "seedDerivation": "seed-v1"
+    },
+    "population": {
+      "populationId": "synthetic-demo-population",
+      "populationVersion": 1,
+      "visibility": "public-synthetic"
+    }
+  },
+  "semanticDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae"
+}

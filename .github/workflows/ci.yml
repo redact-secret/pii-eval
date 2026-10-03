@@ -35,8 +35,11 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - name: Test (includes dependency-policy guard and smoke test)
+      - name: Test (includes dependency-policy guard, smoke test, goldens)
         run: cargo test --workspace --locked
+      # Also part of the run above; separate so a drift failure is named.
+      - name: Schema drift (generated must equal committed)
+        run: cargo test -p pii-eval-contracts --locked --test schema_drift
 
   msrv:
     name: tests on declared MSRV

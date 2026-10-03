@@ -8,3 +8,9 @@ description = "pii-eval internal crate (contracts); not a consumer contract."
 
 [lints]
 workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+sha2.workspace = true

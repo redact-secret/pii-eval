@@ -1,0 +1,18 @@
+{
+  "schema": "pii-eval.corpus-snapshot",
+  "schemaVersion": "1.0",
+  "semantic": {
+    "cases": [],
+    "generation": {
+      "generator": "synthetic-generator",
+      "generatorVersion": 1,
+      "seedDerivation": "seed-v1"
+    },
+    "population": {
+      "populationId": "synthetic-demo-population",
+      "populationVersion": 1,
+      "visibility": "public-synthetic"
+    }
+  },
+  "semanticDigest": "72016c28939d6febf0072195c9e3607d7b0a9f4920fb858eb549bcc18815f6c2"
+}
