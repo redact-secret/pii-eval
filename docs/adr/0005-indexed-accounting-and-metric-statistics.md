@@ -95,6 +95,8 @@ it), which the flag code relies on and a test pins. A trio is complete when the
 snapshot holds exactly one sensitive, one neutral and one non-sensitive frame
 (contract rule `incomplete-context-trio`); an incomplete trio found by the kernel
 is `SnapshotDefect::IncompleteContextTrio`, an error, never partial scoring.
+A variant whose expectations disagree on the context class (rejected by the
+contracts as `context-class-conflict`) is `SnapshotDefect::ContextClassConflict`.
 `not-measured` rows (missing family or jurisdiction capability, a scanner that
 did not complete) are never successes: they land in the not-measured bucket.
 Range-collateral accounting is group-level, as in the oracle and the registry
@@ -237,7 +239,10 @@ terms only. No wall-clock or speed claim is made.
 - It checks, with the contracts' reason codes and no new code
   (`metric-definition-mismatch`, `metric-counts-inconsistent`, `count-mismatch`,
   `metric-value-inconsistent`): frozen metric version; count identities and
-  derived status; effective-N basis; the published point and bound recomputed
+  derived status; effective-N basis; that the artifact lists exactly the
+  registry's ten metrics, each once (an omitted metric cannot hide a bad one;
+  `metric-definition-mismatch`; manifests that plan fewer metrics are not
+  verifiable until P7 passes the plan in); the published point and bound recomputed
   from `numerator` and `effective_n` (equality of integer mantissa and scale, so
   an off-by-one digit is caught; tested to pass `pii_eval_contracts::validate`
   and fail the verifier); and every counted field against the accounting of the
@@ -320,6 +325,8 @@ and point and bound at default precision.
 | A5 | Context groups: the oracle validates frames against its `piiContextEvidence` roster; the canonical rule relies on snapshot trio completeness and errors on an incomplete trio. Which frames a trio should hold is corpus-author truth. | Contract shape |
 | A6 | Bad rows: the oracle validates outcome shape and reasons (`validatePiiOutcome`); the kernel rejects unreachable states and measured axes of non-complete scanners as `OutcomeContradiction`; capability rules stay with `validate_artifact_against_snapshot`. | Equivalent intent, different mechanism |
 | A7 | Not carried: `benignByControlClass`, `evidenceByClass`, `contextByLanguage` and `contextRoster` projections, and the `evidence` block (authority, validator, reference counts). Language strata exist for all metrics, which supersedes `contextByLanguage`. | Not carried into schema 1.0 (ADR 0002); P5 and P9 decide |
+| A8 | `benign-suppression-rate` and `jurisdiction-collision-rate` count a case as numerator when **any** row passes (oracle `group.some`), while the context metric requires **all** endpoints to pass. Failing example: a benign case with variant A `correct` and variant B `false-positive` counts as suppressed; a collision case with one `correct` and one `wrong-jurisdiction` variant counts as passed. Kept as is (the oracle rule) in revision-2 accounting and pinned by `accounting_oracle.rs::a8_*`. | Known limitation inherited from the oracle. Recommendation: the canonical protocol revision (P7) decides any -> all explicitly, with a difference report; changing it is a protocol revision, not a refactor |
+| A9 | `wrong-jurisdiction-rate` population: kernel `case.jurisdiction.is_some()`, oracle `scope.startsWith('jurisdiction:')`. Equivalent: the oracle ties scope to the family scope (`validateRow`) and the contracts tie `case.jurisdiction` to it (`family-scope-mismatch`); tested in `accounting_oracle.rs`. | Equal |
 
 Same-observation replay parity against the TypeScript oracle remains P9.
 

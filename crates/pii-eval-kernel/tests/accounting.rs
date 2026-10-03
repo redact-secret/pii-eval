@@ -895,6 +895,23 @@ fn snapshot_defects_are_refused_not_scored() {
         AuthoredIndex::new(&body).unwrap_err(),
         AccountError::InvalidSnapshot(D::DuplicateVariant)
     );
+    // A variant whose expectations disagree on the context class (contracts reject it too).
+    let mut body = snapshot_body(vec![case(
+        "ca1",
+        TypeValidation,
+        "en",
+        None,
+        vec![var(
+            "var-a",
+            Neutral,
+            vec![occ("o1", V, Sx::Sensitive), occ("o2", V, Sx::Sensitive)],
+        )],
+    )]);
+    body.cases[0].variants[0].expectations[1].context_class = CtxSensitive;
+    assert_eq!(
+        AuthoredIndex::new(&body).unwrap_err(),
+        AccountError::InvalidSnapshot(D::ContextClassConflict)
+    );
     // Cases out of order and empty groups.
     let mut body = snapshot_body(vec![
         case(

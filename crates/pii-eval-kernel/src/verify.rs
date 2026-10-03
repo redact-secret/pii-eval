@@ -169,6 +169,15 @@ fn compare(
     let mut c = Collector::new();
     let root = Path::ROOT.field("semantic");
     let list = root.field("metrics");
+    // Exactly the registry's ten metrics, each once: an artifact that omits
+    // (or repeats) a metric cannot hide a bad one.
+    let complete = pii_eval_contracts::METRICS
+        .iter()
+        .all(|d| metrics.iter().filter(|m| m.metric.id == d.id).count() == 1)
+        && metrics.len() == pii_eval_contracts::METRICS.len();
+    if !complete {
+        c.push(ReasonCode::MetricDefinitionMismatch, &list);
+    }
     for (i, result) in metrics.iter().enumerate() {
         let path = list.index(i);
         // Own consistency first (definition and identities); the value is

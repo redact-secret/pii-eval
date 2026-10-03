@@ -469,6 +469,119 @@ fn a3_a_benign_case_with_several_variants_is_one_sample() {
         .metric(MetricId::BenignSuppressionRate)
         .unwrap();
     // One group: any pass row -> numerator (oracle `group.some(event)` on the group).
+    // Known limitation, pinned on purpose: variant b1-b is a false positive yet the
+    // case counts as suppressed. ADR 0005 section 11 (A8) records it and leaves any -> all
+    // to the canonical protocol revision (P7).
     assert_eq!(m.counts, counts(1, 1, 1, 0, 0, 0, 1));
     assert_eq!(acc.authored.variants, 2);
+}
+
+#[test]
+fn a8_any_row_passing_counts_the_group_for_benign_and_collision() {
+    // Oracle accounting.ts:281-286: `groupBucket(group, axis, row => status === 'pass')`,
+    // and groupBucket's event is `group.some(event)`. Hand evaluation:
+    //   benign d1: variants pass + false-positive -> no review, no not-measured, some pass -> numerator
+    //   collision k1: variants pass + wrong-jurisdiction -> some pass -> numerator
+    // The context metric uses "all endpoints pass" instead (accounting.ts:272). The kernel
+    // reproduces the oracle ("any") for revision-2 accounting until P7 decides; see ADR 0005 A8.
+    let body = snapshot_body(vec![
+        case(
+            "d1",
+            PiiBenign,
+            "en",
+            None,
+            vec![
+                var("d1-a", Neutral, vec![occ("o1", I, Sx::NonSensitive)]),
+                var("d1-b", Neutral, vec![occ("o1", I, Sx::NonSensitive)]),
+            ],
+        ),
+        case(
+            "k1",
+            JurisdictionCollision,
+            "en",
+            Some("US"),
+            vec![
+                var("k1-a", Neutral, vec![occ("o1", V, Sx::Sensitive)]),
+                var("k1-b", Neutral, vec![occ("o1", V, Sx::Sensitive)]),
+            ],
+        ),
+    ]);
+    let rows: Vec<RowSpec> = vec![
+        ("d1", "d1-a", "o1", Ts::InvalidCorrect, Ss::Correct, Miss),
+        (
+            "d1",
+            "d1-b",
+            "o1",
+            Ts::InvalidCorrect,
+            Ss::FalsePositive,
+            Miss,
+        ),
+        ("k1", "k1-a", "o1", Ts::Correct, Ss::Correct, Exact),
+        (
+            "k1",
+            "k1-b",
+            "o1",
+            Ts::WrongJurisdiction,
+            Ss::Correct,
+            Exact,
+        ),
+    ];
+    let acc = run(&body, &rows);
+    let o = &acc.scanners[0].overall;
+    assert_eq!(
+        o.metric(MetricId::BenignSuppressionRate).unwrap().counts,
+        counts(1, 1, 1, 0, 0, 1, 2)
+    );
+    assert_eq!(
+        o.metric(MetricId::JurisdictionCollisionRate)
+            .unwrap()
+            .counts,
+        counts(1, 1, 1, 0, 0, 1, 2)
+    );
+}
+
+#[test]
+fn wrong_jurisdiction_population_equals_the_oracles_scope_test() {
+    // Oracle accounting.ts:276 gates on `scope.startsWith('jurisdiction:')`, and validateRow
+    // (lines 190-193) ties scope to the family scope (global <-> `pii:global:*`, jurisdiction XX
+    // <-> `pii:xx:*`). The contracts tie `case.jurisdiction` to the family scope the same way
+    // (`family-scope-mismatch`), so `case.jurisdiction.is_some()` is the same predicate.
+    //   j1 (US, valid, wrong-jurisdiction) -> eligible, numerator
+    //   g1 (global, valid, correct)        -> not-applicable
+    let body = snapshot_body(vec![
+        case(
+            "g1",
+            TypeValidation,
+            "en",
+            None,
+            vec![var("g1-v", Neutral, vec![occ("o1", V, Sx::Sensitive)])],
+        ),
+        case(
+            "j1",
+            TypeValidation,
+            "en",
+            Some("US"),
+            vec![var("j1-v", Neutral, vec![occ("o1", V, Sx::Sensitive)])],
+        ),
+    ]);
+    let rows: Vec<RowSpec> = vec![
+        ("g1", "g1-v", "o1", Ts::Correct, Ss::Correct, Exact),
+        (
+            "j1",
+            "j1-v",
+            "o1",
+            Ts::WrongJurisdiction,
+            Ss::Correct,
+            Exact,
+        ),
+    ];
+    let acc = run(&body, &rows);
+    assert_eq!(
+        acc.scanners[0]
+            .overall
+            .metric(MetricId::WrongJurisdictionRate)
+            .unwrap()
+            .counts,
+        counts(1, 1, 1, 0, 0, 1, 2)
+    );
 }

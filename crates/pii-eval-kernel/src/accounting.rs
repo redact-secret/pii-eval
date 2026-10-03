@@ -84,6 +84,8 @@ pub enum SnapshotDefect {
     OccurrenceOrder,
     /// A context-discrimination case does not hold exactly one frame per context class.
     IncompleteContextTrio,
+    /// A variant's expectations disagree on the context class.
+    ContextClassConflict,
 }
 
 /// Which bound was exceeded.
@@ -304,8 +306,19 @@ impl<'a> AuthoredIndex<'a> {
                     });
                 }
                 check_limit(Limit::Occurrences, MAX_OUTCOMES, occurrences.len())?;
-                if let Some(e) = variant.expectations.first() {
-                    classes.push(e.context_class);
+                // Contracts reject mixed classes (`context-class-conflict`);
+                // re-checked so an unvalidated snapshot is never scored.
+                if let Some(first) = variant.expectations.first() {
+                    if variant
+                        .expectations
+                        .iter()
+                        .any(|e| e.context_class != first.context_class)
+                    {
+                        return Err(AccountError::InvalidSnapshot(
+                            SnapshotDefect::ContextClassConflict,
+                        ));
+                    }
+                    classes.push(first.context_class);
                 }
                 let info = VariantInfo {
                     first,

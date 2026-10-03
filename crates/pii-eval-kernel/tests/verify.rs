@@ -398,3 +398,36 @@ fn the_public_projection_is_verified_and_tampering_is_caught() {
         [ReasonCode::PopulationBindingMismatch]
     );
 }
+
+#[test]
+fn the_artifact_must_list_exactly_the_ten_metrics() {
+    let (snapshot, artifact) = fixtures();
+    let base = single_scanner(&snapshot, artifact);
+    assert_eq!(base.semantic.metrics.len(), 10);
+    // Omitting a metric (even a correct one) is refused, so a bad metric cannot be dropped.
+    let omitted = resealed(base.clone(), |a| {
+        a.semantic
+            .metrics
+            .retain(|m| m.metric.id != MetricId::TypeMissRate);
+    });
+    validate(&omitted).expect("contracts accept a shorter list");
+    assert!(
+        mismatch_codes(verify_run_artifact_accounting(&omitted, &snapshot).unwrap_err())
+            .contains(&ReasonCode::MetricDefinitionMismatch)
+    );
+    // A repeated metric in place of another is refused too.
+    let mut doubled = base.clone();
+    doubled.semantic.metrics[1] = doubled.semantic.metrics[0];
+    assert!(
+        mismatch_codes(verify_run_artifact_accounting(&doubled, &snapshot).unwrap_err())
+            .contains(&ReasonCode::MetricDefinitionMismatch)
+    );
+    // The public projection is held to the same rule.
+    let mut public = base.to_public_synthetic().unwrap();
+    public.semantic.metrics.pop();
+    seal(&mut public).unwrap();
+    assert!(
+        mismatch_codes(verify_public_artifact_accounting(&public, &snapshot).unwrap_err())
+            .contains(&ReasonCode::MetricDefinitionMismatch)
+    );
+}
