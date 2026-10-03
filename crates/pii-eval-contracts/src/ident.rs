@@ -351,6 +351,28 @@ impl Sha256Digest {
     pub(crate) fn from_raw(raw: &[u8]) -> Self {
         Self(hex_lower(raw))
     }
+
+    /// SHA-256 of everything `reader` yields, streamed in 64 KiB blocks, with an
+    /// explicit bound: a reader that yields more than `max` bytes is an
+    /// `InvalidData` error (never a truncated digest). For files too large to
+    /// hold in memory.
+    pub fn of_reader(mut reader: impl std::io::Read, max: u64) -> std::io::Result<Self> {
+        let mut hasher = Sha256::new();
+        let mut buffer = vec![0u8; 64 * 1024];
+        let mut total = 0u64;
+        loop {
+            let n = reader.read(&mut buffer)?;
+            if n == 0 {
+                break;
+            }
+            total += n as u64;
+            if total > max {
+                return Err(std::io::Error::from(std::io::ErrorKind::InvalidData));
+            }
+            hasher.update(&buffer[..n]);
+        }
+        Ok(Self(hex_lower(&hasher.finalize())))
+    }
 }
 
 pub(crate) fn hex_lower(bytes: &[u8]) -> String {

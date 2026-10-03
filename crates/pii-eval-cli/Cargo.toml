@@ -10,6 +10,12 @@ description = "pii-eval internal crate (CLI); not a consumer contract."
 [lints]
 workspace = true
 
+[features]
+# TEST ONLY (docs/worker-job.md): compiles the worker test adapters, the only way
+# to run a worker job end to end. OFF by default and never enabled by the engine
+# artifact build; CI fails the build if the release binary contains the marker.
+worker-test-adapters = []
+
 [dependencies]
 pii-eval-contracts.workspace = true
 pii-eval-kernel.workspace = true
@@ -33,3 +39,11 @@ pii-eval-compat.workspace = true
 [[bin]]
 name = "pii-eval"
 path = "src/main.rs"
+
+# TEST ONLY (docs/worker-job.md, "real sandbox end to end"): the engine the custodian's
+# bubblewrap replica runs as `/stage/engine --job /job/job.json`, with the worker test
+# adapters. It needs the feature, so it is never built by `cargo build`, by `cargo test`
+# without the feature, or by the engine artifact build.
+[[example]]
+name = "worker_test_engine"
+required-features = ["worker-test-adapters"]

@@ -57,6 +57,19 @@ jobs:
       # release profile of every crate is also exercised).
       - name: Build (release, locked)
         run: cargo build --release --locked
+      # The engine artifact must not contain the worker test adapters (feature
+      # `worker-test-adapters`, docs/worker-job.md): they would let a binary run
+      # a protected-looking job without the custodian's decided contract. The
+      # positive control proves the search can find the marker.
+      - name: The release binary contains no worker test adapters
+        run: |
+          marker='pii-eval-worker-test-adapters'
+          printf 'control %s\n' "$marker" > "$RUNNER_TEMP/marker-control"
+          grep -aq -- "$marker" "$RUNNER_TEMP/marker-control"
+          if grep -aq -- "$marker" target/release/pii-eval; then
+            echo "the release binary contains the worker test adapters" >&2
+            exit 1
+          fi
       # GITHUB_SHA is the merge commit for a pull request (it disappears after the
       # merge); HEAD_SHA is the commit the event is about. Both are recorded.
       - name: Assemble the artifact directory

@@ -5,10 +5,13 @@ Status: **read-only extraction, 2026-10-03.** Source: `redact-secret/private-cus
 equal to the local checkout) and its open issues #27 to #33 (Epic 2, S1 to S6). Nothing in
 that repository was changed. File references below are to that commit.
 
-Rules this repository follows. They are the **design the worker launcher is being built to**
-(the launcher is a separate change that is in progress: until it merges, none of the adapter
-names, reason codes or types mentioned below exist in the code, apart from the two rejection
-names in `crates/pii-eval-contracts/src/reason.rs`):
+Rules this repository follows. They are what the worker launcher implements
+(`pii-eval worker-job`, [worker-job.md](worker-job.md), [ADR 0015](adr/0015-worker-job-launcher-and-contract-adapters.md)).
+The adapters, statuses, reason codes and typed digests named below exist in the code at this
+commit (`crates/pii-eval-cli/src/worker/`); every undecided item is still `Proposed`, and a
+production build refuses with `contract-not-final` until the custodian decides it. The
+launcher is tested in process and in a real Linux bubblewrap sandbox against a replica of the
+custodian's checks, not against the custodian's code, and nothing is deployed:
 
 1. **Decided** means the custodian's code and documents state it and test it. It is
    implemented exactly as stated, never re-asked and never overridden with a different
@@ -30,7 +33,7 @@ names in `crates/pii-eval-contracts/src/reason.rs`):
 | A2 | Staged artifacts are **single regular files** named `engine`, `adapter`, `candidate`, `config` and `scanner-N`. Their SHA-256 is frozen in the approved plan, checked before any protected input is touched, again after staging and after execution. A mismatch is a rejection. Everything except `config` is staged executable. | `dispatcher.rs` `pins()`; `docs/worker-isolation.md` §6 |
 | A3 | Protected inputs are flat regular files `/input/<entry>`; entry names match `[a-z0-9][a-z0-9._-]{0,63}`; at most 16 MiB each; **archives are not accepted** for inputs. | `artifacts.rs` (`MAX_INPUT_BYTES`, `validate_member_path`); `docs/worker-isolation.md` §6 |
 | A4 | Job document `private-custodian.worker-job/1`: `{schema, domain, protocol{name,version}, roster, entries[]}` where `roster` is the **number of entries**. | `crates/custodian-worker/src/result.rs` `job_document` (`roster: entries.len()`) |
-| A5 | Result: exactly one `private-custodian.worker-result/1` JSON document on stdout, at most 64 KiB: `{schema, domain, protocol{name,version}, status: complete\|partial, roster{expected,observed,failed}}`. Unknown fields, duplicate keys, trailing data, another domain or protocol, `expected` different from the authorized roster, `observed > expected`, `failed > observed` and a status that disagrees with the counters are rejected. | `result.rs` `validate_result`; `docs/worker-isolation.md` §7 |
+| A5 | Result: exactly one `private-custodian.worker-result/1` JSON document on stdout, at most 64 KiB: `{schema, domain, protocol{name,version}, status: complete\|partial, roster{expected,observed,failed}}`. Unknown fields, duplicate keys, trailing data, another domain or protocol, `expected` different from the authorized roster (a zero authorized roster is rejected), `observed > expected`, `failed > observed` and a status that disagrees with the counters are rejected. The exact rule (`result.rs`): `complete` requires `observed == expected`, `partial` requires `observed < expected`; `complete` with `failed > 0` is accepted and mapped to Partial; `InternalReceipt::validate` accepts Partial only with `observed < expected` (`worker-isolation.md` section 7). | `result.rs` `validate_result`; `docs/worker-isolation.md` §7 |
 | A6 | Outcome mapping: clean exit with `complete` and `observed = expected`, `failed = 0` is Success; clean `partial` or any failed item is Partial; crash, signal, non-zero exit, timeout and output limits are Failed; a malformed or mismatching document is Rejected. A worker that did not exit cleanly never has its stdout parsed. stderr is counted, discarded, never kept (at most 1 MiB). All of these consume budget except a refusal before exposure. | `docs/worker-isolation.md` §7; `result.rs` |
 | A7 | Environment: only `PATH`, `HOME`, `PWD`, `TMPDIR`, `LANG`, `CUSTODIAN_STAGE_ROOT`, `CUSTODIAN_INPUT_ROOT`, `CUSTODIAN_JOB_ROOT`, `CUSTODIAN_SCRATCH` MAY reach the worker (the allowlist); credential-looking names are refused. What the dispatcher actually sets is four: `PATH=/usr/bin:/bin`, `HOME=/scratch`, `TMPDIR=/scratch`, `LANG=C`. | `sandbox.rs` `ENV_ALLOWLIST`, `DENY_FRAGMENTS` |
 | A8 | Isolation: `bwrap` with new user, IPC, PID, network, UTS (cgroup if available) namespaces, all capabilities dropped, new session, `--clearenv`, read-only `/usr`, `/lib*`, `/bin`, `/sbin`, a `/proc` and a minimal `/dev`, tmpfs `/scratch`; then `/usr/bin/prlimit --cpu --as --nproc --fsize --core=0 --nofile=256`, then the program. `RLIMIT_AS` is the plan's `memory` limit; it bounds virtual address space. | `crates/custodian-worker/src/bwrap.rs` `build_argv`; `docs/worker-isolation.md` §3, §5 |
@@ -44,7 +47,7 @@ names in `crates/pii-eval-contracts/src/reason.rs`):
 
 The numbering is the open-question table of [custodian-boundary.md](custodian-boundary.md) §6.
 
-| Q | Status | What is known | What the launcher will do (planned) |
+| Q | Status | What is known | What the launcher does (implemented; adapters are `Proposed`) |
 | --- | --- | --- | --- |
 | Q1 roster unit for PII | **Partly decided.** The unit is an input *entry* (A4). What an entry holds for PII and which engine count equals the roster is not specified; entries are opaque to the custodian. | A3, A4, A11 | Adapter `EntryFormat`, status `Proposed`: one entry is one authored case (`pii-eval-worker-entry/1`, engine-owned and opaque to the custodian). Every aggregate denominator must be at most `observed`; if a metric's denominator would exceed it the launcher refuses (`aggregates-roster-violation`) instead of clamping. |
 | Q2 delivery of the aggregates artifact | **Not decided.** `release-readiness.md` D2 and R-3: no production code assembles an `ExecutionRecord` or `InternalReceipt` from a `DispatchReport`, "the worker result carries only a roster and the aggregates artifact has no producer". `validate_result` produces a `PrivateArtifactRef` from the worker's stdout bytes, and both stdout and the aggregates artifact are closed documents with different schemas, so they cannot be one document; which reference the production receipt will carry is unspecified. The test-only assembly (`crates/custodian-cli/tests/c12/mod.rs` `assemble`) takes the roster from the validated worker result and makes the receipt's `result` the digest of a **separate fixture** aggregates document. The production pipeline is S5, [#32](https://github.com/redact-secret/private-custodian/issues/32). | A5, A11 | Adapter `AggregatesChannel`, status `Proposed`: no production implementation, so a release binary refuses (`contract-not-final: aggregates-channel`). A test channel (a file under `/scratch`) exists only behind the test feature. |
