@@ -11,3 +11,7 @@ workspace = true
 
 [dependencies]
 pii-eval-contracts.workspace = true
+pii-eval-kernel.workspace = true
+# Already reviewed for contracts (docs/dependency-policy.md): strict JSON-lines
+# parsing of shim output and construction of the Rust-to-shim messages.
+serde_json.workspace = true

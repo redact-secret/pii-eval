@@ -185,6 +185,33 @@ fn kernel_and_contracts_do_not_depend_on_adapters_cli_or_compat() {
     assert!(!normal_closure("pii-eval-contracts").contains("pii-eval-kernel"));
 }
 
+/// The adapters crate spawns processes through `std` only. It may use the same
+/// reviewed third-party set as the pure crates and nothing else: no async
+/// runtime, HTTP client, process helper or Git library (P6).
+#[test]
+fn adapters_use_only_the_reviewed_crates_and_std_for_processes() {
+    let package = "pii-eval-adapters";
+    let closure = normal_closure(package);
+    assert!(closure.contains(package));
+    for name in &closure {
+        let allowed = WORKSPACE_CRATES.contains(&name.as_str())
+            || ALLOWED_THIRD_PARTY.contains(&name.as_str());
+        assert!(allowed, "{package} depends on unreviewed crate `{name}`");
+        if let Some((_, only)) = FRAGMENT_EXCEPTIONS.iter().find(|(c, _)| c == name) {
+            assert_eq!(
+                direct_dependents(package, name),
+                BTreeSet::from([(*only).to_owned()]),
+                "{package}: `{name}` must be reached only through `{only}`"
+            );
+            continue;
+        }
+        assert!(
+            !FORBIDDEN_FRAGMENTS.iter().any(|f| name.contains(f)),
+            "{package} depends on forbidden crate `{name}`"
+        );
+    }
+}
+
 #[test]
 fn only_the_cli_test_graph_reaches_compat() {
     for package in ["pii-eval-adapters", "pii-eval-kernel", "pii-eval-cli"] {
