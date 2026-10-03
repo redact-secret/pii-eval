@@ -70,7 +70,9 @@ conclusions.
 `tools/perf/budget.mjs` derives `docs/perf/budgets.json` from the committed results:
 per-row cost of each Rust phase, process memory per row and per document byte,
 scaling exponents. A budget is the largest value any trial of the reference cell
-produced; no multiplier and no speedup target was applied. A change is a regression
+produced; no multiplier and no speedup target was applied. The JSON key is `ceiling`, not `budget`:
+`budget` is a custody-ledger field name that the public-release tripwire forbids in committed documents
+(found when P10 and P12 were combined). A change is a regression
 when its median on a comparable host exceeds the budget; a smaller number never
 creates a new target.
 

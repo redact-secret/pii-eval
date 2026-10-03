@@ -553,7 +553,9 @@ byte equal output directories on the 1,617 and 25,617-variant runs, and a test).
 
 A budget is the largest value any trial of the reference cell produced
 ([docs/perf/budgets.json](perf/budgets.json), derived by `tools/perf/budget.mjs`):
-no multiplier and no speedup target was applied, and none is claimed. The host was
+no multiplier and no speedup target was applied, and none is claimed. In the JSON the value is
+the `ceiling` key, not `budget`: `budget` is a private-custodian ledger field name that the public-release
+tripwire (`public_release_hygiene.rs`) forbids in committed documents. The host was
 shared, so the envelope includes that noise (the trials' spread is small, within 10% of
 the median for every row below). A change is a regression when its median on a
 comparable host and the same suite exceeds the budget; a faster result creates no new
