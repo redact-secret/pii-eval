@@ -367,46 +367,46 @@
     },
     "MetricCounts": {
       "additionalProperties": false,
-      "description": "Row counts behind a metric. Retained unrounded; rounding happens only in the\npublished value.",
+      "description": "Sample counts behind a metric. Retained unrounded; rounding happens only in\nthe published value.\n\nThe counted unit is the metric's *sample* (the registry's `sampleUnit`): one\nauthored case within its method for most metrics, one complete context trio\nfor `context-discrimination-rate`, one axis assertion for `measurable-share`.\nIt is not an outcome row: several variants and occurrences of one authored\ncase are judged together as one sample, and replays add none (ADR 0005).",
       "properties": {
         "eligible": {
-          "description": "Rows eligible for the metric (not `not-applicable`).",
+          "description": "Samples eligible for the metric (not `not-applicable`).",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "measured": {
-          "description": "Rows with a resolved numerator or non-numerator outcome.",
+          "description": "Samples with a resolved numerator or non-numerator outcome.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "notApplicable": {
-          "description": "Rows outside the metric's population.",
+          "description": "Samples outside the metric's population.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "notMeasured": {
-          "description": "Eligible rows that were not measured.",
+          "description": "Eligible samples that were not measured.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "numerator": {
-          "description": "Rows in the numerator.",
+          "description": "Samples in the numerator.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "total": {
-          "description": "All rows considered.",
+          "description": "All samples considered.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "unresolved": {
-          "description": "Eligible rows whose axis needs review.",
+          "description": "Eligible samples whose axis needs review.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"

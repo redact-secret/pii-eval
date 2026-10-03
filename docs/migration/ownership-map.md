@@ -445,6 +445,14 @@ against the tables above by a test).
   never maps their findings to PII families, ranges or sensitivity;
   `gitleaks` and `trufflehog` are credential-only. `scanners/families.mjs`
   stays reference-only.
+
+- Metric accounting (`benchmarks/evaluation/domains/pii/accounting.ts`) and the neutral
+  Wilson/rounding primitives (`benchmarks/accounting/shared/primitives.ts`) were
+  reimplemented in P4 in `pii-eval-kernel` (`accounting`, `stats`, `verify`).
+  The decisions, the exact-arithmetic statistics and the classified differences
+  from the oracle (S1, A2 to A7) are in
+  [ADR 0005](../adr/0005-indexed-accounting-and-metric-statistics.md); the
+  protocol-revision bump they depend on is assigned to P7 there.
 - The inventory lists importers by direct import. Dynamic or string-built paths
   (for example package scripts calling `tsx` with computed arguments) were not
   traced; P9 must re-check callers before any cutover.

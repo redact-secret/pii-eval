@@ -46,7 +46,7 @@ jobs:
         run: cargo test --workspace --locked
       # Also part of the run above; separate so a conformance, property or
       # legacy-difference failure is named.
-      - name: Range and matching conformance, properties, legacy differences
+      - name: Range, matching, accounting and statistics conformance, properties, oracle compatibility
         run: cargo test -p pii-eval-kernel -p pii-eval-compat --locked
       # Also part of the run above; separate so a drift failure is named.
       - name: Schema drift (generated must equal committed)

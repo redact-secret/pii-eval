@@ -166,24 +166,30 @@ pub struct MethodCoverage {
     pub variants: u64,
 }
 
-/// Row counts behind a metric. Retained unrounded; rounding happens only in the
-/// published value.
+/// Sample counts behind a metric. Retained unrounded; rounding happens only in
+/// the published value.
+///
+/// The counted unit is the metric's *sample* (the registry's `sampleUnit`): one
+/// authored case within its method for most metrics, one complete context trio
+/// for `context-discrimination-rate`, one axis assertion for `measurable-share`.
+/// It is not an outcome row: several variants and occurrences of one authored
+/// case are judged together as one sample, and replays add none (ADR 0005).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct MetricCounts {
-    /// Rows eligible for the metric (not `not-applicable`).
+    /// Samples eligible for the metric (not `not-applicable`).
     pub eligible: u64,
-    /// Rows with a resolved numerator or non-numerator outcome.
+    /// Samples with a resolved numerator or non-numerator outcome.
     pub measured: u64,
-    /// Rows in the numerator.
+    /// Samples in the numerator.
     pub numerator: u64,
-    /// Eligible rows whose axis needs review.
+    /// Eligible samples whose axis needs review.
     pub unresolved: u64,
-    /// Eligible rows that were not measured.
+    /// Eligible samples that were not measured.
     pub not_measured: u64,
-    /// Rows outside the metric's population.
+    /// Samples outside the metric's population.
     pub not_applicable: u64,
-    /// All rows considered.
+    /// All samples considered.
     pub total: u64,
 }
 
@@ -317,16 +323,24 @@ impl MetricResult {
     }
 }
 
-/// Summary of what a scanner reported for an occurrence. Contains family and
-/// jurisdiction identifiers only, never text or ranges.
+/// Summary of what a scanner reported for one expected occurrence: the
+/// findings whose range overlaps that occurrence (its candidates). Contains
+/// family and jurisdiction identifiers only, never text or ranges.
+///
+/// The summary is **per occurrence**, not per variant: two occurrences of one
+/// variant can have different counts, and a finding elsewhere in the variant
+/// that overlaps no occurrence is in no summary (it is a reported span, ADR
+/// 0004 section 3.4). This is what the oracle's `observed.findingCount` counted
+/// for its single candidate per variant; ADR 0005 settles the wording.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ObservedSummary {
-    /// Number of findings the scanner reported for the variant.
+    /// Number of findings that overlap this occurrence's range, duplicates
+    /// counted.
     pub finding_count: u64,
-    /// Families reported, ascending, unique.
+    /// Families reported by those findings, ascending, unique.
     pub families: Vec<FamilyId>,
-    /// Jurisdictions reported, ascending, unique.
+    /// Jurisdictions reported by those findings, ascending, unique.
     pub jurisdictions: Vec<JurisdictionCode>,
 }
 
