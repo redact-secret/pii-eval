@@ -6,11 +6,11 @@ A Rust-based, scanner-neutral engine for reproducible PII measurement.
 
 ## Status
 
-**Bootstrap.** This repository starts privately and may be published after its contracts, migration evidence, and security boundaries are ready. The Rust workspace, CI, the contracts, the kernel, the adapters, the bounded executor and the standalone CLI exist; real-scanner parity, performance work, the GitHub App and protected execution do not. The architecture and commands described here are targets unless the table below says implemented. No throughput, accuracy, or production-readiness claim is established by these documents.
+**Bootstrap.** This repository starts privately and may be published after its contracts, migration evidence, and security boundaries are ready. The Rust workspace, CI, the contracts, the kernel, the adapters, the bounded executor and the standalone CLI exist; real-scanner parity, performance work, the GitHub App's transport and protected execution do not. The architecture and commands described here are targets unless the table below says implemented. No throughput, accuracy, or production-readiness claim is established by these documents.
 
 | Item | State |
 | --- | --- |
-| Cargo workspace (five crates), pinned toolchain 1.98.1, MSRV 1.85, committed lockfile | Implemented (identity-only placeholders) |
+| Cargo workspace (six crates), pinned toolchain 1.98.1, MSRV 1.85, committed lockfile | Implemented (identity-only placeholders) |
 | CI: fmt, Clippy `-D warnings`, locked tests, MSRV test, dependency-policy guard | Implemented |
 | CLI: `run`, `replay`, `validate`, `compare` with a versioned configuration, pinned identities, frozen exit codes and a one-line JSON summary ([CLI contract](docs/cli.md), [ADR 0010](docs/adr/0010-standalone-cli-workflows.md)) | Implemented (Linux and macOS execution; Windows refused; offline clean-checkout example in `examples/quickstart/`; no published binary) |
 | Legacy ownership map and oracle pin ([ownership map](docs/migration/ownership-map.md), [ADR 0001](docs/adr/0001-rust-first-and-oracle-pin.md)) | Implemented (inventory, no code moved) |
@@ -21,7 +21,7 @@ A Rust-based, scanner-neutral engine for reproducible PII measurement.
 | The seven methods with deterministic variant ids, seeds and provenance, the validators `synthetic-mod10` / `us-ssn-allocation` and the `invalidate-final-digit` operator, explicit unavailable-validator states and the two population views ([ADR 0007](docs/adr/0007-method-generation-and-variant-provenance.md)) | Implemented (kernel library with independent-vector and oracle-compatibility tests; adapters, execution and artifact writing are separate phases) |
 | Protocol revision 2 (canonical rules, schema 1.1, per-scanner metrics, A8 any-to-all, sanitized-output verification, parse-memory measurement) ([ADR 0008](docs/adr/0008-protocol-revision-2-and-schema-1-1.md)) | Implemented (legacy revision 1 stays readable and unchanged; not re-measured) |
 | Bounded deterministic execution and artifact writing: worker pool, per-scanner parallelism, deadlines, process-group tree cleanup, sampled memory and scratch limits, fresh process per pass, replay and instability recording, validated atomic writer ([ADR 0009](docs/adr/0009-bounded-execution-and-artifact-writing.md)) | Implemented as a library (`pii-eval-cli`), driven by the CLI; Linux and macOS; Windows tree cleanup not implemented; process control is not a sandbox |
-| Internal GitHub App | Proposed |
+| Internal GitHub App: `pii-eval-app` service core (webhook HMAC, replay protection, allowlist authorization, bounded queue and workers, stale-head handling, sanitized Checks) behind transport traits ([docs/github-app.md](docs/github-app.md), [ADR 0011](docs/adr/0011-internal-github-app.md)) | Core implemented and tested against fakes; **no HTTP server or GitHub client, nothing registered, installed or deployed**; the CLI does not depend on it |
 | Protected execution via private-custodian | Proposed (owned by that repository). The CLI validates a custodian job context and refuses a protected run without one; the context grants no access ([CLI contract](docs/cli.md)) |
 
 ## What the engine measures
@@ -54,7 +54,7 @@ The engine does not own canonical truth, product thresholds, support status, rel
 | Corpus author | Reviewed expectations, provenance, generation rules, and population identity |
 | `pii-eval` | Scanner-neutral execution and measurement |
 | [private-custodian](https://github.com/redact-secret/private-custodian) | Protected execution authorization, custody, budgets, and release of approved projections |
-| Internal GitHub App (proposed) | A thin request and sanitized-status adapter over the CLI/artifacts; not a measurement, custody, or authorization authority |
+| Internal GitHub App (core implemented, not deployed) | A thin request and sanitized-status adapter over the CLI/artifacts; not a measurement, custody, or authorization authority |
 | [redact-secret-benchmarks](https://github.com/redact-secret/redact-secret-benchmarks) | Redact Secret qualification policy and public presentation; retains the pinned TypeScript oracle until its recorded exit |
 | [credential-eval](https://github.com/redact-secret/credential-eval) | Credential measurement with its own protocol |
 

@@ -177,6 +177,25 @@ above, with the same pins and feature sets. An argument-parsing crate was
 considered and not added (ADR 0010, C1). MSRV re-verified on 2026-10-03:
 `cargo +1.85.0 test --workspace --locked` passes; the floor stays 1.85.
 
+## Internal GitHub App core (P11)
+
+The new crate `pii-eval-app` (ADR 0011) adds **no third-party crate** and no
+lockfile entry other than the workspace member. It depends on
+`pii-eval-contracts`, `pii-eval-cli` (the library entry point), `serde` (derive,
+for typed webhook and policy parsing), `serde_json` and `sha2` (already reviewed,
+same pins and feature sets). Webhook HMAC-SHA256 is hand-written over `sha2`
+(RFC 4231 and GitHub vectors; ADR 0011 D4) instead of adding `hmac` and `subtle`.
+HTTP server, GitHub REST client, TLS and RS256 JWT signing are **not** added: they
+are a deployment follow-up whose crates must be justified here and added to the
+guard first. The guard
+(`the_app_adds_no_third_party_crate` in
+`crates/pii-eval-cli/tests/dependency_policy.rs`) allows the app only the CLI's
+reviewed closure and keeps every forbidden fragment forbidden;
+`nothing_in_the_workspace_depends_on_the_app` asserts, for every other crate and
+for normal, build and dev edges, that nothing reaches `pii-eval-app`, so the CLI
+builds and passes its tests without it. MSRV re-verified on 2026-10-03:
+`cargo +1.85.0 test --workspace --locked` passes; the floor stays 1.85.
+
 ## Optional checks
 
 `deny.toml` configures `cargo-deny` bans (process/network crates), sources and

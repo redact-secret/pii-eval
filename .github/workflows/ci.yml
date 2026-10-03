@@ -75,6 +75,17 @@ jobs:
         env:
           PII_EVAL_REQUIRE_NODE: "1"
         run: cargo test -p pii-eval-cli --locked --test smoke --test cli_commands --test cli_replay --test cli_gate --test cli_review --test cli_run --test cli_cancel --test cli_docs --test cli_example
+      # Also part of the run above; separate so an App-core failure is named (P11,
+      # docs/github-app.md): forged/replayed/unauthorized/cross-repository/stale
+      # requests, bounds, retries, sanitized Checks, and one real run through the
+      # CLI library. No network, no secret; needs Node and `ps` for the last test.
+      - name: GitHub App core (webhook security, job flow, sanitized Checks, parser properties, CLI-library run)
+        env:
+          PII_EVAL_REQUIRE_NODE: "1"
+        run: cargo test -p pii-eval-app --locked
+      # The CLI must stay usable with no App: nothing depends on the app crate.
+      - name: CLI independence from the App (dependency guard)
+        run: cargo test -p pii-eval-cli --locked --test dependency_policy
       # Execution is refused on Windows, but the crate must keep compiling there.
       - name: Windows compile check
         run: rustup target add x86_64-pc-windows-msvc && cargo check --workspace --locked --target x86_64-pc-windows-msvc
