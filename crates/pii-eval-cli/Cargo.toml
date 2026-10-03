@@ -13,13 +13,21 @@ workspace = true
 pii-eval-contracts.workspace = true
 pii-eval-kernel.workspace = true
 pii-eval-adapters.workspace = true
+# Strict JSON values for the run configuration, job context and summaries (already
+# reviewed for contracts, docs/dependency-policy.md). Without `preserve_order`
+# objects are ordered maps, so summaries have a deterministic key order.
+serde_json.workspace = true
+# The `Serialize` bound of the summary helpers (no derive in this crate).
+serde.workspace = true
+
+# Unix only: SIGINT/SIGTERM flag handlers (P8, ADR 0010). Windows execution is refused.
+[target.'cfg(unix)'.dependencies]
+signal-hook.workspace = true
 
 [dev-dependencies]
 # Test-only: lets the smoke test reach every crate boundary. Compat stays
 # removable; deleting it also deletes this line and the one smoke assertion.
 pii-eval-compat.workspace = true
-# Test-only: inspecting serialized documents (already reviewed for contracts).
-serde_json.workspace = true
 
 [[bin]]
 name = "pii-eval"

@@ -164,6 +164,7 @@ pub struct ArtifactWriter {
     dir: PathBuf,
     overwrite: OverwritePolicy,
     hook: Option<Hook>,
+    include_manifest: bool,
 }
 
 struct Pending {
@@ -180,6 +181,9 @@ pub fn observation_file_name(scanner_id: &str) -> String {
 pub const RUN_ARTIFACT_FILE: &str = "run-artifact.json";
 /// The final file name of the public-synthetic projection.
 pub const PUBLIC_ARTIFACT_FILE: &str = "public-synthetic-artifact.json";
+/// The final file name of the manifest, when the writer is asked to include it
+/// ([`ArtifactWriter::with_manifest`]).
+pub const MANIFEST_FILE: &str = "manifest.json";
 
 fn io_error(e: &io::Error) -> WriteError {
     WriteError::Io(e.kind())
@@ -192,7 +196,17 @@ impl ArtifactWriter {
             dir: dir.into(),
             overwrite,
             hook: None,
+            include_manifest: false,
         }
+    }
+
+    /// Also write the manifest the run realizes (`manifest.json`) in the same
+    /// commit, first in commit order, so the directory is self-describing for
+    /// `replay` and `validate` and the manifest is never left behind by a failed
+    /// write. Off by default (the library API is unchanged).
+    pub fn with_manifest(mut self) -> Self {
+        self.include_manifest = true;
+        self
     }
 
     /// Inject a fault at a write stage. Test support: the hook can fail a stage
@@ -224,7 +238,10 @@ impl ArtifactWriter {
         let t0 = Instant::now();
         check_all(snapshot, manifest, assembled)?;
         // First serialization pass: proves round trips and measures the cost.
-        let pending = serialize_all(assembled)?;
+        let mut pending = serialize_all(assembled)?;
+        if self.include_manifest {
+            pending.insert(0, serialize_manifest(manifest)?);
+        }
         let serialization = t0.elapsed();
         // Record the measured phases, then serialize the artifact for real.
         if let Some(diagnostics) = assembled.artifact.diagnostics.as_mut() {
@@ -249,7 +266,6 @@ impl ArtifactWriter {
             // Diagnostics are not digested, but they are still validated.
             validate(&assembled.artifact).map_err(|_| WriteError::Invalid)?;
         }
-        let mut pending = pending;
         let last = pending.len() - 1;
         pending[last] = serialize_artifact(&assembled.artifact)?;
         self.commit(pending, serialization)
@@ -447,6 +463,18 @@ fn serialize_artifact(artifact: &RunArtifact) -> Result<Pending, WriteError> {
     }
     Ok(Pending {
         name: RUN_ARTIFACT_FILE.to_owned(),
+        bytes: text.into_bytes(),
+    })
+}
+
+fn serialize_manifest(manifest: &RunManifest) -> Result<Pending, WriteError> {
+    let text = to_pretty_json(manifest).map_err(|_| WriteError::Invalid)?;
+    let back: RunManifest = parse_default(text.as_bytes()).map_err(|_| WriteError::RoundTrip)?;
+    if back != *manifest {
+        return Err(WriteError::RoundTrip);
+    }
+    Ok(Pending {
+        name: MANIFEST_FILE.to_owned(),
         bytes: text.into_bytes(),
     })
 }

@@ -84,6 +84,12 @@ impl CancelToken {
         Self::default()
     }
 
+    /// A token that observes `flag`, so a signal handler that sets the flag
+    /// cancels the run (the CLI registers the flag for SIGINT and SIGTERM).
+    pub fn from_flag(flag: Arc<AtomicBool>) -> Self {
+        Self(flag)
+    }
+
     /// Cancel: running sessions are killed (tree included) and no new work starts.
     pub fn cancel(&self) {
         self.0.store(true, Ordering::SeqCst);
