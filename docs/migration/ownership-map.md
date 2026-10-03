@@ -430,7 +430,13 @@ against the tables above by a test).
   scoring, population schemas) need an explicit neutral/product split before
   implementation. P2 records the split; benchmarks keeps the verdict side.
 - Legacy selection (first overlapping finding), duplicate handling and label
-  mappings are semantics to be decided in P3 (ARCHITECTURE.md), not here.
+  mappings were decided in P3: the legacy rule is reproduced unchanged as
+  `legacy-first-overlap` in `pii-eval-compat` (source: `contract-model.ts`
+  `interpretPiiOutcome`/`rangeOutcome`, which the map lists as `pii:
+  reimplement in Rust`), and the order-invariant `pii-v1-canonical` rule is
+  specified in [ADR 0004](../adr/0004-order-invariant-pii-matching.md) with its
+  classified difference list. Native label to family mapping stays adapter-side
+  (P6).
 - The inventory lists importers by direct import. Dynamic or string-built paths
   (for example package scripts calling `tsx` with computed arguments) were not
   traced; P9 must re-check callers before any cutover.

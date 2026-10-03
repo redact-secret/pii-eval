@@ -58,6 +58,24 @@ measured need (CONVENTIONS.md).
    shims and pins are introduced with the adapter work (P6) under SECURITY.md
    controls (digest verification, reviewed installation).
 
+## Test-only code and property tests (P3)
+
+P3 added no third-party dependency, normal or dev. Property tests in
+`pii-eval-kernel` and `pii-eval-compat` use a 10-line SplitMix64 generator with
+fixed seeds, written in the test files. `proptest` was considered and not
+added: it brings a `rand` family closure, shrinking machinery and per-version
+MSRV risk to this repository's exact-lock policy, and the properties here
+(permutation invariance, offset round-trip, no panic on arbitrary bytes) do not
+need shrinking because the generator is deterministic and a failure message
+carries the iteration number. Revisit if a property needs shrinking; the
+dependency would then be a dev-dependency of the kernel, justified in the table
+above, the guard (which inspects normal and build edges only) would be
+unaffected, and the MSRV job would have to pass.
+
+`pii-eval-compat` depends on `pii-eval-kernel` as a dev-dependency, so legacy
+and canonical outcomes can be compared on the same vectors. The kernel and
+contracts still do not reach compat (checked by `dependency_policy.rs`).
+
 ## Optional checks
 
 `deny.toml` configures `cargo-deny` bans (process/network crates), sources and
