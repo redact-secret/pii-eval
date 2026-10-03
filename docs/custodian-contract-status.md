@@ -49,7 +49,7 @@ The numbering is the open-question table of [custodian-boundary.md](custodian-bo
 | Q4 candidate identity for a package tree | **Not decided.** Staged files are single files; the custodian's candidate id is the SHA-256 of the exact file bytes. The engine pins scanner packages by a **tree** digest. | A2, A10 | Two typed digests that are never converted into each other: the **bundle (archive) file digest** (custodian side) and the **package tree digest** (engine side). The bundle format is `Proposed`. Verifying one never substitutes for verifying the other. |
 | Q5 digest syntax | **Decided custodian-side** (A10). The conversion on the engine side is ours. | A10 | Distinct Rust types (`CustodianDigest`, `EngineDigest`, `BundleDigest`, `TreeDigest`); conversions are explicit named functions; no `From` between them. |
 | Q6 several scanners | The custodian allows `scanner-N`; the engine artifact has per-scanner metrics but the aggregates have no scanner dimension. | A2, A11 | One scanner per run (our choice, unchanged). |
-| Q7 Node under `RLIMIT_AS` | **Untested** by either side. | A8, A9 | Measured on a real Linux bubblewrap host: [custodian-isolation-node.md](custodian-isolation-node.md). The limits are never loosened to make a run pass. |
+| Q7 Node under `RLIMIT_AS` | **Untested by the custodian; now measured by pii-eval, and it conflicts.** On a real Linux bubblewrap host an unmodified Node runtime needs at least 1024 MiB of virtual address space (idle `VmPeak` 772 MiB); the engine run needs the same; the custodian's own "normal" test limit of 512 MiB cannot start it. The engine alone starts at 128 MiB. With Node `--jitless` the floor is 320 MiB. | A8, A9 | [custodian-isolation-node.md](custodian-isolation-node.md) (method, replica fidelity, raw data, runs). **No limit was loosened.** Sizing and pre-exposure-probe proposals went to the custodian as [private-custodian#37](https://github.com/redact-secret/private-custodian/issues/37). The worker launcher does not start Node with extra flags. |
 | Q8 freshness of a stale context | **Not decided.** Neither the worker job document nor `pii-eval-job-context/1` has an expiry field. | A4 | No field is added. A stale or foreign job is detected only by binding mismatch (entries, roster, digests). Time-based freshness stays with the custodian. |
 | Q9 where Node, the shim and the package live in the staged set | **Not decided.** The custodian fixes only the names (A2). | A2 | Adapter `StageLayout`, status `Proposed`: `engine` = the `pii-eval` binary, `adapter` = a bundle holding the Node shim, `candidate` = a bundle holding the scanner package, `scanner-0` = the pinned Node runtime, `config` = the worker configuration. |
 | Q10 rejection names | **Decided** (A12). | A12 | Implemented: `population-binding-mismatch`, `run-class-mismatch`. |
@@ -62,8 +62,11 @@ and S1 to S6 ([#28](https://github.com/redact-secret/private-custodian/issues/28
 pii-eval, the aggregates delivery, the candidate packaging or a Node runtime. The
 relevant one is S5 [#32](https://github.com/redact-secret/private-custodian/issues/32) (the
 request-to-projection pipeline that builds the receipt from a dispatch report and runs a
-"real Linux isolation job"). The follow-up issue that records Q2, Q3, Q4, Q7 and Q9 for the
-custodian is linked from [custodian-boundary.md](custodian-boundary.md) once it exists.
+"real Linux isolation job"). The follow-up issue that records Q1 to Q4, Q7 and Q9 for the custodian, with the
+measured Node floor and the proposals, is
+[private-custodian#37](https://github.com/redact-secret/private-custodian/issues/37); it is
+linked from S5 ([#32](https://github.com/redact-secret/private-custodian/issues/32)) and Epic 2
+([#27](https://github.com/redact-secret/private-custodian/issues/27)).
 
 ## D. Correction of an earlier statement
 
