@@ -14,7 +14,8 @@ A Rust-based, scanner-neutral engine for reproducible PII measurement.
 | CI: fmt, Clippy `-D warnings`, locked tests, MSRV test, dependency-policy guard | Implemented |
 | CLI | Implemented: `--version` only; every other input is a usage error |
 | Legacy ownership map and oracle pin ([ownership map](docs/migration/ownership-map.md), [ADR 0001](docs/adr/0001-rust-first-and-oracle-pin.md)) | Implemented (inventory, no code moved) |
-| Contracts, kernel semantics, methods, accounting, scanner adapters | Proposed |
+| Versioned contracts (schema 1.0): snapshot, manifest, observation set, internal and public-synthetic artifacts, frozen `pii-v1` registry, canonical digest, committed JSON Schemas ([ADR 0002](docs/adr/0002-freeze-pii-contracts-v1.md), [ADR 0003](docs/adr/0003-canonical-serialization-and-semantic-digest.md)) | Implemented (types, validation, digest, schemas; no measurement) |
+| Kernel semantics, methods, accounting arithmetic, scanner adapters | Proposed |
 | `run`, `replay`, `validate`, `compare` | Proposed |
 | Internal GitHub App | Proposed |
 | Protected execution via private-custodian | Proposed (owned by that repository) |
