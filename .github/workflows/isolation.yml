@@ -131,9 +131,13 @@ jobs:
           "$stage/node" --version
       - name: Measure (the controls must pass; no limit is ever loosened)
         shell: bash
+        env:
+          # Node 22.23.3 linux-x64 as installed by actions/setup-node: pinned by digest, not only by version.
+          NODE_SHA256: fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48
         run: |
           set -euo pipefail
           node tools/isolation/matrix.mjs \
+            --node-sha256 "$NODE_SHA256" \
             --stage "$RUNNER_TEMP/stage" \
             --repo "$GITHUB_WORKSPACE" \
             --out "$RUNNER_TEMP/isolation-node.json" \

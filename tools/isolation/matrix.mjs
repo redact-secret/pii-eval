@@ -32,12 +32,15 @@ export const SCHEMA = 'pii-eval-isolation-node/1';
 // memory excluded: it is the variable.
 const NORMAL = { cpuSeconds: 30, wallMs: 20000, storageBytes: 64 * MIB, maxProcesses: 32, stdoutBytes: 65536, stderrBytes: MIB };
 const CUSTODIAN_NORMAL_MEM_MIB = 512;
-const DEFAULT_SIZES = [128, 192, 256, 320, 384, 512, 640, 768, 1024, 1536, 2048, 4096, 8192];
+// A fine grid around the transition (768 failed and 1024 passed in the first measurement), 32 MiB steps.
+const DEFAULT_SIZES = [128, 192, 256, 320, 384, 512, 640, 768, 800, 832, 864, 896, 928, 960, 992, 1024, 1536, 2048, 4096, 8192];
+// Exactly what the custodian's dispatcher sets for the worker (dispatcher.rs, step 7): four variables.
+// (The allowlist in sandbox.rs is the set it MAY set, which is larger.)
 const ENV = [
   ['PATH', '/usr/bin:/bin'],
   ['HOME', '/scratch'],
   ['TMPDIR', '/scratch'],
-  ['LANG', 'C.UTF-8'],
+  ['LANG', 'C'],
 ];
 const CANARY_FILE = '/tmp/pii-eval-isolation-canary';
 // Names that look like the credentials the custodian's self-check plants in the launcher's environment.
@@ -52,6 +55,7 @@ function parseArgs(argv) {
     o[argv[i].slice(2)] = argv[i + 1];
   }
   for (const k of ['stage', 'repo', 'out']) if (typeof o[k] !== 'string') throw new Error(`missing --${k}`);
+  if (o['node-sha256'] !== undefined && !/^[0-9a-f]{64}$/.test(o['node-sha256'])) throw new Error('bad --node-sha256');
   return o;
 }
 
@@ -106,10 +110,22 @@ async function controls(run, listener) {
   const status = run('/usr/bin/cat', ['/proc/self/status'], { memMiB: mem });
   const cap = parseCapEff(status.stdout);
   out.noCapabilities = { pass: ok(status) && /^0+$/.test(cap ?? 'x'), capEff: cap };
+  // Positive control: the very same probe, run OUTSIDE the sandbox, does reach the host loopback
+  // listener. Without it a "BLOCKED" could only mean the probe is broken.
+  const outsideProbe = spawnSync('/bin/bash', ['-c', `(exec 3<>/dev/tcp/127.0.0.1/${listener.port}) 2>/dev/null && echo CONNECTED || echo BLOCKED`], { encoding: 'utf8', timeout: 10000 });
+  await new Promise((r) => setTimeout(r, 200));
+  const connectionsBefore = listener.connections;
+  const outsideConnected = outsideProbe.stdout.trim() === 'CONNECTED' && connectionsBefore >= 1;
   const net1 = run('/bin/bash', ['-c', '(exec 3<>/dev/tcp/1.1.1.1/53) 2>/dev/null && echo CONNECTED || echo BLOCKED'], { memMiB: mem });
   const net2 = run('/bin/bash', ['-c', `(exec 3<>/dev/tcp/127.0.0.1/${listener.port}) 2>/dev/null && echo CONNECTED || echo BLOCKED`], { memMiB: mem });
   await new Promise((r) => setTimeout(r, 200));
-  out.egressDenied = { pass: net1.stdout.trim() === 'BLOCKED' && net2.stdout.trim() === 'BLOCKED' && listener.connections === 0, publicAddress: net1.stdout.trim(), hostLoopback: net2.stdout.trim(), hostListenerConnections: listener.connections };
+  out.egressDenied = {
+    pass: outsideConnected && net1.stdout.trim() === 'BLOCKED' && net2.stdout.trim() === 'BLOCKED' && listener.connections === connectionsBefore,
+    probeConnectsOutsideTheSandbox: outsideConnected,
+    publicAddress: net1.stdout.trim(),
+    hostLoopback: net2.stdout.trim(),
+    hostListenerConnectionsFromTheSandbox: listener.connections - connectionsBefore,
+  };
   const canary = run('/usr/bin/cat', [CANARY_FILE], { memMiB: mem });
   out.hostFilesAbsent = { pass: !ok(canary) && !canary.stdout.includes('canary-content') };
   const env = run('/usr/bin/env', [], { memMiB: mem });
@@ -145,6 +161,9 @@ export async function main(argv) {
   writeFileSync(join(stage, 'jitless', 'node'), '#!/bin/sh\nexec /stage/node --jitless "$@"\n', { mode: 0o755 });
   chmodSync(join(stage, 'jitless', 'node'), 0o755);
   writeFileSync(CANARY_FILE, 'canary-content\n', { mode: 0o600 });
+  if (a['node-sha256'] !== undefined && sha256File(join(stage, 'node')) !== a['node-sha256']) {
+    throw new Error('the Node runtime is not the pinned one (digest mismatch)');
+  }
   const roots = detectSystemRoots();
   const run = makeRunner({ bwrap, stage, repo: a.repo, roots });
 

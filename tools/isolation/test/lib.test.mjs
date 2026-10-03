@@ -83,3 +83,20 @@ describe('summary', () => {
     assert.match(md, /142db34d/);
   });
 });
+
+import { cell, renderTable } from '../render-table.mjs';
+
+describe('render-table', () => {
+  const b = (o) => ({ ok: false, exitCode: 1, signal: null, timedOut: false, ...o });
+  it('says what happened in each cell', () => {
+    assert.equal(cell(b({ ok: true, exitCode: 0 })), 'ok');
+    assert.equal(cell(b({ timedOut: true })), 'fail (hangs; killed at the wall limit)');
+    assert.equal(cell(b({ signal: 'SIGKILL' })), 'fail (SIGKILL)');
+    assert.equal(cell(b({ exitCode: 133 })), 'fail (exit 133)');
+  });
+  it('renders one row per size', () => {
+    const t = renderTable({ matrix: [{ memMiB: 128, nodeStart: b({ timedOut: true }), nodeJitless: b({}), engineVersion: b({ ok: true }), engineQuickstartRun: b({ exitCode: 5 }), engineQuickstartRunNodeJitless: b({ ok: true }) }] });
+    assert.match(t, /\| 128 MiB \| fail \(hangs; killed at the wall limit\) \| fail \(exit 1\) \| ok \| fail \(exit 5\) \| ok \|/);
+    assert.equal(t.trimEnd().split('\n').length, 3);
+  });
+});
