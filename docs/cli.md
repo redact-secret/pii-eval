@@ -392,8 +392,11 @@ change, with `PII_EVAL_UPDATE_FIXTURES=1 cargo test -p pii-eval-cli --test cli_e
 
 ## Installation and release binary
 
-There is no published binary and no publishing workflow yet (README). To build
-and verify a binary from a checkout:
+There is no public release, tag or package. CI publishes the engine as an
+**internal workflow artifact** (`pii-eval-engine-<commit>-linux-x86_64`, 30-day
+retention, with `build-info.json` and `SHA256SUMS`) that other workflows download
+and verify instead of rebuilding; see [docs/ci-artifacts.md](ci-artifacts.md).
+To build and verify a binary from a checkout:
 
 ```sh
 cargo build --release --locked          # target/release/pii-eval

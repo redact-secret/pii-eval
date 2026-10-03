@@ -6,8 +6,8 @@ on:
   pull_request:
 
 # No secrets are used or required. Network use is limited to the Rust
-# toolchain distribution and crates.io. No benchmark checkout, no protected
-# corpus, no scanner binaries.
+# toolchain distribution, crates.io and the Actions cache and artifact services.
+# No benchmark checkout, no protected corpus, no scanner binaries.
 permissions:
   contents: read
 
@@ -36,6 +36,9 @@ jobs:
       # rust-toolchain.toml selects the pinned toolchain; rustup installs it on first use.
       - name: Toolchain identity
         run: rustc --version --verbose && node --version
+      # Same cache action credential-eval uses, pinned by SHA; keyed by the
+      # lockfile and the toolchain.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
@@ -126,9 +129,14 @@ jobs:
       # Execution is refused on Windows, but the crate must keep compiling there.
       - name: Windows compile check
         run: rustup target add x86_64-pc-windows-msvc && cargo check --workspace --locked --target x86_64-pc-windows-msvc
-      # The release build command documented in docs/cli.md, and the binary's identity.
-      - name: Release build (documented command)
-        run: cargo build --release --locked && target/release/pii-eval --version
+      # Internal build artifacts (docs/ci-artifacts.md): build information and
+      # artifact verification, and the workflow policy (SHA-pinned actions,
+      # explicit permissions, no untrusted expression inside a script).
+      - name: CI tooling (build information, engine artifact verification) and workflow policy
+        run: |
+          node --test tools/ci/test/ci-tools.test.mjs tools/ci/test/workflow-policy.test.mjs
+          for f in tools/ci/*.mjs; do node --check "$f"; done
+          node tools/ci/workflow-policy.mjs .github/workflows/*.yml
 
   msrv:
     name: tests on declared MSRV
@@ -144,7 +152,32 @@ jobs:
       # Keep in sync with workspace.package.rust-version in Cargo.toml.
       - name: Install MSRV toolchain
         run: rustup toolchain install 1.85.0 --profile minimal
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: msrv-1.85
       - name: Test on MSRV
         env:
           PII_EVAL_REQUIRE_NODE: "1"
         run: cargo +1.85.0 test --workspace --locked
+
+  # The engine artifact (docs/ci-artifacts.md): the documented release build,
+  # published once as an internal workflow artifact that evaluate.yml and any
+  # other dispatched workflow download instead of rebuilding.
+  engine:
+    name: engine artifact
+    uses: ./.github/workflows/build-engine.yml
+
+  # evaluate.yml end to end on every run: it downloads the engine artifact the
+  # `engine` job just published (same run id), verifies it and runs the
+  # documented synthetic quickstart. No second build. Proves the dispatchable
+  # workflow keeps working, since a workflow_dispatch workflow cannot be started
+  # from a branch before it exists on the default branch.
+  evaluate:
+    name: evaluate with the engine artifact
+    needs: engine
+    uses: ./.github/workflows/evaluate.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      engine-run-id: ${{ format('{0}', github.run_id) }}

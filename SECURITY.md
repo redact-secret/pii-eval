@@ -54,4 +54,6 @@ Internal output is not automatically public. Public projection must be allowlist
 
 Bind candidate bytes, scanner configuration, corpus, adapter, and engine to every run. Verify candidate identity before and after execution where the execution boundary allows mutation. A signature proves provenance under its trust model, not correctness or independence.
 
+Internal engine artifacts: CI publishes the engine as a GitHub Actions workflow artifact for use by other workflows ([docs/ci-artifacts.md](docs/ci-artifacts.md)). It is internal only (readable by people with read access to this repository for 30 days on `main`, 3 days elsewhere), unsigned and unattested, and not a release. Workflows pin every action by commit SHA, declare least-privilege `permissions`, receive untrusted input only through `env:`, and are checked by `tools/ci/workflow-policy.mjs`; artifacts must never carry protected material, and the CLI refuses a protected run without a custodian job context.
+
 Publish no accuracy/speed/security claim without pinned evidence and stated limitations. Before public release, configure private reporting, scan repository history/assets/logs (the license is MIT, see `LICENSE`), review third-party redistribution, and demonstrate publication guards. Keep synthetic measurement and candidate/internal results correctly labeled.

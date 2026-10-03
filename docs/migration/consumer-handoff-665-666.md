@@ -22,7 +22,7 @@ scanner and oracle identity tables, guarded by a test),
 
 | Item | Value |
 | --- | --- |
-| Engine | `pii-eval` version `0.0.0` (bootstrap). There is **no release tag and no published binary** (docs/cli.md). The candidate is the commit that contains this file: record `git rev-parse HEAD` of the checkout, the SHA-256 of `Cargo.lock` and of the binary you built (`cargo build --release --locked`, then `shasum -a 256 target/release/pii-eval`) next to every result |
+| Engine | `pii-eval` version `0.0.0` (bootstrap). There is **no release tag and no public binary**; CI publishes an internal, unsigned engine artifact per run with `build-info.json` (docs/ci-artifacts.md). The candidate is the commit that contains this file: record `git rev-parse HEAD` of the checkout, the SHA-256 of `Cargo.lock` and of the binary you built (`cargo build --release --locked`, then `shasum -a 256 target/release/pii-eval`) next to every result |
 | Protocol | `pii-v1` revision 2 (canonical); rules `pii-v1-canonical` (matching), `pii-v1-canonical-accounting`, `pii-v1-wilson-exact`; revision 1 is the legacy compatibility protocol, readable and not verifiable |
 | Public artifact | schema `pii-eval.public-synthetic-artifact` `1.1`; the only artifact a consumer reads |
 | Internal artifact | schema `pii-eval.run-artifact` `1.1`; never consumed outside the party that ran it |
@@ -104,7 +104,7 @@ of the benchmarks-owned steps was run or checked by pii-eval.
    from the consumer and delete or ignore the pii-eval output directories
    (`manifest.json`, `observation-*.json`, `run-artifact.json`,
    `public-synthetic-artifact.json`); nothing else in this repository references them,
-   and `pii-eval` itself is not installed anywhere (no published binary). To
+   and `pii-eval` itself is not installed anywhere (it exists only as internal CI artifacts, docs/ci-artifacts.md). To
    quarantine one artifact instead of all, add its digest to the pin's
    `retiredArtifactDigests` (and its manifest digest to `retiredManifestDigests`): the
    example consumer then reports `artifact-superseded` rather than "unknown"; verify
@@ -184,4 +184,4 @@ the canonical model.
 | benchmarks (#665) | The artifact client, `publish-pii-support.ts` and `domains.ts` changes, support policy reproduction, the product-owned populations as snapshots (one population per run), per-family/view and mode needs (route: schema 1.2), custodian bridge verification |
 | benchmarks (#666) | Oracle period and exit, rollback rehearsal, authority switch record (tag or commit, digests, populations, policy revision), moving repetitive measurement out of PR builds, retirement under section 5 |
 | private-custodian | The engine launcher contract (worker-job to run to `worker-result/1`), the aggregates delivery and strata labels, the roster unit, candidate identity for a package tree, an isolation self-check that includes Node, receipt assembly ([custodian boundary](../custodian-boundary.md), section 6) |
-| pii-eval (follow-up) | `pii-eval worker --job` launcher once the open questions are answered; schema 1.2 if benchmarks needs the missing projections; a release tag and binary digest when a release process exists |
+| pii-eval (follow-up) | `pii-eval worker --job` launcher once the open questions are answered; schema 1.2 if benchmarks needs the missing projections; a release tag, a signed or attested binary and a longer retention when a release process exists |
