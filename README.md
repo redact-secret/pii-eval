@@ -17,7 +17,8 @@ A Rust-based, scanner-neutral engine for reproducible PII measurement.
 | Versioned contracts (schema 1.0): snapshot, manifest, observation set, internal and public-synthetic artifacts, frozen `pii-v1` registry, canonical digest, committed JSON Schemas ([ADR 0002](docs/adr/0002-freeze-pii-contracts-v1.md), [ADR 0003](docs/adr/0003-canonical-serialization-and-semantic-digest.md)) | Implemented (types, validation, digest, schemas; no measurement) |
 | UTF-8 byte-range rules, adapter offset translation, order-invariant `pii-v1-canonical` matching and outcome axes, and the `legacy-first-overlap` compatibility mode ([ADR 0004](docs/adr/0004-order-invariant-pii-matching.md)) | Implemented (library functions with conformance and property tests; the canonical rule is a proposed protocol revision 2 not yet bindable in a contract document) |
 | Scanner adapters: bounded pinned process adapter, `pii-eval-adapter/1` shim protocol, `@redact-secret/core` 0.1.0-beta.12 adapter with activation provenance and observed actions ([ADR 0006](docs/adr/0006-scanner-adapter-boundary.md)) | Implemented (synthetic fake-shim tests; real-scanner test opt-in; no worker pool, no live-scanner parity) |
-| Methods, accounting arithmetic | Proposed |
+| Indexed accounting of the ten metrics, exact Wilson statistics and the metric verifier ([ADR 0005](docs/adr/0005-indexed-accounting-and-metric-statistics.md)) | Implemented (kernel library with hand-calculated, independent-vector, differential and oracle-compatibility tests; the accounting rule is proposed protocol revision 2, bound by P7 together with the matching rule) |
+| Methods | Proposed |
 | `run`, `replay`, `validate`, `compare` | Proposed |
 | Internal GitHub App | Proposed |
 | Protected execution via private-custodian | Proposed (owned by that repository) |

@@ -460,46 +460,46 @@
     },
     "MetricCounts": {
       "additionalProperties": false,
-      "description": "Row counts behind a metric. Retained unrounded; rounding happens only in the\npublished value.",
+      "description": "Sample counts behind a metric. Retained unrounded; rounding happens only in\nthe published value.\n\nThe counted unit is the metric's *sample* (the registry's `sampleUnit`): one\nauthored case within its method for most metrics, one complete context trio\nfor `context-discrimination-rate`, one axis assertion for `measurable-share`.\nIt is not an outcome row: several variants and occurrences of one authored\ncase are judged together as one sample, and replays add none (ADR 0005).",
       "properties": {
         "eligible": {
-          "description": "Rows eligible for the metric (not `not-applicable`).",
+          "description": "Samples eligible for the metric (not `not-applicable`).",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "measured": {
-          "description": "Rows with a resolved numerator or non-numerator outcome.",
+          "description": "Samples with a resolved numerator or non-numerator outcome.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "notApplicable": {
-          "description": "Rows outside the metric's population.",
+          "description": "Samples outside the metric's population.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "notMeasured": {
-          "description": "Eligible rows that were not measured.",
+          "description": "Eligible samples that were not measured.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "numerator": {
-          "description": "Rows in the numerator.",
+          "description": "Samples in the numerator.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "total": {
-          "description": "All rows considered.",
+          "description": "All samples considered.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "unresolved": {
-          "description": "Eligible rows whose axis needs review.",
+          "description": "Eligible samples whose axis needs review.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
@@ -650,23 +650,23 @@
     },
     "ObservedSummary": {
       "additionalProperties": false,
-      "description": "Summary of what a scanner reported for an occurrence. Contains family and\njurisdiction identifiers only, never text or ranges.",
+      "description": "Summary of what a scanner reported for one expected occurrence: the\nfindings whose range overlaps that occurrence (its candidates). Contains\nfamily and jurisdiction identifiers only, never text or ranges.\n\nThe summary is **per occurrence**, not per variant: two occurrences of one\nvariant can have different counts, and a finding elsewhere in the variant\nthat overlaps no occurrence is in no summary (it is a reported span, ADR\n0004 section 3.4). This is what the oracle's `observed.findingCount` counted\nfor its single candidate per variant; ADR 0005 settles the wording.",
       "properties": {
         "families": {
-          "description": "Families reported, ascending, unique.",
+          "description": "Families reported by those findings, ascending, unique.",
           "items": {
             "$ref": "#/$defs/FamilyId"
           },
           "type": "array"
         },
         "findingCount": {
-          "description": "Number of findings the scanner reported for the variant.",
+          "description": "Number of findings that overlap this occurrence's range, duplicates\ncounted.",
           "format": "uint64",
           "minimum": 0,
           "type": "integer"
         },
         "jurisdictions": {
-          "description": "Jurisdictions reported, ascending, unique.",
+          "description": "Jurisdictions reported by those findings, ascending, unique.",
           "items": {
             "$ref": "#/$defs/JurisdictionCode"
           },

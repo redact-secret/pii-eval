@@ -107,6 +107,17 @@ rather than skip when Node is missing. No `npm` command runs in CI.
 MSRV re-verified after these changes on 2026-10-02:
 `cargo +1.85.0 test --workspace --locked` passes; the floor stays 1.85.
 
+## Accounting and statistics (P4)
+
+P4 added no third-party dependency, normal or dev. The Wilson endpoint needs
+integer square root and division wider than `u128`, which is a 150-line private
+512-bit unsigned integer in `pii-eval-kernel` (`bigint.rs`, checked operations,
+unit-tested); a big-number crate was not added because the guard keeps the pure
+crates to a minimal reviewed closure and the needed operations are few. The
+independent Wilson reference is a Python script (`tests/vectors/wilson_reference.py`,
+standard library `decimal` only, not run in CI); its output is committed as a
+Rust table. MSRV was re-run for this change.
+
 ## Optional checks
 
 `deny.toml` configures `cargo-deny` bans (process/network crates), sources and
