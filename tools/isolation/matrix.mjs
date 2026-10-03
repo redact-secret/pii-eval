@@ -30,13 +30,13 @@ import { isMain } from '../ci/main-guard.mjs';
 export const SCHEMA = 'pii-eval-isolation-node/1';
 // The custodian's "normal" real-isolation profile (tests/common/mod.rs `Limits::normal`),
 // memory excluded: it is the variable.
-const NORMAL = { cpuSeconds: 30, wallMs: 20000, storageBytes: 64 * MIB, maxProcesses: 32, stdoutBytes: 65536, stderrBytes: MIB };
+export const NORMAL = { cpuSeconds: 30, wallMs: 20000, storageBytes: 64 * MIB, maxProcesses: 32, stdoutBytes: 65536, stderrBytes: MIB };
 const CUSTODIAN_NORMAL_MEM_MIB = 512;
 // A fine grid around the transition (768 failed and 1024 passed in the first measurement), 32 MiB steps.
 const DEFAULT_SIZES = [128, 192, 256, 320, 384, 512, 640, 768, 800, 832, 864, 896, 928, 960, 992, 1024, 1536, 2048, 4096, 8192];
 // Exactly what the custodian's dispatcher sets for the worker (dispatcher.rs, step 7): four variables.
 // (The allowlist in sandbox.rs is the set it MAY set, which is larger.)
-const ENV = [
+export const ENV = [
   ['PATH', '/usr/bin:/bin'],
   ['HOME', '/scratch'],
   ['TMPDIR', '/scratch'],
@@ -101,7 +101,7 @@ const brief = (r) => ({
   stderr: sanitize(r.stderr, 300),
 });
 
-async function controls(run, listener) {
+export async function controls(run, listener) {
   const out = {};
   const mem = CUSTODIAN_NORMAL_MEM_MIB;
   const limits = run('/usr/bin/cat', ['/proc/self/limits'], { memMiB: mem });
@@ -140,6 +140,27 @@ async function controls(run, listener) {
   out.visibleRoot = { entries: sanitize(root.stdout, 200) };
   out.pass = Object.values(out).every((v) => v.pass !== false);
   return out;
+}
+
+/**
+ * Plants the host canary, starts the loopback listener and runs the controls with `run`
+ * (a runner with the signature of `makeRunner`'s, mounting nothing is fine). Used by
+ * worker-e2e.mjs so both measurements share one set of controls.
+ */
+export async function runControls(run) {
+  writeFileSync(CANARY_FILE, 'canary-content\n', { mode: 0o600 });
+  const listener = { port: 0, connections: 0 };
+  const server = net.createServer((s) => {
+    listener.connections += 1;
+    s.destroy();
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  listener.port = server.address().port;
+  try {
+    return await controls(run, listener);
+  } finally {
+    server.close();
+  }
 }
 
 export async function main(argv) {

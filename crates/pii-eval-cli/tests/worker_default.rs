@@ -113,6 +113,22 @@ fn no_environment_variable_or_flag_selects_a_test_adapter() {
 }
 
 #[test]
+fn the_test_engine_example_needs_the_feature_so_no_default_build_contains_it() {
+    let manifest =
+        std::fs::read_to_string(repo_root().join("crates/pii-eval-cli/Cargo.toml")).unwrap();
+    let block = manifest
+        .split("[[example]]")
+        .nth(1)
+        .expect("an [[example]] table");
+    assert!(block.contains("name = \"worker_test_engine\""));
+    assert!(block.contains("required-features = [\"worker-test-adapters\"]"));
+    // The feature is off by default and nothing enables it.
+    let features = manifest.split("[features]").nth(1).unwrap();
+    assert!(features.contains("worker-test-adapters = []"));
+    assert!(!manifest.contains("default = ["));
+}
+
+#[test]
 fn every_worker_reason_and_slot_is_documented_and_no_exit_code_is_added() {
     let doc = std::fs::read_to_string(repo_root().join("docs/worker-job.md")).unwrap();
     for r in pii_eval_cli::worker::reason::ALL {

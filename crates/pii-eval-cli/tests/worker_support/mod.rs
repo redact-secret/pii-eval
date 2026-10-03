@@ -44,6 +44,40 @@ pub struct Opts {
     pub trigger: Option<&'static str>,
     /// `resources.callTimeoutMs` of the configuration.
     pub call_timeout_ms: Option<u64>,
+    /// Bytes staged as `scanner-0` (default: a wrapper script that execs `node`).
+    /// The real-sandbox example stages the REAL Node binary here.
+    pub runtime: Option<Vec<u8>>,
+    /// Bytes staged as `engine` (default: a stand-in). The example stages a copy
+    /// of its own executable.
+    pub engine: Option<Vec<u8>>,
+    /// Total number of cases (at least 3, the quickstart's); more are clones of
+    /// the three with new identifiers. Default: the three.
+    pub entries: Option<usize>,
+}
+
+/// `n` cases: the original ones, then clones with new case and variant ids,
+/// ascending by case id (the snapshot's canonical order).
+pub fn expand_cases(cases: &[pii_eval_contracts::Case], n: usize) -> Vec<pii_eval_contracts::Case> {
+    use pii_eval_contracts::Id;
+    let mut out: Vec<_> = cases.to_vec();
+    let mut i = cases.len();
+    while out.len() < n {
+        let mut c = cases[i % cases.len()].clone();
+        let suffix = format!("-c{i:05}");
+        c.case_id = Id::new(format!("{}{suffix}", c.case_id.as_str())).unwrap();
+        for v in &mut c.variants {
+            v.variant_id = Id::new(format!("{}{suffix}", v.variant_id.as_str())).unwrap();
+        }
+        out.push(c);
+        i += 1;
+    }
+    out.sort_by(|a, b| {
+        a.case_id
+            .as_str()
+            .as_bytes()
+            .cmp(b.case_id.as_str().as_bytes())
+    });
+    out
 }
 
 pub struct World {
@@ -118,6 +152,9 @@ impl World {
             v.text.push_str(t);
             v.text_digest = Sha256Digest::of_bytes(v.text.as_bytes());
         }
+        if let Some(n) = opts.entries {
+            snapshot.semantic.cases = expand_cases(&snapshot.semantic.cases, n);
+        }
         seal(&mut snapshot).unwrap();
         let mut manifest: RunManifest = manifest_for(&snapshot, &package, node, limits(2, 1), 2);
         manifest.semantic.run_class = RunClass::Protected;
@@ -153,8 +190,13 @@ impl World {
             .collect();
         let candidate_bundle = bundle::encode(&members).unwrap();
         let tree = sha256_of_tree(&std::fs::canonicalize(&package).unwrap()).unwrap();
-        let engine = b"synthetic engine stand-in\n".to_vec();
-        let runtime = format!("#!/bin/sh\nexec \"{}\" \"$@\"\n", node.display()).into_bytes();
+        let engine = opts
+            .engine
+            .clone()
+            .unwrap_or_else(|| b"synthetic engine stand-in\n".to_vec());
+        let runtime = opts.runtime.clone().unwrap_or_else(|| {
+            format!("#!/bin/sh\nexec \"{}\" \"$@\"\n", node.display()).into_bytes()
+        });
         let put = |name: &str, bytes: &[u8], m: u32| {
             let p = stage.join(name);
             std::fs::write(&p, bytes).unwrap();

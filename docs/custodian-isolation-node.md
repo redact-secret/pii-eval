@@ -125,6 +125,15 @@ fails closed: it reports `scanner-failure` and exits 5 (`docs/cli.md`).
 - **P-C. Declare the requirement.** The engine publishes a minimum virtual address space per pinned runtime (a number the approver can read) instead of it being
   discovered by a failed run.
 
+## The whole worker flow in the same sandbox
+
+The measurement above runs the standalone quickstart. The custodian's whole worker flow (staged identities, the job document,
+the launcher, real Node as `scanner-0`, the result and aggregates, the outcome mapping) is run in the same replica sandbox by the CI job
+`worker-flow`, with the test engine `worker_test_engine` (the production `pii-eval` refuses until the contract is decided): see
+[worker-job.md](worker-job.md), "Real sandbox end to end". It asserts that the custodian's normal 512 MiB profile does **not** succeed, that
+1024 MiB and above does, and records how the need grows with the population. The numbers of the latest run are in the job's report
+(`pii-eval-worker-e2e/1`).
+
 ## Not claimed
 
 - The numbers are for one host image, one kernel, one Node build and the synthetic quickstart (a tiny workload). They are not a general property of

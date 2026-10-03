@@ -303,14 +303,79 @@ production wiring. Only the Rust API (`worker::launch::run_worker_job` with
 3. **Aggregates delivery (Q2)** and **the stage layout (Q9)**, **bundle (Q4)**,
    **entry (Q1)** and **labels (Q3)**: the proposals above, or others.
 
+## Real sandbox end to end
+
+The in-process tests above stage a wrapper script as `scanner-0`. The CI job
+`worker-flow` (`.github/workflows/isolation.yml`, called by `ci.yml`) runs the
+whole flow in a **real Linux bubblewrap sandbox with the real pinned Node
+runtime**, on synthetic data, and fails on any violated expectation.
+
+**Why not the production binary.** `pii-eval` always uses the production
+adapters and refuses (`contract-not-final`), so it cannot run a job. The engine
+inside the sandbox is the test example
+`crates/pii-eval-cli/examples/worker_test_engine.rs`, which has
+`required-features = ["worker-test-adapters"]`: it is not built by `cargo build`,
+not by `cargo test` without the feature, and never part of the engine artifact
+(the marker check in `build-engine.yml` and `worker_default.rs` prove the release
+`pii-eval` contains no test code; `worker_example.rs` proves the example does). It
+has three subcommands:
+
+- `stage --out DIR --node PATH --scenario NAME [--entries N]`: builds the
+  synthetic world by reusing `tests/worker_support` (included with `#[path]`, not
+  forked), with the REAL Node binary as `scanner-0` and a copy of the example
+  itself as `engine`, in the custodian's layout `DIR/{stage,input,job}/` plus
+  `DIR/pins.json` (the plan-like `sha256:` pins of every staged file and the
+  authorized roster);
+- `--job FILE`: the launcher with the TestOnly adapter policy, started in the
+  sandbox as `/stage/engine --job /job/job.json`. Its aggregates channel is a
+  TEST channel (the document goes to `/scratch/aggregates.json` and, because the
+  sandbox's scratch is gone when the worker exits, also as one stderr line); the
+  real channel is undecided (Q2);
+- `validate --dir DIR --stdout FILE --exit CODE|signal:NAME|timeout|output-limit
+  [--aggregates FILE]`: the replica of the custodian's `validate_result`, the
+  outcome mapping (A6) and `PrivateAggregates::decode`, one JSON line
+  `{outcome, reason, roster, aggregatesOk}`.
+
+`tools/isolation/worker-e2e.mjs` (standard library only, reusing
+`bwrap-argv.mjs` and the controls of `matrix.mjs`) plays the dispatcher: stage;
+a replica pre-run identity check (every staged file hashed against its pin; a
+mismatch is `Rejected` before anything runs); run `/stage/engine --job
+/job/job.json` with the dispatcher's mounts (`/stage`, `/input`, `/job`
+read-only), its four environment variables and the custodian's normal quotas
+(cpu 30 s, wall 20 s, storage 64 MiB, 32 processes, stdout 64 KiB) with memory
+as the variable; a post-run re-hash (drift is `Rejected`); then `validate`. The
+controls (limits applied, no capabilities, no egress, no host files, scrubbed
+environment, writable scratch) run first and must pass.
+
+| Scenario (memory) | Expected custodian outcome |
+| --- | --- |
+| `normal` (1024, 1536 MiB) | `Success`, `completed`, `observed == expected`, `failed 0`, aggregates decode |
+| `normal` (512 MiB, the custodian's test profile) | **never `Success`** (Partial, Failed or Rejected): the Q7 conflict reproduced end to end; no limit is loosened to avoid it |
+| `population-mismatch`, `run-class-mismatch`, `wrong-bundle-digest`, `wrong-tree-digest`, `wrong-runtime-digest`, `stale-job` (1024 MiB) | `Failed` `non_zero_exit`, empty stdout, the engine's own reason (`population-binding-mismatch`, `run-class-mismatch`, `candidate-bundle-digest-mismatch`, `package-tree-digest-mismatch`, `runtime-digest-mismatch`, `entries-listing-mismatch`), before any entry is read |
+| `scanner-crash` (a runtime that dies) | `Partial` `engine_partial`, every entry failed |
+| `scanner-hang` (wall clock 5 s, the only shortened quota) | `Failed` `timeout` |
+| `staged-file-tampered` (a staged file differs from its pin) | `Rejected` `identity_mismatch`, the worker never starts |
+
+A population sweep (20, 100 and 400 entries at 1024 and 1536 MiB, with a longer
+wall and cpu budget) **records** whether the address-space need grows with the
+population; nothing is asserted about growth. The report
+(`pii-eval-worker-e2e/1`) is uploaded by the job and its summary is written to the
+job summary. Measured numbers are in
+[custodian-isolation-node.md](custodian-isolation-node.md).
+
+**What this proves, and what it does not.** It shows how this engine behaves, in a
+sandbox built from a replica of the custodian's launcher vector, under the
+custodian's documented limits, with the real Node; and that the custodian's checks
+as replicated here accept the engine's outputs and map each failure as A6 says.
+It does not prove isolation on the production host (the custodian's startup
+self-check is that evidence), it does not run the custodian's code (the replica
+goes stale if the custodian changes), the aggregates channel is a test channel,
+and the data is the synthetic quickstart population cloned to N entries.
+
 ## What needs verification after deployment
 
-Nothing below was exercised: it needs the custodian's deployment.
-
-- A real `bwrap` run of the launcher with the real Node runtime (the staged
-  runtime is a wrapper script in the tests), the `ps`-based memory sampling and
-  the process-tree cleanup under the sandbox's PID namespace and `RLIMIT_AS`
-  (Q7).
+- The `ps`-based memory sampling and process-tree cleanup under the custodian's
+  production sandbox (the CI job exercises the replica sandbox only).
 - The custodian's own validation of a real result and aggregates (the tests use a
   replica, `tests/worker_support/replica.rs`, written from private-custodian at
   commit `142db34dd4bc02903f47cba951a054351bb55fde`; it is not its code and a
@@ -326,3 +391,5 @@ Nothing below was exercised: it needs the custodian's deployment.
 | complete run, determinism, parity with `run`, every refusal and partial path, cancellation | `worker_job.rs` (feature) |
 | replica of the custodian's validation, conformance vectors, outcome mapping | `worker_custodian.rs` (feature) |
 | bundle reader, job, configuration, digests, adapters | unit tests in `crates/pii-eval-cli/src/worker/` |
+| the test engine example: `validate` equals the replica, `stage` layout and pins, the engine with real Node (unsandboxed), the marker | `worker_example.rs` (feature) |
+| the whole flow in a real bubblewrap sandbox with real Node | CI job `worker-flow` (`tools/isolation/worker-e2e.mjs`; pure parts in `tools/isolation/test/worker-e2e.test.mjs`) |

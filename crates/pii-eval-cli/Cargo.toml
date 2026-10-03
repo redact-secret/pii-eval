@@ -39,3 +39,11 @@ pii-eval-compat.workspace = true
 [[bin]]
 name = "pii-eval"
 path = "src/main.rs"
+
+# TEST ONLY (docs/worker-job.md, "real sandbox end to end"): the engine the custodian's
+# bubblewrap replica runs as `/stage/engine --job /job/job.json`, with the worker test
+# adapters. It needs the feature, so it is never built by `cargo build`, by `cargo test`
+# without the feature, or by the engine artifact build.
+[[example]]
+name = "worker_test_engine"
+required-features = ["worker-test-adapters"]

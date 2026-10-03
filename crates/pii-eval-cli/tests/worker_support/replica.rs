@@ -110,6 +110,17 @@ pub enum Outcome {
     Rejected,
 }
 
+impl Outcome {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Outcome::Success => "Success",
+            Outcome::Partial => "Partial",
+            Outcome::Failed => "Failed",
+            Outcome::Rejected => "Rejected",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Reason {
     Completed,
@@ -119,8 +130,31 @@ pub enum Reason {
     ResultMismatch,
     RosterMismatch,
     NonZeroExit,
+    Timeout,
+    Signaled,
+    OutputLimit,
     IdentityMismatch,
     IdentityChangedAfterExecution,
+}
+
+impl Reason {
+    /// The custodian's private reason names (worker-isolation.md section 7).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Reason::Completed => "completed",
+            Reason::EnginePartial => "engine_partial",
+            Reason::ResultOversized => "result_oversized",
+            Reason::ResultMalformed => "result_malformed",
+            Reason::ResultMismatch => "result_mismatch",
+            Reason::RosterMismatch => "roster_mismatch",
+            Reason::NonZeroExit => "non_zero_exit",
+            Reason::Timeout => "timeout",
+            Reason::Signaled => "signaled",
+            Reason::OutputLimit => "output_limit",
+            Reason::IdentityMismatch => "identity_mismatch",
+            Reason::IdentityChangedAfterExecution => "identity_changed_after_execution",
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -224,6 +258,61 @@ pub fn validate_result(
     })
 }
 
+/// How the worker ended (dispatcher.rs `Termination`, without the fencing and
+/// cancellation cases that need a ledger).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Termination {
+    Exited(i32),
+    Signaled(String),
+    TimedOut,
+    OutputLimit,
+}
+
+impl Termination {
+    /// `3`, `signal:SIGKILL`, `timeout`, `output-limit`.
+    pub fn parse(text: &str) -> Option<Self> {
+        match text {
+            "timeout" => Some(Termination::TimedOut),
+            "output-limit" => Some(Termination::OutputLimit),
+            _ => match text.strip_prefix("signal:") {
+                Some(s)
+                    if !s.is_empty()
+                        && s.len() <= 16
+                        && s.bytes()
+                            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit()) =>
+                {
+                    Some(Termination::Signaled(s.to_owned()))
+                }
+                Some(_) => None,
+                None => text.parse().ok().map(Termination::Exited),
+            },
+        }
+    }
+}
+
+/// A6: crash, signal, timeout, output limit and a non-zero exit are Failed and
+/// the worker's stdout is never parsed; a clean exit is validated.
+pub fn map_termination(
+    termination: &Termination,
+    stdout: &[u8],
+    domain: Domain,
+    protocol: &ProtocolRef,
+    authorized_roster: u64,
+) -> (Outcome, Reason, Option<ValidatedResult>) {
+    match termination {
+        Termination::TimedOut => (Outcome::Failed, Reason::Timeout, None),
+        Termination::OutputLimit => (Outcome::Failed, Reason::OutputLimit, None),
+        Termination::Signaled(_) => (Outcome::Failed, Reason::Signaled, None),
+        Termination::Exited(c) if *c != 0 => (Outcome::Failed, Reason::NonZeroExit, None),
+        Termination::Exited(_) => {
+            match validate_result(stdout, domain, protocol, authorized_roster) {
+                Ok(v) => (v.outcome, v.reason, Some(v)),
+                Err(r) => (Outcome::Rejected, r, None),
+            }
+        }
+    }
+}
+
 /// A6: a worker that did not exit cleanly never has its stdout parsed.
 pub fn map_outcome(
     exit_code: i32,
@@ -232,13 +321,71 @@ pub fn map_outcome(
     protocol: &ProtocolRef,
     authorized_roster: u64,
 ) -> (Outcome, Reason, Option<ValidatedResult>) {
-    if exit_code != 0 {
-        return (Outcome::Failed, Reason::NonZeroExit, None);
+    map_termination(
+        &Termination::Exited(exit_code),
+        stdout,
+        domain,
+        protocol,
+        authorized_roster,
+    )
+}
+
+/// The aggregates allowlist the test policy uses: stratum `overall`, the nine
+/// metrics the test labels publish (`measurable-share` is left out, see
+/// docs/worker-job.md).
+pub fn test_allowlist() -> Allowlist {
+    Allowlist {
+        strata: vec!["overall".into()],
+        metrics: pii_eval_contracts::METRICS
+            .iter()
+            .map(|m| m.id.as_str().to_owned())
+            .filter(|m| m != "measurable-share")
+            .collect(),
     }
-    match validate_result(stdout, domain, protocol, authorized_roster) {
-        Ok(v) => (v.outcome, v.reason, Some(v)),
-        Err(r) => (Outcome::Rejected, r, None),
-    }
+}
+
+/// What the `validate` command of the real-sandbox example prints, as one JSON
+/// value. No input text: outcome, reason, roster and a boolean.
+pub fn report_json(
+    termination: &Termination,
+    stdout: &[u8],
+    aggregates: Option<&[u8]>,
+    authorized_roster: u64,
+) -> serde_json::Value {
+    let protocol = pii_protocol();
+    let (outcome, reason, validated) = map_termination(
+        termination,
+        stdout,
+        Domain::Pii,
+        &protocol,
+        authorized_roster,
+    );
+    let aggregates_ok = match (&validated, aggregates) {
+        (Some(v), Some(bytes)) => decode_aggregates(
+            bytes,
+            &ArtifactRef {
+                digest: format!("sha256:{}", sha256_hex(bytes)),
+                size: bytes.len() as u64,
+                protocol: protocol.clone(),
+            },
+            Domain::Pii,
+            &protocol,
+            &v.roster,
+            &test_allowlist(),
+        )
+        .is_ok(),
+        _ => false,
+    };
+    serde_json::json!({
+        "outcome": outcome.as_str(),
+        "reason": reason.as_str(),
+        "roster": validated.as_ref().map(|v| serde_json::json!({
+            "expected": v.roster.expected,
+            "observed": v.roster.observed,
+            "failed": v.roster.failed,
+        })),
+        "aggregatesOk": aggregates_ok,
+    })
 }
 
 // --- staging identity ------------------------------------------------------

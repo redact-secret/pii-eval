@@ -609,6 +609,7 @@ fn a_scanner_timeout_is_a_partial_result() {
         Opts {
             trigger: Some(HANG),
             call_timeout_ms: Some(1500),
+            ..Opts::default()
         },
     );
 }
@@ -643,6 +644,7 @@ fn a_cancelled_job_exits_8_and_leaves_no_scanner_or_artifact() {
         &Opts {
             trigger: Some(HANG),
             call_timeout_ms: Some(600_000),
+            ..Opts::default()
         },
     );
     let token = CancelToken::new();

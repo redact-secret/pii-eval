@@ -124,7 +124,7 @@ jobs:
       - name: Worker job with the test adapters (launcher, bundle, digests, refusals, partial results, cancellation, custodian replica)
         env:
           PII_EVAL_REQUIRE_NODE: "1"
-        run: cargo test -p pii-eval-cli --locked --features worker-test-adapters --lib --test worker_default --test worker_job --test worker_custodian
+        run: cargo test -p pii-eval-cli --locked --features worker-test-adapters --lib --test worker_default --test worker_job --test worker_custodian --test worker_example
       - name: Clippy with the worker test adapters
         run: cargo clippy -p pii-eval-cli --all-targets --locked --features worker-test-adapters -- -D warnings
       # Also part of the run above; separate so a performance-harness failure is named (P10, ADR 0013):
@@ -148,7 +148,7 @@ jobs:
       # explicit permissions, no untrusted expression inside a script).
       - name: CI tooling (build information, engine artifact verification) and workflow policy
         run: |
-          node --test tools/ci/test/ci-tools.test.mjs tools/ci/test/workflow-policy.test.mjs tools/isolation/test/argv.test.mjs tools/isolation/test/lib.test.mjs
+          node --test tools/ci/test/ci-tools.test.mjs tools/ci/test/workflow-policy.test.mjs tools/isolation/test/argv.test.mjs tools/isolation/test/lib.test.mjs tools/isolation/test/worker-e2e.test.mjs
           for f in tools/ci/*.mjs tools/isolation/*.mjs; do node --check "$f"; done
           node tools/ci/workflow-policy.mjs .github/workflows/*.yml
 
@@ -176,7 +176,7 @@ jobs:
       - name: Test the worker test adapters on MSRV
         env:
           PII_EVAL_REQUIRE_NODE: "1"
-        run: cargo +1.85.0 test -p pii-eval-cli --locked --features worker-test-adapters --test worker_job --test worker_custodian
+        run: cargo +1.85.0 test -p pii-eval-cli --locked --features worker-test-adapters --test worker_job --test worker_custodian --test worker_example
 
   # The engine artifact (docs/ci-artifacts.md): the documented release build,
   # published once as an internal workflow artifact that evaluate.yml and any

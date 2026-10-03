@@ -18,7 +18,9 @@ use pii_eval_contracts::{
 use serde_json::Value;
 
 pub fn bin() -> &'static str {
-    env!("CARGO_BIN_EXE_pii-eval")
+    // Integration tests get the binary path from cargo; the worker example (which includes this
+    // module) has none and does not call it.
+    option_env!("CARGO_BIN_EXE_pii-eval").unwrap_or("pii-eval")
 }
 
 pub fn repo_root() -> PathBuf {

@@ -149,3 +149,62 @@ jobs:
           path: ${{ runner.temp }}/isolation-node.json
           retention-days: 30
           if-no-files-found: ignore
+
+  # The whole custodian worker flow, end to end, with the REAL pinned Node runtime as
+  # `scanner-0`, in the same replica sandbox (docs/worker-job.md, "real sandbox end to end").
+  # The production `pii-eval` cannot do this (it always refuses: the custodian has not decided
+  # the contract), so the engine inside the sandbox is the TEST example
+  # `worker_test_engine`, built with the cargo feature `worker-test-adapters`. That binary is
+  # test code: it is built here, never published, and the engine artifact check in
+  # build-engine.yml proves the release `pii-eval` does not contain it. The custodian side is a
+  # replica (identity checks before and after, validate_result, the outcome mapping, the
+  # aggregates decode); the job fails on a failed control or any violated expectation.
+  worker-flow:
+    name: the custodian flow end to end under bubblewrap with real Node
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The pinned Node runtime, as in the job above.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.23.3"
+      - name: Install bubblewrap and allow unprivileged user namespaces
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
+          bwrap --version
+          command -v prlimit
+          uname -sr
+      # rust-toolchain.toml pins the toolchain; rustup installs it on first use.
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Build the test engine (feature worker-test-adapters; test code, not the engine artifact)
+        run: cargo build --release --locked -p pii-eval-cli --features worker-test-adapters --example worker_test_engine
+      - name: Run the flow (the controls must pass; no limit is ever loosened)
+        shell: bash
+        env:
+          # Node 22.23.3 linux-x64 as installed by actions/setup-node: pinned by digest, not only by version.
+          NODE_SHA256: fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48
+        run: |
+          set -euo pipefail
+          cp -L "$(command -v node)" "$RUNNER_TEMP/node"
+          chmod 0755 "$RUNNER_TEMP/node"
+          node tools/isolation/worker-e2e.mjs \
+            --engine "$GITHUB_WORKSPACE/target/release/examples/worker_test_engine" \
+            --node "$RUNNER_TEMP/node" \
+            --node-sha256 "$NODE_SHA256" \
+            --out "$RUNNER_TEMP/worker-flow.json" \
+            --summary "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: worker-flow-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/worker-flow.json
+          retention-days: 30
+          if-no-files-found: ignore
