@@ -91,3 +91,40 @@ describe('the policy can fail', () => {
     assert.deepEqual(checkWorkflow('t', wf), []);
   });
 });
+
+describe('stricter rules', () => {
+  const body = (inner) => ok.replace('      - run: echo hi\n', inner);
+  it('flags untrusted data wrapped in a function or an operator inside run', () => {
+    for (const expr of ["format('{0}', inputs.x)", 'toJSON(inputs)', '!inputs.x', "contains(github.event.pull_request.title, 'x')", "fromJSON(steps.a.outputs.j).k", 'github.event.comment.body || github.sha']) {
+      const p = checkWorkflow('t', body(`      - run: echo \${{ ${expr} }}\n`));
+      assert.match(p.join('\n'), /untrusted expression in run/, expr);
+    }
+  });
+  it('flags an expression that spans lines inside a run block', () => {
+    const wf = body('      - run: |\n          echo "${{ format(\n            inputs.x) }}"\n');
+    assert.match(checkWorkflow('t', wf).join('\n'), /expression spans lines/);
+  });
+  it('flags write permissions at any level, in block and inline form', () => {
+    assert.match(checkWorkflow('t', ok.replace('contents: read', 'contents: write')).join('\n'), /write permission/);
+    assert.match(checkWorkflow('t', ok.replace('permissions:\n  contents: read', 'permissions: write-all')).join('\n'), /write permission/);
+    const job = ok.replace('    runs-on: ubuntu-latest', '    permissions:\n      checks: write\n    runs-on: ubuntu-latest');
+    assert.match(checkWorkflow('t', job).join('\n'), /write permission/);
+    const inline = ok.replace('    runs-on: ubuntu-latest', '    permissions: { contents: write }\n    runs-on: ubuntu-latest');
+    assert.match(checkWorkflow('t', inline).join('\n'), /write permission/);
+  });
+  it('allows read permissions at job level', () => {
+    const job = ok.replace('    runs-on: ubuntu-latest', '    permissions:\n      actions: read\n      contents: read\n    runs-on: ubuntu-latest');
+    assert.deepEqual(checkWorkflow('t', job), []);
+  });
+  it('flags github-script and flow-style uses', () => {
+    assert.match(checkWorkflow('t', body(`      - uses: actions/github-script@${SHA}\n`)).join('\n'), /github-script/);
+    assert.match(checkWorkflow('t', body('      - { uses: actions/checkout@v4 }\n')).join('\n'), /flow-style uses|not pinned/);
+  });
+  it('flags a script that writes GITHUB_ENV or GITHUB_PATH', () => {
+    assert.match(checkWorkflow('t', body('      - run: echo "X=1" >> "$GITHUB_ENV"\n')).join('\n'), /GITHUB_ENV/);
+    assert.match(checkWorkflow('t', body('      - run: |\n          echo /x >> "$GITHUB_PATH"\n')).join('\n'), /GITHUB_ENV or GITHUB_PATH/);
+  });
+  it('still allows GITHUB_OUTPUT and GITHUB_STEP_SUMMARY', () => {
+    assert.deepEqual(checkWorkflow('t', body('      - run: |\n          echo "a=b" >> "$GITHUB_OUTPUT"\n          echo x >> "$GITHUB_STEP_SUMMARY"\n')), []);
+  });
+});

@@ -3,8 +3,10 @@ name: evaluate
 # Runs a PUBLIC / SYNTHETIC pii-eval evaluation with a PREBUILT engine artifact
 # (docs/ci-artifacts.md). It never rebuilds an engine that already exists:
 #
-#   - `engine-run-id` set: download the engine artifact of that workflow run
-#     (for example the last successful `ci` run on main);
+#   - `engine-run-id` set: use the engine artifact of that workflow run, if
+#     GitHub's own record of the run says it is acceptable (tools/ci/resolve-engine.mjs:
+#     a successful push or dispatch on main of this repository, from one of this
+#     repository's build workflows, artifact named after the run's head commit);
 #   - `engine-run-id` empty: build the engine once through build-engine.yml in
 #     THIS run and use that artifact.
 #
@@ -27,6 +29,11 @@ on:
         required: false
         type: string
         default: examples/quickstart/run-config.json
+      allow-unverified-ref:
+        description: Accept an engine from a pull request or another branch (an UNREVIEWED binary runs here; only for deliberate tests)
+        required: false
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       engine-run-id:
@@ -39,12 +46,17 @@ on:
         required: false
         type: string
         default: examples/quickstart/run-config.json
+      allow-unverified-ref:
+        description: Accept an engine from a pull request or another branch (an UNREVIEWED binary runs here; only for deliberate tests)
+        required: false
+        type: boolean
+        default: false
     outputs:
       artifact-name:
         description: Name of the artifact holding the run output
         value: ${{ jobs.evaluate.outputs.artifact-name }}
 
-# `actions: read` lets the download step read the artifact of another run of
+# `actions: read` lets the job read the run record and the artifact of a run of
 # this repository. Nothing else is needed; there are no secrets.
 permissions:
   contents: read
@@ -77,74 +89,139 @@ jobs:
         with:
           node-version: "22"
       # Inputs are untrusted text: they reach shell only through env, and are
-      # checked here before anything uses them.
+      # checked here (single line, exact shapes) before anything uses them.
       - name: Check the inputs
         id: inputs
+        shell: bash
         env:
           ENGINE_RUN_ID: ${{ inputs.engine-run-id }}
           CONFIG: ${{ inputs.config }}
         run: |
-          if [ -n "$ENGINE_RUN_ID" ] && ! printf '%s' "$ENGINE_RUN_ID" | grep -Eq '^[0-9]{1,20}$'; then
+          set -euo pipefail
+          nl=$'\n'
+          if [[ "$ENGINE_RUN_ID" == *"$nl"* || "$CONFIG" == *"$nl"* ]]; then
+            echo "inputs must be a single line" >&2
+            exit 2
+          fi
+          if [[ -n "$ENGINE_RUN_ID" && ! "$ENGINE_RUN_ID" =~ ^[0-9]{1,20}$ ]]; then
             echo "engine-run-id must be a workflow run id (digits)" >&2
             exit 2
           fi
-          if ! printf '%s' "$CONFIG" | grep -Eq '^[A-Za-z0-9._/-]{1,200}$' \
-            || printf '%s' "$CONFIG" | grep -Eq '(^|/)\.\.(/|$)|^/'; then
-            echo "config must be a relative path inside the checkout" >&2
+          if [[ ! "$CONFIG" =~ ^[A-Za-z0-9._/-]{1,200}$ || "$CONFIG" == -* || "$CONFIG" == /* || "$CONFIG" == *..* ]]; then
+            echo "config must be a plain relative path inside the checkout" >&2
             exit 2
           fi
-          if [ ! -f "$CONFIG" ]; then
-            echo "config not found in the checkout" >&2
+          if [[ ! -f "$CONFIG" || -L "$CONFIG" ]]; then
+            echo "config must be a regular file in the checkout" >&2
             exit 2
           fi
+          case "$(realpath "$CONFIG")" in
+            "$PWD"/*) ;;
+            *) echo "config escapes the checkout" >&2; exit 2 ;;
+          esac
           echo "run-id=${ENGINE_RUN_ID:-$GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+      # Decide from GitHub's own record of the run, not from the artifact's contents.
+      - name: Choose the engine artifact
+        id: resolve
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.inputs.outputs.run-id }}
+          ALLOW_UNVERIFIED: ${{ inputs.allow-unverified-ref }}
+        run: |
+          set -euo pipefail
+          node tools/ci/resolve-engine.mjs \
+            --run-id "$RUN_ID" \
+            --current-run-id "$GITHUB_RUN_ID" \
+            --repository "$GITHUB_REPOSITORY" \
+            --allow-unverified-ref "${ALLOW_UNVERIFIED:-false}" \
+            --github-output "$GITHUB_OUTPUT" | tee "$RUNNER_TEMP/engine-resolved.json"
+      # Exactly one artifact, by exact name: it is extracted directly into `path`.
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: pii-eval-engine-*-linux-x86_64
+          name: ${{ steps.resolve.outputs.artifact-name }}
           path: ${{ runner.temp }}/engine-download
           run-id: ${{ steps.inputs.outputs.run-id }}
           repository: ${{ github.repository }}
           github-token: ${{ github.token }}
       - name: Verify the engine artifact
+        shell: bash
+        env:
+          COMMIT: ${{ steps.resolve.outputs.commit }}
         run: |
           set -euo pipefail
-          count=$(find "$RUNNER_TEMP/engine-download" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
-          if [ "$count" != "1" ]; then
-            echo "expected exactly one engine artifact, found $count" >&2
-            exit 2
-          fi
-          dir=$(find "$RUNNER_TEMP/engine-download" -mindepth 1 -maxdepth 1 -type d)
-          echo "$dir" > "$RUNNER_TEMP/engine-dir.txt"
           node tools/ci/verify-engine.mjs \
-            --dir "$dir" \
+            --dir "$RUNNER_TEMP/engine-download" \
             --repository "$GITHUB_REPOSITORY" \
             --target linux-x86_64 \
-            --make-executable | tee "$RUNNER_TEMP/engine-verified.json"
+            --commit "$COMMIT" \
+            --make-executable > "$RUNNER_TEMP/engine-verified.json"
+          grep -q '"ok":true' "$RUNNER_TEMP/engine-verified.json"
+          cat "$RUNNER_TEMP/engine-verified.json"
+          if [ "$COMMIT" != "$GITHUB_SHA" ]; then
+            echo "::notice::the engine commit differs from the commit of the inputs checked out here; both are recorded in the summary"
+          fi
+      # The engine is a program from an artifact: while it runs, workflow commands
+      # are switched off, its output goes to files, and only a re-serialized JSON
+      # line and a prefixed stderr excerpt are printed afterwards.
       - name: Run the evaluation (public, synthetic)
+        shell: bash
         env:
           CONFIG: ${{ inputs.config }}
           PII_EVAL_REQUIRE_NODE: "1"
         run: |
           set -euo pipefail
-          engine="$(cat "$RUNNER_TEMP/engine-dir.txt")/pii-eval"
-          mkdir -p "$RUNNER_TEMP/run-output"
-          "$engine" run --config "$CONFIG" --node "$(command -v node)" --out "$RUNNER_TEMP/run-output/run" \
-            | tee "$RUNNER_TEMP/run-summary.json"
+          engine="$RUNNER_TEMP/engine-download/pii-eval"
+          out="$RUNNER_TEMP/run-output"
+          mkdir -p "$out"
+          untrusted() {
+            local o="$1" e="$2" token rc=0
+            shift 2
+            token=$(node -e 'process.stdout.write(require("crypto").randomBytes(16).toString("hex"))')
+            echo "::stop-commands::$token"
+            "$@" > "$o" 2> "$e" || rc=$?
+            echo "::$token::"
+            head -c 2000 "$e" | sed 's/^/stderr| /'
+            return "$rc"
+          }
+          rc=0
+          untrusted "$RUNNER_TEMP/run-summary.raw" "$RUNNER_TEMP/run-stderr.raw" \
+            "$engine" run --config "$CONFIG" --node "$(command -v node)" --out "$out/run" || rc=$?
+          node tools/ci/summary-line.mjs "$RUNNER_TEMP/run-summary.raw" | tee "$RUNNER_TEMP/run-summary.json"
+          if [ "$rc" -ne 0 ]; then
+            echo "pii-eval run exited with status $rc" >&2
+            exit "$rc"
+          fi
           snapshot=$(node -e 'const p=require("path"),fs=require("fs");const c=JSON.parse(fs.readFileSync(process.env.CONFIG,"utf8"));process.stdout.write(p.resolve(p.dirname(process.env.CONFIG),c.snapshot.path))')
-          "$engine" validate "$RUNNER_TEMP/run-output/run/run-artifact.json" \
-            --snapshot "$snapshot" --manifest "$RUNNER_TEMP/run-output/run/manifest.json"
+          rc=0
+          untrusted "$RUNNER_TEMP/validate-summary.raw" "$RUNNER_TEMP/validate-stderr.raw" \
+            "$engine" validate "$out/run/run-artifact.json" --snapshot "$snapshot" --manifest "$out/run/manifest.json" || rc=$?
+          node tools/ci/summary-line.mjs "$RUNNER_TEMP/validate-summary.raw" | tee "$RUNNER_TEMP/validate-summary.json"
+          if [ "$rc" -ne 0 ]; then
+            echo "pii-eval validate exited with status $rc" >&2
+            exit "$rc"
+          fi
       - name: Summary
+        shell: bash
         run: |
           {
             echo "### pii-eval evaluation"
             echo
-            echo "Engine identity (verified before use):"
+            echo "Engine chosen from GitHub's record of the run:"
+            echo '```json'
+            cat "$RUNNER_TEMP/engine-resolved.json"
+            echo '```'
+            echo "Engine verified before use:"
             echo '```json'
             cat "$RUNNER_TEMP/engine-verified.json"
             echo '```'
-            echo "Run summary (fixed vocabulary, no input text):"
+            echo "Run summary (re-serialized, fixed vocabulary, no input text):"
             echo '```json'
             cat "$RUNNER_TEMP/run-summary.json"
+            echo '```'
+            echo "Validation summary:"
+            echo '```json'
+            cat "$RUNNER_TEMP/validate-summary.json"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

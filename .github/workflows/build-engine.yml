@@ -6,8 +6,8 @@ name: build-engine
 # `evaluate.yml`, or any workflow that calls this one with `uses:`.
 #
 # Internal only. This is not a release: no tag, no GitHub Release, no public
-# download, 30-day retention, readable by people with read access to this
-# repository. The artifact is neither signed nor attested.
+# download, 30-day retention on main (3 days elsewhere), readable by people with
+# read access to this repository. The artifact is neither signed nor attested.
 
 on:
   workflow_call:
@@ -46,12 +46,23 @@ jobs:
       # rust-toolchain.toml pins the toolchain; rustup installs it on first use.
       - name: Install pinned toolchain
         run: rustup show active-toolchain || rustup toolchain install
-      # Same cache action credential-eval uses, pinned by SHA.
+      # Same cache action credential-eval uses, pinned by SHA. Only the registry
+      # and git dependencies are cached, not the target directory: the published
+      # binary is compiled from a clean target directory, not from cached
+      # incremental output.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      # The command documented in docs/cli.md, restricted to the CLI package.
+        with:
+          cache-targets: "false"
+      # Exactly the command documented in docs/cli.md (the whole workspace, so the
+      # release profile of every crate is also exercised).
       - name: Build (release, locked)
-        run: cargo build --release --locked -p pii-eval-cli
+        run: cargo build --release --locked
+      # GITHUB_SHA is the merge commit for a pull request (it disappears after the
+      # merge); HEAD_SHA is the commit the event is about. Both are recorded.
       - name: Assemble the artifact directory
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           mkdir -p "$RUNNER_TEMP/engine"
           cp target/release/pii-eval "$RUNNER_TEMP/engine/pii-eval"
@@ -61,6 +72,8 @@ jobs:
             --target linux-x86_64 \
             --repository "$GITHUB_REPOSITORY" \
             --commit "$GITHUB_SHA" \
+            --head-sha "$HEAD_SHA" \
+            --event "$EVENT_NAME" \
             --ref "$GITHUB_REF" \
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
@@ -84,11 +97,15 @@ jobs:
             echo "- artifact: \`pii-eval-engine-${GITHUB_SHA}-linux-x86_64\`"
             echo "- commit: \`${GITHUB_SHA}\`"
             echo "- binary sha256: \`$(awk '$2 == "pii-eval" { print $1 }' "$RUNNER_TEMP/engine/SHA256SUMS")\`"
-            echo "- internal artifact, 30-day retention; not a release (docs/ci-artifacts.md)"
+            echo "- internal artifact (30 days on main, 3 elsewhere); not a release (docs/ci-artifacts.md)"
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pii-eval-engine-${{ github.sha }}-linux-x86_64
           path: ${{ runner.temp }}/engine
-          retention-days: 30
+          # Re-running all jobs of a run uploads the same name again.
+          overwrite: true
+          # 30 days for main; a pull request's or another branch's binary is not
+          # worth keeping that long.
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 3 }}
           if-no-files-found: error

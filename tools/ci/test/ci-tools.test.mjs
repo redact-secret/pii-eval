@@ -3,12 +3,15 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { build, stable } from '../build-info.mjs';
+import { isMain } from '../main-guard.mjs';
+import { decide } from '../resolve-engine.mjs';
+import { safeLine } from '../summary-line.mjs';
 import { verify } from '../verify-engine.mjs';
 
 const TOOLS = fileURLToPath(new URL('..', import.meta.url));
@@ -30,6 +33,8 @@ function inputs(dir, extra = {}) {
     target: 'linux-x86_64',
     repository: 'redact-secret/pii-eval',
     commit: COMMIT,
+    'head-sha': 'b'.repeat(40),
+    event: 'push',
     ref: 'refs/heads/main',
     'run-id': '123456789',
     'run-attempt': '1',
@@ -97,6 +102,9 @@ describe('build-info', () => {
     for (const bad of [
       { commit: 'abc' },
       { commit: 'A'.repeat(40) },
+      { 'head-sha': 'xyz' },
+      { event: 'Push Event' },
+      { event: '' },
       { target: 'windows-x86_64' },
       { repository: 'no-slash' },
       { repository: 'a/b/c' },
@@ -188,6 +196,9 @@ describe('verify-engine', () => {
       'unknown key': { ...good, note: 'x' },
       'wrong schema': { ...good, schema: 'pii-eval-build-info/2' },
       'bad commit': { ...good, commit: 'zz' },
+      'bad head sha': { ...good, headSha: 'zz' },
+      'bad event': { ...good, event: 'push;rm' },
+      'missing event': (({ event, ...rest }) => rest)(good),
       'bad target': { ...good, target: 'plan9' },
       'bad toolchain key': { ...good, toolchain: { ...good.toolchain, extra: 1 } },
       'bad binary name': { ...good, binary: { ...good.binary, name: 'other' } },
@@ -249,5 +260,151 @@ describe('command line', () => {
     const r = spawnSync('node', [join(TOOLS, 'build-info.mjs'), '--dir', dir, '--target', 'linux-x86_64'], { encoding: 'utf8' });
     assert.equal(r.status, 2);
     assert.match(r.stderr, /missing --repository/);
+  });
+});
+
+describe('fails closed from any path', () => {
+  const copyTools = (where) => {
+    const dst = join(where, 'tools', 'ci');
+    mkdirSync(dst, { recursive: true });
+    for (const f of readdirSync(TOOLS).filter((n) => n.endsWith('.mjs'))) copyFileSync(join(TOOLS, f), join(dst, f));
+    return dst;
+  };
+
+  it('verify-engine reports a failure when its path contains spaces and other URL-encoded characters', () => {
+    // Regression: a guard comparing import.meta.url with `file://${argv[1]}` is false for these
+    // paths, so the script did nothing and exited 0 (a verifier that fails open).
+    const base = tmp('with space & % chars');
+    const dst = copyTools(base);
+    const { dir } = makeDist();
+    writeFileSync(join(dir, 'pii-eval'), 'tampered');
+    const r = spawnSync('node', [join(dst, 'verify-engine.mjs'), '--dir', dir], { encoding: 'utf8' });
+    assert.equal(r.status, 1, r.stdout);
+    assert.equal(JSON.parse(r.stdout).reason, 'sums-mismatch');
+    const ok = makeDist();
+    const good = spawnSync('node', [join(dst, 'verify-engine.mjs'), '--dir', ok.dir, '--make-executable'], { encoding: 'utf8' });
+    assert.equal(good.status, 0, good.stdout);
+    assert.equal(JSON.parse(good.stdout).ok, true);
+  });
+
+  it('works through a symlink to the script', () => {
+    const base = tmp('linked');
+    const dst = copyTools(base);
+    const link = join(base, 'verify-link.mjs');
+    symlinkSync(join(dst, 'verify-engine.mjs'), link);
+    const { dir } = makeDist();
+    writeFileSync(join(dir, 'pii-eval'), 'tampered');
+    const r = spawnSync('node', [link, '--dir', dir], { encoding: 'utf8' });
+    assert.equal(r.status, 1, r.stdout);
+  });
+
+  it('every CLI script runs from a path with spaces', () => {
+    const dst = copyTools(tmp('another space'));
+    const policy = spawnSync('node', [join(dst, 'workflow-policy.mjs')], { encoding: 'utf8' });
+    assert.equal(policy.status, 2); // usage, not a silent exit 0
+    const build = spawnSync('node', [join(dst, 'build-info.mjs'), '--dir', tmp('e')], { encoding: 'utf8' });
+    assert.equal(build.status, 2);
+    const resolve = spawnSync('node', [join(dst, 'resolve-engine.mjs')], { encoding: 'utf8' });
+    assert.equal(resolve.status, 2);
+    const summary = spawnSync('node', [join(dst, 'summary-line.mjs')], { encoding: 'utf8' });
+    assert.equal(summary.status, 2);
+  });
+
+  it('isMain is false for a different file and for a missing argument', () => {
+    assert.equal(isMain(import.meta.url, null), false);
+    assert.equal(isMain(import.meta.url, ''), false);
+    assert.equal(isMain(import.meta.url, join(TOOLS, 'verify-engine.mjs')), false);
+    assert.equal(isMain(import.meta.url, fileURLToPath(import.meta.url)), true);
+  });
+});
+
+describe('resolve-engine', () => {
+  const REPO = 'redact-secret/pii-eval';
+  const SHA = 'c'.repeat(40);
+  const NAME = `pii-eval-engine-${SHA}-linux-x86_64`;
+  const run = (over = {}) => ({
+    status: 'completed',
+    conclusion: 'success',
+    event: 'push',
+    head_branch: 'main',
+    head_sha: SHA,
+    path: '.github/workflows/ci.yml',
+    repository: { full_name: REPO },
+    head_repository: { full_name: REPO },
+    ...over,
+  });
+  const arts = (...names) => ({ artifacts: names.map((name) => ({ name, expired: false })) });
+  const ask = (over = {}) => ({ run: run(), artifacts: arts(NAME), runId: '100', currentRunId: '200', repository: REPO, allowUnverified: false, ...over });
+  const refusal = (args) => reason(() => decide(args));
+
+  it('accepts a successful push on main of this repository', () => {
+    const d = decide(ask());
+    assert.equal(d.artifactName, NAME);
+    assert.equal(d.commit, SHA);
+    assert.equal(d.sameRun, false);
+  });
+  it('accepts a dispatch on main and the run being executed (no run record needed)', () => {
+    assert.equal(decide(ask({ run: run({ event: 'workflow_dispatch', path: '.github/workflows/build-engine.yml' }) })).commit, SHA);
+    assert.equal(decide(ask({ run: run({ path: '.github/workflows/ci.yml@refs/heads/main' }) })).commit, SHA);
+    assert.equal(decide(ask({ run: null, runId: '200', currentRunId: '200' })).sameRun, true);
+  });
+  it('refuses runs that are not completed, not successful, from a pull request, another branch, repository or workflow', () => {
+    assert.equal(refusal(ask({ run: run({ status: 'in_progress' }) })), 'run-not-completed');
+    assert.equal(refusal(ask({ run: run({ conclusion: 'failure' }) })), 'run-not-successful');
+    assert.equal(refusal(ask({ run: run({ event: 'pull_request' }) })), 'run-event-not-allowed');
+    assert.equal(refusal(ask({ run: run({ head_branch: 'feature' }) })), 'run-not-on-main');
+    assert.equal(refusal(ask({ run: run({ repository: { full_name: 'other/repo' } }) })), 'run-from-another-repository');
+    assert.equal(refusal(ask({ run: run({ head_repository: { full_name: 'fork/pii-eval' } }) })), 'run-from-another-repository');
+    assert.equal(refusal(ask({ run: run({ path: '.github/workflows/evil.yml' }) })), 'run-from-another-workflow');
+    assert.equal(refusal(ask({ run: run({ path: '.github/workflows/evil.yml@refs/heads/main' }) })), 'run-from-another-workflow');
+    assert.equal(refusal(ask({ run: run({ path: undefined }) })), 'run-from-another-workflow');
+    assert.equal(refusal(ask({ run: run({ path: '.github/workflows/ci.yml@refs/pull/7/merge' }) })), 'run-from-another-workflow');
+    assert.equal(refusal(ask({ run: null })), 'run-not-completed');
+  });
+  it('refuses an artifact that is not named after the run head commit', () => {
+    assert.equal(refusal(ask({ run: run({ head_sha: 'd'.repeat(40) }) })), 'artifact-commit-differs-from-run');
+  });
+  it('needs exactly one unexpired, correctly named artifact', () => {
+    assert.equal(refusal(ask({ artifacts: arts() })), 'no-engine-artifact');
+    assert.equal(refusal(ask({ artifacts: arts('other', 'pii-eval-engine-x-linux-x86_64', NAME.toUpperCase()) })), 'no-engine-artifact');
+    assert.equal(refusal(ask({ artifacts: { artifacts: [{ name: NAME, expired: true }] } })), 'no-engine-artifact');
+    assert.equal(refusal(ask({ artifacts: arts(NAME, `pii-eval-engine-${'e'.repeat(40)}-linux-x86_64`) })), 'several-engine-artifacts');
+    assert.equal(refusal(ask({ artifacts: null })), 'no-engine-artifact');
+  });
+  it('validates the run ids', () => {
+    for (const bad of ['', 'abc', '1 2', '1\nrun-id=2', '-1']) assert.equal(refusal(ask({ runId: bad })), 'run-id-invalid', bad);
+  });
+  it('accepts a pull request run only with the explicit override, and still checks the artifact name', () => {
+    const pr = run({ event: 'pull_request', head_branch: 'feature', head_sha: 'f'.repeat(40), path: '.github/workflows/ci.yml@refs/pull/7/merge' });
+    assert.equal(refusal(ask({ run: pr })), 'run-event-not-allowed');
+    assert.equal(decide(ask({ run: pr, allowUnverified: true })).artifactName, NAME);
+    assert.equal(refusal(ask({ run: run({ conclusion: 'failure' }), allowUnverified: true })), 'run-not-successful');
+    assert.equal(refusal(ask({ run: pr, allowUnverified: true, artifacts: arts() })), 'no-engine-artifact');
+  });
+});
+
+describe('summary-line', () => {
+  it('re-serializes one JSON object and escapes backticks', () => {
+    assert.equal(safeLine('{"a":1,"b":"x`y```z"}\n'), '{"a":1,"b":"x\\u0060y\\u0060\\u0060\\u0060z"}');
+  });
+  it('prints a fixed marker for anything else (workflow commands, arrays, text, nothing)', () => {
+    for (const bad of ['::error::boom', '::set-output name=x::y\n{"a":1}', '[1]', '"s"', 'null', '', 'not json', '{"a":']) {
+      assert.equal(safeLine(bad), '{"unreadable":true}', bad);
+    }
+  });
+  it('only looks at the first line, so later lines cannot reach the output', () => {
+    assert.equal(safeLine('{"ok":true}\n::error::injected\n{"x":1}'), '{"ok":true}');
+  });
+  it('caps the length', () => {
+    assert.equal(safeLine(JSON.stringify({ big: 'x'.repeat(5000) })), '{"truncated":true}');
+  });
+  it('the command line prints the safe line and exits 0 even for a missing file', () => {
+    const f = join(tmp('sl'), 'raw');
+    writeFileSync(f, '::stop-commands::x\n');
+    const r = spawnSync('node', [join(TOOLS, 'summary-line.mjs'), f], { encoding: 'utf8' });
+    assert.equal(r.status, 0);
+    assert.equal(r.stdout, '{"unreadable":true}\n');
+    const missing = spawnSync('node', [join(TOOLS, 'summary-line.mjs'), join(tmp('sl2'), 'none')], { encoding: 'utf8' });
+    assert.equal(missing.stdout, '{"unreadable":true}\n');
   });
 });

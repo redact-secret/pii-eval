@@ -4,8 +4,12 @@
 // the output is a pure function of the inputs.
 //
 //   node tools/ci/build-info.mjs --dir DIR --target linux-x86_64 \
-//     --repository OWNER/REPO --commit SHA40 --ref REF --run-id ID --run-attempt N \
-//     [--root REPO_ROOT] [--rustc-version TEXT]
+//     --repository OWNER/REPO --commit SHA40 --head-sha SHA40 --event NAME --ref REF \
+//     --run-id ID --run-attempt N [--root REPO_ROOT] [--rustc-version TEXT]
+//
+// `--commit` is GITHUB_SHA (for a pull_request event the merge commit, which
+// disappears after the merge); `--head-sha` is the commit the event is about (the
+// pull request head, or the same commit for a push); `--event` is the event name.
 //
 // DIR must already hold the binary `pii-eval`. `--root` (default: the working
 // directory) is where Cargo.lock and rust-toolchain.toml are read from.
@@ -14,6 +18,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { lstatSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { isMain } from './main-guard.mjs';
 
 export const SCHEMA = 'pii-eval-build-info/1';
 export const TARGETS = ['linux-x86_64'];
@@ -48,11 +53,13 @@ export function parseArgs(argv) {
 }
 
 export function validateInputs(a) {
-  const need = ['dir', 'target', 'repository', 'commit', 'ref', 'run-id', 'run-attempt'];
+  const need = ['dir', 'target', 'repository', 'commit', 'head-sha', 'event', 'ref', 'run-id', 'run-attempt'];
   for (const k of need) if (typeof a[k] !== 'string' || a[k] === '') throw new UsageError(`missing --${k}`);
   if (!TARGETS.includes(a.target)) throw new UsageError('unsupported target');
   if (!/^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/.test(a.repository)) throw new UsageError('bad repository');
   if (!/^[0-9a-f]{40}$/.test(a.commit)) throw new UsageError('bad commit');
+  if (!/^[0-9a-f]{40}$/.test(a['head-sha'])) throw new UsageError('bad head sha');
+  if (!/^[a-z_]{1,50}$/.test(a.event)) throw new UsageError('bad event');
   if (!/^[\x21-\x7e]{1,200}$/.test(a.ref)) throw new UsageError('bad ref');
   if (!/^[0-9]{1,20}$/.test(a['run-id'])) throw new UsageError('bad run id');
   if (!/^[0-9]{1,4}$/.test(a['run-attempt'])) throw new UsageError('bad run attempt');
@@ -74,6 +81,8 @@ export function build(a) {
     schema: SCHEMA,
     repository: a.repository,
     commit: a.commit,
+    event: a.event,
+    headSha: a['head-sha'],
     ref: a.ref,
     runId: a['run-id'],
     runAttempt: a['run-attempt'],
@@ -96,7 +105,7 @@ export function build(a) {
   return info;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   try {
     const info = build(parseArgs(process.argv.slice(2)));
     process.stdout.write(`${JSON.stringify({ ok: true, commit: info.commit, binarySha256: info.binary.sha256 })}\n`);

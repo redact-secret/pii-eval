@@ -18,6 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { chmodSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { BINARY, INFO, SCHEMA, SUMS, TARGETS } from './build-info.mjs';
+import { isMain } from './main-guard.mjs';
 
 export const SUMMARY_SCHEMA = 'pii-eval-engine-verify/1';
 
@@ -60,7 +61,7 @@ function parseSums(text) {
 }
 
 const KEYS = {
-  top: ['binary', 'commit', 'ref', 'repository', 'runAttempt', 'runId', 'schema', 'target', 'toolchain'],
+  top: ['binary', 'commit', 'event', 'headSha', 'ref', 'repository', 'runAttempt', 'runId', 'schema', 'target', 'toolchain'],
   toolchain: ['cargoLockSha256', 'rustToolchainFileSha256', 'rustc'],
   binary: ['bytes', 'name', 'sha256', 'version'],
 };
@@ -75,7 +76,8 @@ function checkInfo(info) {
   exactKeys(info, KEYS.top);
   if (info.schema !== SCHEMA) throw new Fail('build-info-invalid');
   if (!/^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/.test(info.repository)) throw new Fail('build-info-invalid');
-  if (!/^[0-9a-f]{40}$/.test(info.commit)) throw new Fail('build-info-invalid');
+  if (!/^[0-9a-f]{40}$/.test(info.commit) || !/^[0-9a-f]{40}$/.test(info.headSha)) throw new Fail('build-info-invalid');
+  if (!/^[a-z_]{1,50}$/.test(info.event)) throw new Fail('build-info-invalid');
   if (!/^[\x21-\x7e]{1,200}$/.test(info.ref)) throw new Fail('build-info-invalid');
   if (!/^[0-9]{1,20}$/.test(info.runId) || !/^[0-9]{1,4}$/.test(info.runAttempt)) throw new Fail('build-info-invalid');
   if (!TARGETS.includes(info.target)) throw new Fail('build-info-invalid');
@@ -151,11 +153,11 @@ function parse(argv) {
   return o;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   try {
     const info = verify(parse(process.argv.slice(2)));
     process.stdout.write(
-      `${JSON.stringify({ schema: SUMMARY_SCHEMA, ok: true, repository: info.repository, commit: info.commit, runId: info.runId, target: info.target, binarySha256: info.binary.sha256, version: info.binary.version })}\n`,
+      `${JSON.stringify({ schema: SUMMARY_SCHEMA, ok: true, repository: info.repository, commit: info.commit, headSha: info.headSha, event: info.event, runId: info.runId, target: info.target, binarySha256: info.binary.sha256, version: info.binary.version })}\n`,
     );
   } catch (e) {
     const code = e instanceof Fail ? e.code : 'internal';
