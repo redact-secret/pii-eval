@@ -61,6 +61,12 @@ jobs:
         env:
           PII_EVAL_REQUIRE_NODE: "1"
         run: cargo test -p pii-eval-adapters --locked
+      # Also part of the run above; separate so an execution, determinism,
+      # process-tree or atomic-write failure is named (P7). Needs Node and `ps`.
+      - name: Executor (bounded execution, determinism, process trees, atomic writes, revision-2 goldens)
+        env:
+          PII_EVAL_REQUIRE_NODE: "1"
+        run: cargo test -p pii-eval-cli --locked --test executor --test process_executor --test writer --test golden_rev2
 
   msrv:
     name: tests on declared MSRV

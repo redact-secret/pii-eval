@@ -354,3 +354,7 @@ crates stay internal: consumers integrate through artifacts and the CLI.
 - P10 can measure wall time and RSS; this ADR makes no speed claim.
 - A scanner with missing rows is not accountable (section 7), which is a
   deliberate fail-closed choice reversible only by a revision.
+
+## Update (P7)
+
+[ADR 0008](0008-protocol-revision-2-and-schema-1-1.md) performed the bump listed in section 9 (rule identities, per-scanner metrics, verifier requiring revision 2) and resolved A8: benign and collision cases now count only when ALL rows pass (difference R3). The `MetricScopeAmbiguous` limit of section 8 is gone. Keys A8 above describe the oracle and the revision-1 state.

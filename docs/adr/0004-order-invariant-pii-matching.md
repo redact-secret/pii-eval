@@ -236,3 +236,7 @@ where U1 says they agree.
 - Legacy vectors are checked against hand evaluation of the oracle source
   (`crates/pii-eval-compat/tests/oracle_vectors.rs`), not by running the
   TypeScript oracle; same-observation replay parity is P9.
+
+## Update (P7)
+
+The contract impact described in section 5 is resolved by [ADR 0008](0008-protocol-revision-2-and-schema-1-1.md): the canonical rule is bound by protocol revision 2 (schema 1.1), and context groups now need at least one frame per class (R5).
