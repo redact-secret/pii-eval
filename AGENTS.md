@@ -8,33 +8,57 @@ or assumptions from predecessor repositories.
 
 ## Repository boundary
 
-`credential-eval` measures scanner behavior. It consumes versioned corpus
-snapshots (public `credential-evidence` releases or separately identified
-product-owned corpora, one population per run), runs scanners through
-adapters, normalizes file/range findings, applies the measurement protocol,
-and emits reproducible artifacts. See `docs/multi-corpus-qualification.md`.
+`pii-eval` measures scanner behavior on PII. It consumes versioned corpus
+snapshots (one identified population per run), runs scanners through adapters
+or validated observation replay, normalizes findings to half-open UTF-8 byte
+ranges, applies the measurement protocol (seven methods, ten metrics), and
+emits reproducible artifacts. The TypeScript engine in
+`redact-secret-benchmarks` is the migration oracle, not a dependency.
 
-This repository does not own credential truth, Redact Secret support status,
-release policy, public-site content, or scanner rankings. Never change an
-expected result merely to match a scanner's output.
+This repository does not own canonical truth or corpus custody, Redact Secret
+support status, thresholds, release approval, public-site content, scanner
+rankings, or permission to publish protected results. Protected runs execute
+only inside a `private-custodian` environment; an engine invocation is not an
+authorization decision. Never change an expected result merely to match a
+scanner's output; scanner agreement is not ground truth.
+
+Do not depend on credential family semantics or on `credential-eval`
+internals. Reuse a shared crate only after its neutral contract and both
+consumers are proven, and pin it.
 
 ## Working rules
 
 - Preserve scanner neutrality. Product-specific behavior belongs in an adapter
   or downstream qualification policy, not the measurement kernel.
-- Treat the outcome lattice and accounting rules as protocol semantics.
-  Refactors must preserve them; intentional changes require an explicit,
-  reviewed protocol revision.
+- Treat the outcome lattice (`pass`, `fail`, `review-required`,
+  `not-measured`), range states, matching/selection rules, and accounting as
+  protocol semantics. Refactors must preserve them; intentional changes
+  require an explicit, reviewed protocol revision with a difference report.
+  Do not fix a legacy semantic bug merely to achieve or abandon parity.
+- Keep type identity and sensitivity context as independent outcome axes.
+  Detection, a reported `redact` action, and verified sanitized output are
+  separate observations; never infer removal from a finding flag.
+- Coordinates are half-open UTF-8 bytes into the original input. Convert
+  runtime indices once, in adapters; never normalize input silently.
 - Keep execution bounded: concurrency, subprocess output, timeouts, buffers,
   and generated variants must all have explicit limits.
 - Keep results deterministic. Parallel scheduling may not alter semantic
   output ordering or aggregate results.
-- Record all identities needed for reproduction: engine, protocol, evidence
-  snapshot, scanner, adapter, configuration, and corpus digest.
-- Use only synthetic or documented public-test credential material. Never log
-  matched values or copy raw scanner output into public artifacts.
-- Keep compatibility code isolated and removable. Do not shape the canonical
-  model around a legacy benchmark schema.
+- Record all identities needed for reproduction: engine, protocol,
+  accounting, method, and adapter versions, corpus snapshot and digest,
+  scanner, configuration, and seeds. Keep population visibility
+  (`public-synthetic` or `protected`) separate from product identity
+  (`released` or `candidate`).
+- Use only synthetic or documented public-test material. Never use real
+  personal data or real credentials. Never log input text or matched values,
+  or copy raw scanner output, into public artifacts or errors.
+- Replays are stability checks, not extra samples; record authored counts,
+  variant counts, and effective N separately.
+- Keep the kernel free of process spawning, network, publication, and product
+  policy. Adapters never score expected outcomes.
+- First-party crates forbid `unsafe` unless an ADR shows a measured need.
+- Keep compatibility code in `pii-eval-compat`, isolated and removable. Do
+  not shape the canonical model around legacy JSON.
 
 ## Work discipline
 
@@ -48,22 +72,37 @@ expected result merely to match a scanner's output.
   is the only option. If creating something new is cheaper, propose that
   first.
 - When challenged, answer the objection actually raised, not an easier one.
-- Before benchmark measurements check that `trufflehog --version` matches the pin(3.97.4). A self-update that bumps only the patch version changes the stable count. If it differs, do not report the numbers; put the pinned binary first on `PATH` and rerun.
-  Always state the mode (published or candidate) alongside a stable count.
+- Before benchmark or parity measurements, check that every scanner binary
+  and adapter version matches the plan's pin (a self-update can change
+  results). If it differs, do not report the numbers; put the pinned binary
+  first on `PATH` and rerun. State the population visibility and the
+  released/candidate mode alongside any reported number.
+- Agents may run public synthetic tests within authorized scope. They cannot
+  authorize protected runs, expand budgets, alter expected answers from
+  scanner output, publish artifacts, or change support policy.
 
 ## Before finishing
 
-Run the repository's documented format, lint, test, schema, and parity checks
-that exist at the time of the change. If the implementation is not present yet,
-say which checks could not run instead of inventing commands. For changes to
-scoring, normalization, accounting, or serialization, add focused tests and
-verify deterministic output across repeated runs where practical.
+The repository is a design baseline; the workspace may not exist yet. Run the
+documented format, Clippy, locked workspace tests, schema drift, independent
+conformance, compatibility parity, and relevant integration checks that exist
+at the time of the change. If the implementation is not present yet, say which
+checks could not run instead of inventing commands or CLI flags. For changes
+to scoring, normalization, accounting, ranges, or serialization, add focused
+tests and verify deterministic output across repeated runs and worker counts.
 
 ## Local skills
 
-Repository-specific workflows live in `.agents/skills/`. Security-review
-skills inspect this evaluator's own attack surface; they do not assess whether
-any scanner is good or bad.
+Repository-specific workflows live in `.agents/skills/`.
+
+- Measurement correctness: `corpus-snapshot-validate`,
+  `range-conformance-check`, `metric-accounting-check`, `determinism-check`,
+  `oracle-parity-check`, `release-regression-check`.
+- Evaluator security (they inspect this evaluator's own attack surface and do
+  not assess whether any scanner is good or bad): `owasp-review`,
+  `sast-sweep`, `vulnerability-test`, `dependency-audit`,
+  `scan-secrets-in-history`, `scorecard-check`.
+- Handoff: `promote-finding`.
 
 <!-- graft:start -->
 ## Graft — repo context graph
