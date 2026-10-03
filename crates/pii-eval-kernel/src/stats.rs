@@ -48,8 +48,8 @@ use crate::bigint::U512;
 /// Identifier of the statistics rule (point, Wilson endpoint, rounding).
 pub const STATS_RULE_ID: &str = "pii-v1-wilson-exact";
 
-/// Revision of the statistics rule. Part of the proposed protocol revision 2
-/// (see ADR 0005); the legacy oracle's binary64 variant is revision 1 semantics.
+/// Revision of the statistics rule. Part of protocol revision 2
+/// (ADR 0005, bound by ADR 0008); the legacy oracle's binary64 variant is revision 1 semantics.
 pub const STATS_REVISION: u32 = 1;
 
 /// Why a statistic could not be computed. Numeric payloads only.

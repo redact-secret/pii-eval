@@ -11,7 +11,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::artifact::RunArtifact;
+use crate::artifact::{PublicSyntheticArtifact, RunArtifact};
 use crate::axes::{AuthoredAxes, OutcomeRow, validate_outcome_lattice};
 use crate::corpus::{Case, CorpusSnapshot, Variant};
 use crate::ident::Id;
@@ -262,38 +262,58 @@ pub fn validate_artifact_against_manifest(
     c.finish()
 }
 
-/// An artifact must be consistent with the snapshot it measured: population
-/// digest, authored counts, per-method coverage, and every outcome row against
-/// its authored expectation (the outcome lattice).
-pub fn validate_artifact_against_snapshot(
-    artifact: &RunArtifact,
-    snapshot: &CorpusSnapshot,
-) -> Result<(), Violations> {
+struct RowView<'a> {
+    scanner_id: &'a crate::ident::ScannerId,
+    case_id: &'a Id,
+    variant_id: &'a Id,
+    occurrence_id: &'a Id,
+    method: crate::protocol::MethodId,
+    row: OutcomeRow,
+}
+
+type ScannerParts<'a> = (
+    &'a crate::ident::ScannerId,
+    ScannerStatus,
+    &'a crate::scanner::ScannerCapabilities,
+);
+
+struct SnapshotParts<'a> {
+    population: (
+        &'a Id,
+        crate::corpus::Visibility,
+        u32,
+        &'a crate::ident::Sha256Digest,
+    ),
+    counts: &'a crate::artifact::PopulationCounts,
+    coverage: &'a [crate::artifact::MethodCoverage],
+    scanners: Vec<ScannerParts<'a>>,
+    rows: Vec<RowView<'a>>,
+}
+
+/// The checks shared by the internal and the public artifact shape.
+fn check_snapshot_parts(parts: &SnapshotParts<'_>, snapshot: &CorpusSnapshot) -> Collector {
     let mut c = Collector::new();
     let body = Path::ROOT.field("semantic");
-    let a = &artifact.semantic;
     let s = &snapshot.semantic;
-    if a.population.population_digest != snapshot.semantic_digest
-        || a.population.population_id != s.population.population_id
-        || a.population.visibility != s.population.visibility
-        || a.population.population_version != s.population.population_version
+    let (id, visibility, version, digest) = parts.population;
+    if *digest != snapshot.semantic_digest
+        || *id != s.population.population_id
+        || visibility != s.population.visibility
+        || version != s.population.population_version
     {
         c.push(
             ReasonCode::PopulationBindingMismatch,
             &body.field("population"),
         );
     }
-    if !a.run_class.matches(s.population.visibility) {
-        c.push(ReasonCode::RunClassMismatch, &body.field("runClass"));
-    }
-    let counts = &a.population_counts;
+    let counts = parts.counts;
     if counts.authored_cases != s.case_count()
         || counts.variants != s.variant_count()
         || counts.occurrences != s.occurrence_count()
     {
         c.push(ReasonCode::CountMismatch, &body.field("populationCounts"));
     }
-    for cov in &a.method_coverage {
+    for cov in parts.coverage {
         let (cases, variants) = s
             .cases
             .iter()
@@ -305,30 +325,37 @@ pub fn validate_artifact_against_snapshot(
             c.push(ReasonCode::CountMismatch, &body.field("methodCoverage"));
         }
     }
+    // Every method with cases is covered, so an omitted entry cannot hide a count.
+    if s.cases.iter().any(|case| {
+        !parts
+            .coverage
+            .iter()
+            .any(|cov| cov.method.id == case.method)
+    }) {
+        c.push(ReasonCode::CountMismatch, &body.field("methodCoverage"));
+    }
     let variants = index_variants(snapshot);
     let outcomes = body.field("outcomes");
-    for (i, o) in a.outcomes.iter().enumerate() {
+    for (i, o) in parts.rows.iter().enumerate() {
         let p = outcomes.index(i);
-        let Some((case, variant)) = variants.get(&o.variant_id) else {
+        let Some((case, variant)) = variants.get(o.variant_id) else {
             c.push(ReasonCode::UnknownVariant, &p.field("variantId"));
             continue;
         };
-        if case.case_id != o.case_id || case.method != o.method {
+        if case.case_id != *o.case_id || case.method != o.method {
             c.push(ReasonCode::OutcomeContradiction, &p.field("caseId"));
             continue;
         }
         let Ok(k) = variant
             .expectations
-            .binary_search_by(|e| e.occurrence_id.cmp(&o.occurrence_id))
+            .binary_search_by(|e| e.occurrence_id.cmp(o.occurrence_id))
         else {
             c.push(ReasonCode::UnknownVariant, &p.field("occurrenceId"));
             continue;
         };
         let expectation = &variant.expectations[k];
-        let Some(scanner) = a
-            .scanners
-            .iter()
-            .find(|sc| sc.identity.scanner_id == o.scanner_id)
+        let Some((_, status, capabilities)) =
+            parts.scanners.iter().find(|(id, _, _)| *id == o.scanner_id)
         else {
             c.push(ReasonCode::UnknownScanner, &p.field("scannerId"));
             continue;
@@ -339,19 +366,96 @@ pub fn validate_artifact_against_snapshot(
             family: &expectation.family,
             jurisdiction: case.jurisdiction.as_ref(),
         };
-        let row = OutcomeRow {
-            type_identity: o.type_identity,
-            sensitivity_context: o.sensitivity_context,
-            range: o.range,
-            action: o.action,
-        };
-        if validate_outcome_lattice(&authored, scanner.status, &scanner.capabilities, &row).is_err()
-        {
+        if validate_outcome_lattice(&authored, *status, capabilities, &o.row).is_err() {
             c.push(ReasonCode::OutcomeContradiction, &p);
         }
         if c.is_full() {
             break;
         }
     }
+    c
+}
+
+macro_rules! row_views {
+    ($outcomes:expr) => {
+        $outcomes
+            .iter()
+            .map(|o| RowView {
+                scanner_id: &o.scanner_id,
+                case_id: &o.case_id,
+                variant_id: &o.variant_id,
+                occurrence_id: &o.occurrence_id,
+                method: o.method,
+                row: OutcomeRow {
+                    type_identity: o.type_identity,
+                    sensitivity_context: o.sensitivity_context,
+                    range: o.range,
+                    action: o.action,
+                },
+            })
+            .collect()
+    };
+}
+
+/// An artifact must be consistent with the snapshot it measured: population
+/// digest, authored counts, per-method coverage, and every outcome row against
+/// its authored expectation (the outcome lattice).
+pub fn validate_artifact_against_snapshot(
+    artifact: &RunArtifact,
+    snapshot: &CorpusSnapshot,
+) -> Result<(), Violations> {
+    let a = &artifact.semantic;
+    let parts = SnapshotParts {
+        population: (
+            &a.population.population_id,
+            a.population.visibility,
+            a.population.population_version,
+            &a.population.population_digest,
+        ),
+        counts: &a.population_counts,
+        coverage: &a.method_coverage,
+        scanners: a
+            .scanners
+            .iter()
+            .map(|s| (&s.identity.scanner_id, s.status, &s.capabilities))
+            .collect(),
+        rows: row_views!(a.outcomes),
+    };
+    let mut c = check_snapshot_parts(&parts, snapshot);
+    if !a.run_class.matches(snapshot.semantic.population.visibility) {
+        c.push(
+            ReasonCode::RunClassMismatch,
+            &Path::ROOT.field("semantic").field("runClass"),
+        );
+    }
     c.finish()
+}
+
+/// The public-synthetic projection must be consistent with the snapshot as far
+/// as it carries data: population identity, authored counts, per-method
+/// coverage and every outcome row against its authored expectation. (The type
+/// admits only `public-synthetic`, so the snapshot must be public-synthetic
+/// too.)
+pub fn validate_public_artifact_against_snapshot(
+    artifact: &PublicSyntheticArtifact,
+    snapshot: &CorpusSnapshot,
+) -> Result<(), Violations> {
+    let a = &artifact.semantic;
+    let parts = SnapshotParts {
+        population: (
+            &a.population.population_id,
+            crate::corpus::Visibility::PublicSynthetic,
+            a.population.population_version,
+            &a.population.population_digest,
+        ),
+        counts: &a.population_counts,
+        coverage: &a.method_coverage,
+        scanners: a
+            .scanners
+            .iter()
+            .map(|s| (&s.identity.scanner_id, s.status, &s.capabilities))
+            .collect(),
+        rows: row_views!(a.outcomes),
+    };
+    check_snapshot_parts(&parts, snapshot).finish()
 }

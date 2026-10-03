@@ -192,6 +192,8 @@ pub struct FakeAdapter {
     pub flaky: bool,
     /// Refuse to start with a missing capability.
     pub unsupported: bool,
+    /// What every session reports as its end-of-session pin re-check.
+    pub pin_check: Option<AdapterError>,
     pub adapter_limits: Option<AdapterLimits>,
     pub probe: Arc<Probe>,
 }
@@ -234,6 +236,7 @@ impl FakeAdapter {
             failures: Vec::new(),
             flaky: false,
             unsupported: false,
+            pin_check: None,
             adapter_limits: None,
             probe: Arc::new(Probe::default()),
         }
@@ -386,7 +389,7 @@ impl ScanSession for FakeSession {
             scans: self.scans,
             stderr_bytes: 0,
             peak_rss_bytes: 0,
-            pin_check: None,
+            pin_check: self.adapter.pin_check,
         }
     }
 

@@ -55,7 +55,7 @@ fn adapters_fixtures() -> PathBuf {
     .expect("adapter fixtures exist")
 }
 
-fn adapter(node: &Path, call_timeout: Duration) -> Arc<ProcessAdapter> {
+fn adapter(node: &Path, call_timeout: Duration, startup: &str) -> Arc<ProcessAdapter> {
     let shim = adapters_fixtures().join("fake-scanner.mjs");
     let core = adapters_fixtures().join("fake-core");
     let spec = ProcessAdapterSpec {
@@ -78,7 +78,7 @@ fn adapter(node: &Path, call_timeout: Duration) -> Arc<ProcessAdapter> {
         inherit_env: Vec::new(),
         allowed_parameters: vec![ConfigParameter {
             key: ConfigKey::new("startup").unwrap(),
-            value: ConfigValue::Text("normal".to_owned()),
+            value: ConfigValue::Text(startup.to_owned()),
         }],
         return_output: true,
         limits: AdapterLimits {
@@ -154,6 +154,7 @@ struct Scenario {
     replays: u32,
     call_timeout: Duration,
     sample: Duration,
+    startup: &'static str,
 }
 
 impl Scenario {
@@ -164,17 +165,18 @@ impl Scenario {
             replays: 2,
             call_timeout: Duration::from_secs(20),
             sample: Duration::from_millis(50),
+            startup: "normal",
         }
     }
 
     fn run(&self, node: &Path, cancel: &CancelToken, scratch: &Path) -> RunOutput {
         let snapshot = directive_snapshot(&self.texts);
-        let adapter = adapter(node, self.call_timeout);
+        let adapter = adapter(node, self.call_timeout, self.startup);
         let plan = adapter
             .plan(ScannerConfiguration {
                 parameters: vec![ConfigParameter {
                     key: ConfigKey::new("startup").unwrap(),
-                    value: ConfigValue::Text("normal".to_owned()),
+                    value: ConfigValue::Text(self.startup.to_owned()),
                 }],
                 activation: vec![ActivationSelector::new("pii:global").unwrap()],
             })
@@ -195,6 +197,7 @@ impl Scenario {
                     ..ExecutorConfig::default()
                 },
                 diagnostics: true,
+                commit_cancelled: false,
             },
             cancel,
         )
@@ -445,7 +448,7 @@ fn real_processes_give_the_same_digests_for_one_worker_and_many() {
         // Same manifest limits in both runs would differ in the manifest digest, so
         // compare the measured parts: observation digests, rows and metrics.
         let snapshot = directive_snapshot(&s.texts);
-        let adapter = adapter(&node, s.call_timeout);
+        let adapter = adapter(&node, s.call_timeout, "normal");
         let plan = adapter
             .plan(ScannerConfiguration {
                 parameters: vec![ConfigParameter {
@@ -472,6 +475,7 @@ fn real_processes_give_the_same_digests_for_one_worker_and_many() {
                     ..ExecutorConfig::default()
                 },
                 diagnostics: false,
+                commit_cancelled: false,
             },
             &CancelToken::new(),
         )
@@ -505,4 +509,94 @@ fn a_scanner_whose_answers_change_between_processes_is_unstable() {
     );
     assert!(!out.assembled.artifact.semantic.scanners[0].replays.agreed);
     no_scratch_left(&scratch.0);
+}
+
+#[test]
+fn a_deadline_during_startup_kills_a_scanner_that_never_becomes_ready() {
+    let Some(node) = node() else { return };
+    let scratch = TempDir::new("proc-startup-deadline");
+    let mut s = Scenario::new(&["ok one"]);
+    s.startup = "hang"; // the fake never answers `init`
+    s.limits.scanner_timeout_ms = 1500;
+    let started = Instant::now();
+    let out = s.run(&node, &CancelToken::new(), &scratch.0);
+    assert_artifact_ok(&out, &s.texts);
+    assert_eq!(
+        failure(&out),
+        (ScannerStatus::Error, Some(FailureCode::Timeout))
+    );
+    // The adapter's own startup timeout is 20 s: the deadline ended it earlier.
+    assert!(
+        started.elapsed() < Duration::from_secs(15),
+        "{:?}",
+        started.elapsed()
+    );
+    no_scratch_left(&scratch.0);
+}
+
+#[test]
+fn a_cancel_during_startup_kills_a_scanner_that_never_becomes_ready() {
+    let Some(node) = node() else { return };
+    let scratch = TempDir::new("proc-startup-cancel");
+    let mut s = Scenario::new(&["ok one"]);
+    s.startup = "hang";
+    let cancel = CancelToken::new();
+    let canceller = thread::spawn({
+        let cancel = cancel.clone();
+        move || {
+            thread::sleep(Duration::from_millis(700));
+            cancel.cancel();
+        }
+    });
+    let started = Instant::now();
+    let out = s.run(&node, &cancel, &scratch.0);
+    canceller.join().unwrap();
+    assert_artifact_ok(&out, &s.texts);
+    assert_eq!(
+        failure(&out),
+        (ScannerStatus::Error, Some(FailureCode::Cancelled))
+    );
+    assert!(
+        started.elapsed() < Duration::from_secs(15),
+        "{:?}",
+        started.elapsed()
+    );
+    no_scratch_left(&scratch.0);
+}
+
+#[test]
+fn a_flood_of_non_protocol_stdout_lines_is_a_malformed_output_failure() {
+    let Some(node) = node() else { return };
+    let scratch = TempDir::new("proc-floodlines");
+    let s = Scenario::new(&["ok one", "#floodlines"]);
+    let out = s.run(&node, &CancelToken::new(), &scratch.0);
+    assert_artifact_ok(&out, &s.texts);
+    assert_eq!(
+        failure(&out),
+        (ScannerStatus::Error, Some(FailureCode::MalformedOutput))
+    );
+    no_scratch_left(&scratch.0);
+}
+
+#[test]
+fn the_recorded_failure_is_the_lowest_index_with_real_processes_whatever_the_jobs() {
+    let Some(node) = node() else { return };
+    // Index 2 crashes (execution-error), index 4 is malformed: the crash is
+    // always the recorded cause, with one worker or several.
+    let texts = ["ok 0", "ok 1", "#crash", "ok 3", "#malformed", "ok 5"];
+    let mut seen = Vec::new();
+    for (workers, per) in [(1u32, 1u32), (4, 4)] {
+        let scratch = TempDir::new("proc-lowest");
+        let mut s = Scenario::new(&texts);
+        s.limits = limits(workers, per, 1, 4);
+        s.replays = 2;
+        let out = s.run(&node, &CancelToken::new(), &scratch.0);
+        assert_artifact_ok(&out, &s.texts);
+        seen.push(failure(&out));
+        no_scratch_left(&scratch.0);
+    }
+    assert_eq!(
+        seen,
+        vec![(ScannerStatus::Error, Some(FailureCode::ExecutionError)); 2]
+    );
 }

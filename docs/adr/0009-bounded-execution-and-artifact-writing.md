@@ -78,7 +78,7 @@ custodian must contain the run.
 | Pending tasks | manifest `pending_tasks` | bound of the channel between producer and workers |
 | Batch | manifest `batch_variants` | variants per task |
 | Scanner time | manifest `scanner_timeout_ms` | **total** budget of one scanner (all replays), enforced by a watchdog killing its trees; the per-call timeout stays the adapter's (`AdapterLimits::call_timeout`, 30 s default) |
-| Memory | manifest `max_memory_bytes` | whole-run budget divided over the concurrent sessions; the share of one session must be at least 32 MiB (`MIN_SESSION_MEMORY_BYTES`); sampled sustained resident set of the whole tree, interval 250 ms |
+| Memory | manifest `max_memory_bytes` | whole-run budget divided over the sessions the manifest allows (not the host cap); the share of one session must be at least 128 MiB by default (`MIN_SESSION_MEMORY_BYTES`, configurable); sampled sustained resident set of the whole tree, interval 250 ms |
 | Temporary storage | manifest `max_temporary_bytes` | divided the same way; a private scratch directory (mode 0700) per session, set as `TMPDIR`/`TMP`/`TEMP`, measured each sample (at most 100,000 entries, more counts as over), removed when the session ends and when the run ends |
 | Output | manifest `max_stdout_bytes`, `max_stderr_bytes` | must be at least what the adapter enforces (`ScannerAdapter::limits`); a smaller manifest bound is refused before anything runs. Line, finding and stderr bounds are ADR 0006 D4 |
 | Raw buffers | design | only the first pass retains observations; replay passes keep one bit per input; sanitized output is verified at once and dropped |
@@ -189,3 +189,16 @@ the digest rule; the pinned scanner identity stays semantic.
 - `pii-eval-cli` gains a library API (`exec`, `assemble`, `write`, `run`); P8
   adds the commands on top of it.
 - CI runs the new executor tests with Node and `ps`.
+
+## Review amendments (PR #20)
+
+- **Shares from the manifest only.** The memory and scratch share of a session is `max_memory_bytes / sessions` computed from the manifest's `workers` and `per_scanner_parallelism`, never from the host cap, so one manifest cannot be complete on one host and `resource-limit-exceeded` on another; the host cap changes parallelism only (test). `MIN_SESSION_MEMORY_BYTES` is now 128 MiB and configurable (`ExecutorConfig::min_session_memory_bytes`): a bare Node needs about 40 to 50 MiB, a WebAssembly or native scanner addon adds tens of MiB, and the limit bounds a sampled tree, so the floor leaves headroom.
+- **Abort during startup.** The executor registers an `AbortHandle::pending()` with its watchdog before the adapter starts (`StartOptions::abort`); the adapter checks it before hashing pins and before spawn, attaches the process group at spawn (killing at once if already triggered), and maps the failure to the abort reason. A hung startup is ended by the scanner deadline or a cancel (real-process tests).
+- **Reaped groups are forgotten.** After the leader is reaped the handle detaches the group, so a recyclable id is never signalled again; leftovers of a leader that exited by itself are killed first, only while the group has members.
+- **Supervisor.** `ps` has a 5 s timeout (killed, never awaited unboundedly), so `Supervisor::stop` cannot hang. Three consecutive failed samples abort every memory-limited session as `resource-limit-exceeded` (a limit that cannot be checked is treated as exceeded). A watchdog that cannot start is an error (`ExecError::ThreadSpawn`).
+- **Pin changes are deterministic.** The end-of-session pin re-check is collected from every session, including ones that died, and a changed pin is recorded as the scanner's cause (`unavailable`) ahead of any other failure.
+- **Writer.** Under `Refuse` files are published with a hard link (fails if the target exists), under `Replace` with a rename; the directory is synced before the commit-marker rename and after; a failed final sync is `WriteError::CommitNotDurable` (files in place, nothing rolled back), not a failed run; under `Replace` a stale `public-synthetic-artifact.json` is removed when the new run has none.
+- **Cancelled runs.** The contract has no "interrupted" completeness (`partial` means missing rows). `run_and_write` therefore refuses to commit a cancelled run (`RunError::Cancelled`) unless `RunConfig::commit_cancelled` is set; `run` still returns the output.
+- A non-UTF-8 scratch path is an error (`InvalidSpec(Environment)`), never a silently dropped `TMPDIR`.
+- **P8 requirement.** Scanners lead their own process group, so a terminal Ctrl-C does not reach them: the CLI must install a signal handler that calls `CancelToken::cancel`, and should treat a second signal as an immediate exit after cancel.
+- New tests: a real hung startup (deadline and cancel), non-protocol stdout flood (`malformed-output`), the lowest-index failure with real processes at 1 and 4 workers, pin precedence, manifest-only shares, cancelled-run commit, no-overwrite race, stale projection, non-durable commit.

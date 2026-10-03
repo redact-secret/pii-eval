@@ -185,6 +185,11 @@ pub struct StartOptions {
     pub max_rss_bytes: Option<u64>,
     /// Bytes the scratch directory may hold.
     pub max_scratch_bytes: Option<u64>,
+    /// A handle the executor registered before starting the session (created
+    /// with [`AbortHandle::pending`]). The adapter attaches the process group at
+    /// spawn and stops early if it was already triggered, so a cancel or a
+    /// deadline during pin hashing, spawn or the ready wait is honored.
+    pub abort: Option<AbortHandle>,
 }
 
 impl fmt::Debug for StartOptions {
@@ -433,7 +438,13 @@ impl ProcessAdapter {
                 env.push((name.clone(), value));
             }
         }
-        if let Some(dir) = scratch.and_then(Path::to_str) {
+        if let Some(dir) = scratch {
+            // A scratch path that is not UTF-8 cannot be passed as an
+            // environment value here; refuse rather than silently let the
+            // scanner use the parent's temp location.
+            let dir = dir
+                .to_str()
+                .ok_or(AdapterError::InvalidSpec(SpecProblem::Environment))?;
             for name in ["TMPDIR", "TMP", "TEMP"] {
                 env.push((name.to_owned(), dir.to_owned()));
             }
@@ -503,6 +514,16 @@ impl ScannerAdapter for ProcessAdapter {
         options: &StartOptions,
     ) -> Result<Box<dyn ScanSession>, StartFailure> {
         let none = undeclared_capabilities;
+        let stopped = |options: &StartOptions| {
+            options
+                .abort
+                .as_ref()
+                .and_then(AbortHandle::reason)
+                .map(|r| error_for_abort(Some(r), AdapterError::SessionClosed))
+        };
+        if let Some(error) = stopped(options) {
+            return Err(self.failure(error, none()));
+        }
 
         // 1. Identity and digests, derived again from the plan's own configuration.
         let expected = self
@@ -522,15 +543,22 @@ impl ScannerAdapter for ProcessAdapter {
             Ok(())
         };
         verify().map_err(|e| self.failure(e, none()))?;
+        if let Some(error) = stopped(options) {
+            return Err(self.failure(error, none()));
+        }
 
         // 3. Spawn, initialize, and verify the runtime identity before any input.
         let spawn = self
             .spawn_spec(options.scratch_dir.as_deref())
             .map_err(|e| self.failure(e, none()))?;
         let limits = self.spec.limits;
-        let mut process =
-            ShimProcess::spawn(&spawn, limits.max_line_bytes, limits.max_stderr_bytes)
-                .map_err(|e| self.failure(e, none()))?;
+        let mut process = ShimProcess::spawn(
+            &spawn,
+            limits.max_line_bytes,
+            limits.max_stderr_bytes,
+            options.abort.clone(),
+        )
+        .map_err(|e| self.failure(e, none()))?;
         // Supervised from the moment it exists, so a startup that balloons is
         // stopped too. The guard ends the watch when the session is dropped.
         let watch = options.supervisor.as_ref().map(|supervisor| {

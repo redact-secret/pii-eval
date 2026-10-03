@@ -12,10 +12,21 @@
 //!   (`std::os::unix::process::CommandExt::process_group(0)`; no `unsafe`).
 //! * [`AbortHandle`] signals `SIGKILL` to the whole group (`killpg`, through the
 //!   `rustix` safe wrapper) on timeout, cancellation, resource-limit violation,
-//!   crash, failed start, drop and normal end. The group is signalled **before**
-//!   the leader is reaped on every failure path, so the group id cannot have been
-//!   recycled; after a graceful exit the group is signalled only while it still
-//!   has members (a group id is not reused while a member exists).
+//!   crash, failed start, drop and normal end. While the leader is still alive
+//!   the group is signalled **before** the leader is reaped, so its id cannot
+//!   have been recycled. If the leader already exited by itself (it is reaped
+//!   when observed), leftovers are killed only while the group still has members
+//!   (a group id is not reused while a member exists), and the handle then
+//!   **forgets the group**, so a recyclable id is never signalled again. The
+//!   residual window (leader reaped, group emptied and its id recycled to a new
+//!   group leader between the liveness test and the signal) needs a full pid
+//!   wrap within microseconds and is accepted.
+//! * A session can be aborted while it is still starting (pin hashing, spawn,
+//!   the ready wait): the executor registers an [`AbortHandle::pending`] handle
+//!   before the adapter starts and the adapter attaches the group at spawn.
+//! * Because scanners lead their own process group, a terminal `Ctrl-C` does not
+//!   reach them. A caller that wants interactive interruption (the P8 CLI) must
+//!   install a signal handler that calls `CancelToken::cancel`.
 //! * [`Supervisor`] samples, on one thread, the resident set size of every watched
 //!   group (one `ps -A -o pgid=,rss=` per tick) and the size of each session's
 //!   scratch directory, and aborts a session that exceeds its limit. Memory is
@@ -38,7 +49,7 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicU8, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -129,7 +140,9 @@ impl ProcessGroup {
 
 struct Abort {
     reason: AtomicU8,
-    group: Option<ProcessGroup>,
+    /// Process group id; 0 means none (not started yet, or detached after the
+    /// leader was reaped).
+    group: AtomicI32,
     peak_rss_kib: AtomicU64,
 }
 
@@ -151,7 +164,7 @@ impl AbortHandle {
     pub(crate) fn new(group: Option<ProcessGroup>) -> Self {
         AbortHandle(Arc::new(Abort {
             reason: AtomicU8::new(0),
-            group,
+            group: AtomicI32::new(group.map_or(0, |g| g.0)),
             peak_rss_kib: AtomicU64::new(0),
         }))
     }
@@ -179,16 +192,49 @@ impl AbortHandle {
         AbortReason::from_code(self.0.reason.load(Ordering::SeqCst))
     }
 
+    /// A handle for a session whose process does not exist yet. The executor
+    /// registers it with its watchdog before the adapter starts, so a cancel or a
+    /// deadline during pin hashing, spawn or the ready wait is not lost: the
+    /// adapter attaches the process group at spawn and kills it at once if the
+    /// handle was already triggered.
+    pub fn pending() -> Self {
+        AbortHandle::new(None)
+    }
+
+    /// Attach the process group once the process exists.
+    pub(crate) fn attach(&self, group: Option<ProcessGroup>) {
+        self.0
+            .group
+            .store(group.map_or(0, |g| g.0), Ordering::SeqCst);
+        if self.reason().is_some() {
+            self.kill_tree();
+        }
+    }
+
+    /// Forget the group once its leader has been reaped (and any leftovers
+    /// killed): the id may be recycled from then on, so it must never be
+    /// signalled again.
+    pub(crate) fn detach(&self) {
+        self.0.group.store(0, Ordering::SeqCst);
+    }
+
+    fn group(&self) -> Option<ProcessGroup> {
+        match self.0.group.load(Ordering::SeqCst) {
+            0 => None,
+            id => Some(ProcessGroup(id)),
+        }
+    }
+
     /// Kill every member of the process group, if there is one.
     pub(crate) fn kill_tree(&self) {
-        if let Some(group) = self.0.group {
+        if let Some(group) = self.group() {
             group.kill();
         }
     }
 
     /// Kill the group only while it still has members (after a graceful exit).
     pub(crate) fn kill_leftovers(&self) {
-        if let Some(group) = self.0.group {
+        if let Some(group) = self.group() {
             if group.exists() {
                 group.kill();
             }
@@ -197,12 +243,12 @@ impl AbortHandle {
 
     /// Whether any member of the group is still alive. `false` without a group.
     pub fn tree_alive(&self) -> bool {
-        self.0.group.is_some_and(ProcessGroup::exists)
+        self.group().is_some_and(ProcessGroup::exists)
     }
 
     /// The process group id, for diagnostics and tests. Never an input.
     pub fn group_id(&self) -> Option<i32> {
-        self.0.group.map(|g| g.0)
+        self.group().map(|g| g.0)
     }
 
     /// Highest resident set size the supervisor sampled for this tree, in bytes
@@ -356,7 +402,14 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
+/// Consecutive failed samples after which a memory-limited session is aborted:
+/// a limit that can no longer be checked is treated as exceeded (fail closed).
+const MAX_BLIND_SAMPLES: u32 = 3;
+/// Longest a single `ps` run may take.
+const PS_TIMEOUT: Duration = Duration::from_secs(5);
+
 fn run(shared: &Shared) {
+    let mut blind = 0u32;
     loop {
         let watches: Vec<(u64, AbortHandle, WatchLimits)> = {
             let guard = lock(&shared.state);
@@ -377,11 +430,16 @@ fn run(shared: &Shared) {
             continue;
         }
         let rss = sample_rss(&shared.ps);
+        blind = if rss.is_some() { 0 } else { blind + 1 };
         for (_, abort, limits) in &watches {
             if abort.reason().is_some() {
                 continue;
             }
-            if let (Some(group), Some(by_group)) = (abort.0.group, rss.as_ref()) {
+            if rss.is_none() && blind >= MAX_BLIND_SAMPLES && limits.max_rss_bytes.is_some() {
+                abort.trigger(AbortReason::Memory);
+                continue;
+            }
+            if let (Some(group), Some(by_group)) = (abort.group(), rss.as_ref()) {
                 let kib = by_group.get(&group.0).copied().unwrap_or(0);
                 abort.0.peak_rss_kib.fetch_max(kib, Ordering::Relaxed);
                 if limits
@@ -412,14 +470,26 @@ fn sample_rss(ps: &Path) -> Option<HashMap<i32, u64>> {
         .stderr(Stdio::null())
         .spawn()
         .ok()?;
-    let mut text = String::new();
-    let read = child
-        .stdout
-        .take()?
-        .take(MAX_PS_OUTPUT)
-        .read_to_string(&mut text);
+    let mut stdout = child.stdout.take()?;
+    let (tx, rx) = std::sync::mpsc::channel();
+    let reader = thread::Builder::new()
+        .name("pii-eval-ps-reader".to_owned())
+        .spawn(move || {
+            let mut text = String::new();
+            let read = (&mut stdout).take(MAX_PS_OUTPUT).read_to_string(&mut text);
+            let _ = tx.send(read.ok().map(|_| text));
+        });
+    let text = match (reader, rx.recv_timeout(PS_TIMEOUT)) {
+        (Ok(_), Ok(Some(text))) => text,
+        _ => {
+            // Hung, failed or unreadable: never wait for it.
+            let _ = child.kill();
+            let _ = child.wait();
+            return None;
+        }
+    };
     let status = child.wait().ok()?;
-    if read.is_err() || !status.success() {
+    if !status.success() {
         return None;
     }
     let mut by_group: HashMap<i32, u64> = HashMap::new();

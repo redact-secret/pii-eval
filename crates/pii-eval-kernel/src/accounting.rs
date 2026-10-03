@@ -1,6 +1,6 @@
 //! Indexed accounting of the ten `pii-v1` metrics (canonical accounting rule).
 //!
-//! Identity: [`ACCOUNTING_RULE_ID`] `pii-v1-canonical-accounting`, proposed
+//! Identity: [`ACCOUNTING_RULE_ID`] `pii-v1-canonical-accounting`,
 //! protocol revision [`ACCOUNTING_PROTOCOL_REVISION`] 2, next to the matching
 //! rule of ADR 0004 and the statistics rule of [`crate::stats`]. Specified in
 //! `docs/adr/0005-indexed-accounting-and-metric-statistics.md`.
@@ -83,7 +83,7 @@ pub enum SnapshotDefect {
     DuplicateVariant,
     /// Occurrence ids of a variant are not strictly ascending.
     OccurrenceOrder,
-    /// A context-discrimination case does not hold exactly one frame per context class.
+    /// A context-discrimination case does not hold at least one frame in every context class (ADR 0008).
     IncompleteContextTrio,
     /// A variant's expectations disagree on the context class.
     ContextClassConflict,

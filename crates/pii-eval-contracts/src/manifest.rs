@@ -14,7 +14,7 @@ use crate::corpus::{GenerationRules, Visibility};
 use crate::document::{impl_document, schema_tag};
 use crate::ident::{Id, JurisdictionCode, LanguageTag, Sha256Digest};
 use crate::limits::{MAX_SCANNERS, execution};
-use crate::protocol::{Mechanics, MethodRef, MetricRef, ProtocolIdentity};
+use crate::protocol::{METRICS, Mechanics, MethodRef, MetricRef, ProtocolIdentity};
 use crate::reason::{Collector, Path, ReasonCode};
 use crate::scanner::{EngineIdentity, ScannerPlan};
 use crate::version::SchemaVersion;
@@ -217,11 +217,27 @@ impl RunManifestBody {
             }
         }
 
-        // A metric restricted to a method is meaningless without that method.
-        for (i, m) in self.metrics.iter().enumerate() {
-            if let Some(required) = m.id.definition().restricted_to_method {
-                if !self.methods.iter().any(|r| r.id == required) {
-                    c.push(ReasonCode::ProtocolBindingMismatch, &metrics.index(i));
+        if self.protocol.is_canonical() {
+            // Revision 2 (ADR 0008): the accounting and the verifier always
+            // produce and check the registry's ten metrics per scanner (a metric
+            // whose method is not planned is simply not applicable), so a plan
+            // must list all ten; a subset could not satisfy both the manifest
+            // binding and the verifier.
+            let all = METRICS
+                .iter()
+                .all(|d| self.metrics.iter().any(|m| m.id == d.id))
+                && self.metrics.len() == METRICS.len();
+            if !all {
+                c.push(ReasonCode::ProtocolBindingMismatch, &metrics);
+            }
+        } else {
+            // Revision 1: a metric restricted to a method is meaningless
+            // without that method.
+            for (i, m) in self.metrics.iter().enumerate() {
+                if let Some(required) = m.id.definition().restricted_to_method {
+                    if !self.methods.iter().any(|r| r.id == required) {
+                        c.push(ReasonCode::ProtocolBindingMismatch, &metrics.index(i));
+                    }
                 }
             }
         }

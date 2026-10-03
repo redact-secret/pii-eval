@@ -68,7 +68,7 @@ use pii_eval_kernel::{OffsetUnit, OutputError, verify_output};
 
 /// Smallest memory or scratch share per session the executor accepts: a Node
 /// process alone needs tens of MiB, so a smaller share can never succeed.
-pub const MIN_SESSION_MEMORY_BYTES: u64 = 32 * 1024 * 1024;
+pub const MIN_SESSION_MEMORY_BYTES: u64 = 128 * 1024 * 1024;
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(PoisonError::into_inner)
@@ -117,6 +117,13 @@ pub struct ExecutorConfig {
     pub scratch_root: Option<PathBuf>,
     /// Resource enforcement.
     pub resources: ResourcePolicy,
+    /// Smallest memory share of one session the executor accepts. The default,
+    /// [`MIN_SESSION_MEMORY_BYTES`] (128 MiB), is a floor for a Node process with
+    /// a WebAssembly or native scanner addon loaded (a bare Node needs about
+    /// 40 to 50 MiB, an addon and its tables add tens of MiB, and the limit
+    /// bounds a sampled tree, so there must be headroom). Lower it only for
+    /// scanners known to be smaller.
+    pub min_session_memory_bytes: u64,
     /// Refuse to run where descendants of a scanner cannot be cleaned up
     /// (non-Unix). Default `true`.
     pub require_tree_cleanup: bool,
@@ -129,6 +136,7 @@ impl Default for ExecutorConfig {
             sample_interval: Duration::from_millis(250),
             scratch_root: None,
             resources: ResourcePolicy::Enforce,
+            min_session_memory_bytes: MIN_SESSION_MEMORY_BYTES,
             require_tree_cleanup: true,
         }
     }
@@ -156,6 +164,8 @@ pub enum ExecError {
     Scratch,
     /// The adapter list does not match the plan.
     AdapterCountMismatch,
+    /// A supervision thread could not be started.
+    ThreadSpawn,
 }
 
 impl std::fmt::Display for ExecError {
@@ -175,6 +185,7 @@ impl std::fmt::Display for ExecError {
             }
             ExecError::Scratch => f.write_str("scratch directory unavailable"),
             ExecError::AdapterCountMismatch => f.write_str("adapter count differs from the plan"),
+            ExecError::ThreadSpawn => f.write_str("a supervision thread could not be started"),
         }
     }
 }
@@ -313,7 +324,12 @@ pub fn effective_limits(
     let workers = (limits.workers as usize).min(config.max_workers);
     let per_scanner = (limits.per_scanner_parallelism as usize).min(workers);
     let scanner_concurrency = (workers / per_scanner).max(1);
-    let sessions = (scanner_concurrency * per_scanner) as u64;
+    // The share of one session is derived from MANIFEST values only: the host
+    // cap changes parallelism, never what a session may use, so one manifest is
+    // not complete on one host and over its limit on another.
+    let planned_workers = limits.workers as usize;
+    let planned_per = (limits.per_scanner_parallelism as usize).min(planned_workers);
+    let sessions = ((planned_workers / planned_per).max(1) * planned_per) as u64;
     let (memory, scratch) = if config.resources == ResourcePolicy::Enforce {
         (
             limits.max_memory_bytes / sessions,
@@ -323,7 +339,7 @@ pub fn effective_limits(
         (0, 0)
     };
     if config.resources == ResourcePolicy::Enforce
-        && (memory < MIN_SESSION_MEMORY_BYTES || scratch == 0)
+        && (memory < config.min_session_memory_bytes || scratch == 0)
     {
         return Err(ExecError::BudgetTooSmall);
     }
@@ -445,7 +461,7 @@ struct Watchdog {
 }
 
 impl Watchdog {
-    fn start(cancel: CancelToken) -> Self {
+    fn start(cancel: CancelToken) -> Result<Self, ExecError> {
         let controls: Arc<Mutex<Vec<Arc<ScannerControl>>>> = Arc::default();
         let stop = Arc::new(AtomicBool::new(false));
         let (c, s) = (Arc::clone(&controls), Arc::clone(&stop));
@@ -468,12 +484,12 @@ impl Watchdog {
                     thread::sleep(Duration::from_millis(15));
                 }
             })
-            .ok();
-        Watchdog {
+            .map_err(|_| ExecError::ThreadSpawn)?;
+        Ok(Watchdog {
             controls,
             stop,
-            handle,
-        }
+            handle: Some(handle),
+        })
     }
 
     fn register(&self, control: &Arc<ScannerControl>) {
@@ -541,6 +557,10 @@ struct Shared<'a> {
     control: Arc<ScannerControl>,
     failure: FailureSlot,
     started_session: Mutex<Option<(ScannerCapabilities, RuntimeRecord)>>,
+    /// A pinned file that changed during any session. It takes precedence over
+    /// every other failure, so the recorded cause does not depend on which
+    /// sessions happened to survive.
+    pin_error: Mutex<Option<AdapterError>>,
     startup_nanos: AtomicU64,
     scan_nanos: AtomicU64,
     peak_rss: AtomicU64,
@@ -586,9 +606,12 @@ fn provenance(record: &RuntimeRecord) -> Option<RuntimeProvenance> {
 fn start_session<'a>(
     shared: &Shared<'a>,
 ) -> Result<LiveSession, (AdapterError, Option<ScannerCapabilities>)> {
+    let early = AbortHandle::pending();
+    let early_id = shared.control.register(early.clone());
     let scratch = if shared.supervisor.is_some() {
         Some(
             ScratchDir::create(shared.scratch_root, "session").map_err(|_| {
+                shared.control.unregister(early_id);
                 (
                     AdapterError::StartupFailure(pii_eval_adapters::error::StartupStage::Spawn),
                     None,
@@ -603,6 +626,9 @@ fn start_session<'a>(
         supervisor: shared.supervisor.cloned(),
         max_rss_bytes: shared.supervisor.map(|_| shared.eff.session_memory_bytes),
         max_scratch_bytes: shared.supervisor.map(|_| shared.eff.session_scratch_bytes),
+        // Registered before the adapter starts, so a cancel or a deadline during
+        // pin hashing, spawn or the ready wait kills the process too.
+        abort: Some(early.clone()),
     };
     let t0 = Instant::now();
     let started = shared
@@ -612,23 +638,30 @@ fn start_session<'a>(
     shared
         .startup_nanos
         .fetch_add(t0.elapsed().as_nanos() as u64, Ordering::Relaxed);
-    let session = started.map_err(|f| (f.error, Some(f.capabilities)))?;
+    let session = match started {
+        Ok(session) => session,
+        Err(f) => {
+            shared.control.unregister(early_id);
+            return Err((f.error, Some(f.capabilities)));
+        }
+    };
     {
         let mut first = lock(&shared.started_session);
         match first.as_ref() {
             None => *first = Some((session.capabilities().clone(), session.runtime().clone())),
             Some((caps, _)) if caps != session.capabilities() => {
+                shared.control.unregister(early_id);
                 return Err((AdapterError::PinMismatch(PinKind::Activation), None));
             }
             Some(_) => {}
         }
     }
-    let handle = session.abort_handle();
-    let id = shared.control.register(handle.clone());
+    // An adapter that owns no process (a fake) keeps the early handle: the
+    // control still knows the session, and the handle simply controls nothing.
     Ok(LiveSession {
         session,
-        handle,
-        id,
+        handle: early,
+        id: early_id,
         _scratch: scratch,
     })
 }
@@ -689,7 +722,7 @@ fn worker(
                 Err(error) => {
                     shared.failure.record(index, error);
                     if let Some(dead) = live.take() {
-                        shared.control.unregister(dead.id);
+                        finish_session(shared, dead);
                     }
                     break;
                 }
@@ -720,7 +753,7 @@ fn worker(
                                 shared.failure.record(index, error);
                                 if let Some(dead) = live.take() {
                                     dead.handle.trigger(AbortReason::Cancelled);
-                                    shared.control.unregister(dead.id);
+                                    finish_session(shared, dead);
                                 }
                                 break;
                             }
@@ -730,16 +763,22 @@ fn worker(
             }
         }
     }
-    if let Some(mut done) = live {
-        let stats = done.session.finish();
-        shared
-            .peak_rss
-            .fetch_max(stats.peak_rss_bytes, Ordering::Relaxed);
-        shared.control.unregister(done.id);
-        // Observations of a session whose pinned files changed are not trusted.
-        if let Some(error) = stats.pin_check {
-            shared.failure.record(0, error);
-        }
+    if let Some(done) = live {
+        finish_session(shared, done);
+    }
+}
+
+/// End a session (live or dead): collect its counters and, above all, its pin
+/// re-check. Observations of a session whose pinned files changed are not
+/// trusted, whether or not the session survived to the end.
+fn finish_session(shared: &Shared<'_>, mut done: LiveSession) {
+    let stats = done.session.finish();
+    shared
+        .peak_rss
+        .fetch_max(stats.peak_rss_bytes, Ordering::Relaxed);
+    shared.control.unregister(done.id);
+    if let Some(error) = stats.pin_check {
+        lock(&shared.pin_error).get_or_insert(error);
     }
 }
 
@@ -826,6 +865,7 @@ fn run_scanner(
         control: Arc::clone(&control),
         failure: FailureSlot::new(),
         started_session: Mutex::new(None),
+        pin_error: Mutex::new(None),
         startup_nanos: AtomicU64::new(0),
         scan_nanos: AtomicU64::new(0),
         peak_rss: AtomicU64::new(0),
@@ -873,7 +913,9 @@ fn run_scanner(
         .or(known_caps)
         .unwrap_or_else(unknown_capabilities);
     let runtime = started.as_ref().and_then(|(_, r)| provenance(r));
-    let failure_error = lock(&shared.failure.error).take();
+    let failure_error = lock(&shared.pin_error)
+        .take()
+        .or_else(|| lock(&shared.failure.error).take());
     let mut replays = ReplayRecord {
         count: plan.replays,
         agreed: true,
@@ -1010,7 +1052,7 @@ pub fn execute(
         eff,
         supervisor,
         scratch_root,
-        watchdog: Watchdog::start(cancel.clone()),
+        watchdog: Watchdog::start(cancel.clone())?,
     };
     let slots: Vec<Mutex<Option<ScannerRun>>> =
         plan.scanners.iter().map(|_| Mutex::new(None)).collect();

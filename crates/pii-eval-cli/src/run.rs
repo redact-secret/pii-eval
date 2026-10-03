@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
 use pii_eval_adapters::ScannerAdapter;
+use pii_eval_contracts::FailureCode;
 use pii_eval_contracts::{
     CorpusSnapshot, RunManifest, validate, validate_manifest_against_snapshot,
 };
@@ -35,6 +36,11 @@ pub enum RunError {
     Assemble(AssembleError),
     /// The documents could not be written.
     Write(WriteError),
+    /// The run was cancelled (some scanner is recorded as `cancelled`), so its
+    /// artifact would describe an interrupted run as if it had finished.
+    /// [`run_and_write`] refuses to commit it unless
+    /// [`RunConfig::commit_cancelled`] is set; [`run`] still returns the output.
+    Cancelled,
 }
 
 impl std::fmt::Display for RunError {
@@ -46,6 +52,7 @@ impl std::fmt::Display for RunError {
             RunError::Exec(e) => write!(f, "{e}"),
             RunError::Assemble(e) => write!(f, "{e}"),
             RunError::Write(e) => write!(f, "{e}"),
+            RunError::Cancelled => f.write_str("the run was cancelled; nothing was committed"),
         }
     }
 }
@@ -69,6 +76,13 @@ pub struct RunConfig {
     pub executor: ExecutorConfig,
     /// Attach non-semantic diagnostics. Off gives byte-stable documents.
     pub diagnostics: bool,
+    /// Commit the documents of a cancelled run too. Off by default: the
+    /// contract has no "interrupted" completeness (`partial` means missing rows,
+    /// and a cancelled scanner still has explicit not-measured rows), so an
+    /// artifact of a cancelled run is indistinguishable from a finished one
+    /// except through its `cancelled` failure records, and is not committed
+    /// as if it were final.
+    pub commit_cancelled: bool,
 }
 
 /// What a run produced.
@@ -148,6 +162,14 @@ pub fn run_and_write(
     writer: &ArtifactWriter,
 ) -> Result<(RunOutput, WrittenRun), RunError> {
     let mut output = run(request, config, cancel)?;
+    let cancelled = cancel.is_cancelled()
+        || output
+            .runs
+            .iter()
+            .any(|r| r.failure.is_some_and(|f| f.code == FailureCode::Cancelled));
+    if cancelled && !config.commit_cancelled {
+        return Err(RunError::Cancelled);
+    }
     let written = writer
         .write_run(
             request.snapshot,

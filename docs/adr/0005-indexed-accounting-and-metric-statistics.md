@@ -28,9 +28,9 @@ difference from the oracle.
 
 | Item | Identifier | Revision | State |
 | --- | --- | --- | --- |
-| Accounting rule | `pii-v1-canonical-accounting` (`ACCOUNTING_RULE_ID`) | proposed protocol revision 2 (`ACCOUNTING_PROTOCOL_REVISION`) | implemented in the kernel; not bindable in a document yet (section 9) |
+| Accounting rule | `pii-v1-canonical-accounting` (`ACCOUNTING_RULE_ID`) | protocol revision 2 (`ACCOUNTING_PROTOCOL_REVISION`) | implemented in the kernel; bound in documents since ADR 0008 |
 | Statistics rule (point, Wilson endpoint, rounding) | `pii-v1-wilson-exact` (`STATS_RULE_ID`) | 1 (`STATS_REVISION`) | implemented |
-| Matching rule | `pii-v1-canonical` | proposed protocol revision 2 | ADR 0004 |
+| Matching rule | `pii-v1-canonical` | protocol revision 2 | ADR 0004, ADR 0008 |
 | Legacy accounting | oracle `pii-v1` / `pii-observation-v1` | protocol revision 1 | reproduced only as classified expectations in `pii-eval-compat` tests |
 
 The accounting and statistics rules are part of protocol identity: a change to a
@@ -92,8 +92,8 @@ partial, measured).
 
 Review-required cannot occur on the type axis (`TypeState::status` never yields
 it), which the flag code relies on and a test pins. A trio is complete when the
-snapshot holds exactly one sensitive, one neutral and one non-sensitive frame
-(contract rule `incomplete-context-trio`); an incomplete trio found by the kernel
+snapshot holds at least one sensitive, one neutral and one non-sensitive frame
+(ADR 0008; contract rule `incomplete-context-trio`); an incomplete trio found by the kernel
 is `SnapshotDefect::IncompleteContextTrio`, an error, never partial scoring.
 A variant whose expectations disagree on the context class (rejected by the
 contracts as `context-class-conflict`) is `SnapshotDefect::ContextClassConflict`.

@@ -31,6 +31,7 @@ fn config(max_workers: usize) -> RunConfig {
             ..ExecutorConfig::default()
         },
         diagnostics: false,
+        commit_cancelled: false,
     }
 }
 

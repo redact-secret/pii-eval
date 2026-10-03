@@ -165,6 +165,7 @@ impl ShimProcess {
         spec: &SpawnSpec,
         max_line: usize,
         max_stderr: usize,
+        early: Option<AbortHandle>,
     ) -> Result<Self, AdapterError> {
         let startup = AdapterError::StartupFailure(StartupStage::Spawn);
         let mut command = Command::new(&spec.executable);
@@ -180,7 +181,11 @@ impl ShimProcess {
         #[cfg(unix)]
         std::os::unix::process::CommandExt::process_group(&mut command, 0);
         let mut child = command.spawn().map_err(|_| startup)?;
-        let abort = AbortHandle::new(ProcessGroup::of_leader(child.id()));
+        // The executor may already hold this handle (registered before the
+        // adapter started): attaching kills the tree at once if it was
+        // triggered during pin hashing or spawn.
+        let abort = early.unwrap_or_else(AbortHandle::pending);
+        abort.attach(ProcessGroup::of_leader(child.id()));
         let (Some(stdin), Some(stdout), Some(stderr)) =
             (child.stdin.take(), child.stdout.take(), child.stderr.take())
         else {
@@ -263,7 +268,13 @@ impl ShimProcess {
             return true;
         };
         match wait_bounded(child, EXIT_PROBE) {
-            Some(status) => !status.success(),
+            Some(status) => {
+                // The leader is reaped: remove leftovers, then never signal the
+                // (recyclable) group id again.
+                self.abort.kill_leftovers();
+                self.abort.detach();
+                !status.success()
+            }
             None => {
                 self.kill();
                 true
@@ -282,6 +293,8 @@ impl ShimProcess {
             let _ = child.kill();
             let _ = child.wait();
         }
+        // Reaped: the group id may be recycled from now on.
+        self.abort.detach();
     }
 
     /// Ask the shim to stop, then kill it if it does not exit within the grace
@@ -302,6 +315,7 @@ impl ShimProcess {
         }
         // The leader is gone (reaped or killed): remove any descendants it left.
         self.abort.kill_leftovers();
+        self.abort.detach();
     }
 
     /// Stderr bytes counted so far, saturating at the configured cap.

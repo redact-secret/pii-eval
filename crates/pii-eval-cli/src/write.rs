@@ -14,9 +14,15 @@
 //! 4. each is written to a temporary file in the destination directory
 //!    (`create_new`, mode 0600, `fsync`);
 //! 5. the files are renamed into place, observation sets first, the public
-//!    projection next and the internal run artifact **last**, then the directory
-//!    is synced. The run artifact is the commit marker: a directory without it is
-//!    an incomplete run, and it binds every observation set by digest.
+//!    projection next and the internal run artifact **last**. Under `Refuse` a
+//!    file is published with a hard link (fails if the target exists: no
+//!    check-then-rename race); under `Replace` with a rename. The directory is
+//!    synced **before** the commit-marker rename and again after it, and under
+//!    `Replace` a stale public projection of an earlier run is removed when the
+//!    new run has none. The run artifact is the commit marker: a directory
+//!    without it is an incomplete run, and it binds every observation set by
+//!    digest. If only the final directory sync fails the run is not failed and
+//!    nothing is rolled back: [`WriteError::CommitNotDurable`] says so.
 //!
 //! A failure before step 5 leaves no final file and removes the temporary files.
 //! A failure during step 5 rolls back the files this call created (under the
@@ -69,6 +75,8 @@ pub enum WriteStage {
     BeforeRename(String),
     /// A file was renamed to its final name.
     Renamed(String),
+    /// Every file is in place; the directory has not been synced yet.
+    AfterCommit,
 }
 
 type Hook = Arc<dyn Fn(&WriteStage) -> io::Result<()> + Send + Sync>;
@@ -89,6 +97,13 @@ pub enum WriteError {
     Exists,
     /// An operating-system error (kind only).
     Io(io::ErrorKind),
+    /// Every file was written and is in place, complete and valid, but the final
+    /// directory sync failed, so durability across a crash is not confirmed. Not
+    /// a failed run: nothing is rolled back and the commit marker exists.
+    CommitNotDurable {
+        /// The final file names, in commit order.
+        files: Vec<String>,
+    },
     /// Some files were renamed into place and could not be rolled back. The
     /// listed names exist; the run artifact is absent unless it is listed.
     PartiallyCommitted {
@@ -106,6 +121,13 @@ impl std::fmt::Display for WriteError {
             WriteError::Destination => f.write_str("the destination directory is not usable"),
             WriteError::Exists => f.write_str("a destination file already exists"),
             WriteError::Io(kind) => write!(f, "i/o error: {kind:?}"),
+            WriteError::CommitNotDurable { files } => {
+                write!(
+                    f,
+                    "committed but not confirmed durable: {} file(s)",
+                    files.len()
+                )
+            }
             WriteError::PartiallyCommitted { committed } => {
                 write!(f, "partially committed: {} file(s) exist", committed.len())
             }
@@ -278,16 +300,43 @@ impl ArtifactWriter {
                 return Err(io_error(&e));
             }
         }
-        // Renames, in commit order.
+        // Renames, in commit order. Under `Refuse` a file is published with a
+        // hard link, which fails if the target exists (a no-overwrite primitive,
+        // so a concurrent writer cannot be overwritten between a check and the
+        // publish); under `Replace` it is an atomic rename.
         let mut committed: Vec<String> = Vec::new();
-        for (temp, target, p) in &temps {
-            let step = self
-                .fire(WriteStage::BeforeRename(p.name.clone()))
-                .and_then(|()| std::fs::rename(temp, target))
-                .and_then(|()| {
-                    committed.push(p.name.clone());
-                    self.fire(WriteStage::Renamed(p.name.clone()))
-                });
+        let last = temps.len() - 1;
+        for (i, (temp, target, p)) in temps.iter().enumerate() {
+            let mut exists = false;
+            let step = (|| -> io::Result<()> {
+                self.fire(WriteStage::BeforeRename(p.name.clone()))?;
+                if i == last {
+                    // The commit marker goes in only after everything before it
+                    // is durable, and a stale projection of an earlier run is
+                    // gone (a new run without one must not leave the old one
+                    // next to the new artifact).
+                    sync_dir(&self.dir)?;
+                    if self.overwrite == OverwritePolicy::Replace
+                        && !pending.iter().any(|q| q.name == PUBLIC_ARTIFACT_FILE)
+                    {
+                        let stale = self.dir.join(PUBLIC_ARTIFACT_FILE);
+                        if std::fs::symlink_metadata(&stale).is_ok_and(|m| m.is_file()) {
+                            std::fs::remove_file(stale)?;
+                        }
+                    }
+                }
+                match self.overwrite {
+                    OverwritePolicy::Refuse => {
+                        std::fs::hard_link(temp, target).inspect_err(|e| {
+                            exists = e.kind() == io::ErrorKind::AlreadyExists;
+                        })?;
+                        std::fs::remove_file(temp)?;
+                    }
+                    OverwritePolicy::Replace => std::fs::rename(temp, target)?,
+                }
+                committed.push(p.name.clone());
+                self.fire(WriteStage::Renamed(p.name.clone()))
+            })();
             if let Err(e) = step {
                 cleanup(&temps);
                 // Roll back what this call created (never possible to restore a
@@ -300,14 +349,27 @@ impl ArtifactWriter {
                         stuck.push(name);
                     }
                 }
-                return Err(if stuck.is_empty() {
-                    io_error(&e)
-                } else {
+                return Err(if !stuck.is_empty() {
                     WriteError::PartiallyCommitted { committed: stuck }
+                } else if exists {
+                    WriteError::Exists
+                } else {
+                    io_error(&e)
                 });
             }
         }
-        sync_dir(&self.dir).map_err(|e| io_error(&e))?;
+        // Every file is in place. A failure to make that durable is not a failed
+        // run (nothing is rolled back: the files are complete and valid), and it
+        // must not look like one: it is reported as its own state.
+        if self
+            .fire(WriteStage::AfterCommit)
+            .and_then(|()| sync_dir(&self.dir))
+            .is_err()
+        {
+            return Err(WriteError::CommitNotDurable {
+                files: pending.iter().map(|p| p.name.clone()).collect(),
+            });
+        }
         Ok(WrittenRun {
             files: pending
                 .iter()

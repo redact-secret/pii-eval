@@ -339,6 +339,8 @@ concern.
 
 ## 11. Open items for the contract owner (P7), not changed here
 
+> **Update (P7):** items 1 (context trios) and 4 are resolved by [ADR 0008](0008-protocol-revision-2-and-schema-1-1.md) (sections 7 and 1 to 4). The text below is the state when P5 was written.
+
 Reported rather than changed, because contracts, schemas and fixtures are
 frozen for this phase:
 

@@ -53,6 +53,7 @@ fn generate(out: &std::path::Path) -> RunManifest {
                 ..ExecutorConfig::default()
             },
             diagnostics: false,
+            commit_cancelled: false,
         },
         &CancelToken::new(),
         &ArtifactWriter::new(out, OverwritePolicy::Refuse),

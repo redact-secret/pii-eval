@@ -96,7 +96,7 @@ reason_codes! {
     DerivationInvalid => "derivation-invalid",
     /// A family scope disagrees with the case jurisdiction.
     FamilyScopeMismatch => "family-scope-mismatch",
-    /// A context-discrimination case does not hold exactly one frame per context class.
+    /// A context-discrimination case does not hold at least one frame in every context class (ADR 0008).
     IncompleteContextTrio => "incomplete-context-trio",
     /// A collision declaration and the case method disagree, or it is malformed.
     CollisionInvalid => "collision-invalid",

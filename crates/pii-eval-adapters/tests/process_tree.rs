@@ -267,6 +267,7 @@ fn supervised(
         supervisor: Some(Arc::clone(&supervisor)),
         max_rss_bytes: max_rss,
         max_scratch_bytes: scratch.map(|(_, n)| n),
+        abort: None,
     };
     (options, supervisor)
 }

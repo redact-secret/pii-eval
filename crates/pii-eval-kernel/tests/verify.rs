@@ -503,3 +503,59 @@ fn the_artifact_must_list_exactly_the_ten_metrics_per_scanner() {
             .contains(&ReasonCode::MetricDefinitionMismatch)
     );
 }
+
+#[test]
+fn the_public_projection_is_bound_to_the_snapshot_as_strongly_as_the_internal_artifact() {
+    let (snapshot, artifact) = fixtures();
+    let internal = canonical(&snapshot, artifact, None);
+    let public = internal.to_public_synthetic().expect("public synthetic");
+    verify_public_artifact_accounting(&public, &snapshot).expect("verifies");
+    let reseal =
+        |mut p: pii_eval_contracts::PublicSyntheticArtifact,
+         edit: &dyn Fn(&mut pii_eval_contracts::PublicSyntheticArtifactBody)| {
+            edit(&mut p.semantic);
+            seal(&mut p).unwrap();
+            p
+        };
+    // The reviewer's probe: swap the case and variant counts of two methods.
+    let swapped = reseal(public.clone(), &|b| {
+        let (x, y) = (b.method_coverage[0], b.method_coverage[1]);
+        b.method_coverage[0].cases = y.cases;
+        b.method_coverage[0].variants = y.variants;
+        b.method_coverage[1].cases = x.cases;
+        b.method_coverage[1].variants = x.variants;
+    });
+    validate(&swapped).expect("contract-valid: the sums still match");
+    assert!(
+        mismatch_codes(verify_public_artifact_accounting(&swapped, &snapshot).unwrap_err())
+            .contains(&ReasonCode::CountMismatch)
+    );
+    // Authored counts.
+    let counts = reseal(public.clone(), &|b| b.population_counts.occurrences += 1);
+    assert!(verify_public_artifact_accounting(&counts, &snapshot).is_err());
+    // A row whose state is unreachable for its authored expectation.
+    let lattice = reseal(public.clone(), &|b| {
+        let row = b
+            .outcomes
+            .iter_mut()
+            .find(|o| o.scanner_id.as_str() == "alpha-scan")
+            .unwrap();
+        row.type_identity = pii_eval_contracts::TypeState::InvalidAccepted;
+    });
+    assert!(
+        mismatch_codes(verify_public_artifact_accounting(&lattice, &snapshot).unwrap_err())
+            .contains(&ReasonCode::OutcomeContradiction)
+    );
+    // An action that contradicts the scanner's capability.
+    let action = reseal(public, &|b| {
+        let row = b
+            .outcomes
+            .iter_mut()
+            .find(|o| o.scanner_id.as_str() == "beta-scan")
+            .unwrap();
+        row.action = pii_eval_contracts::ActionOutcome::Reported {
+            action: pii_eval_contracts::ActionKind::Redact,
+        };
+    });
+    assert!(verify_public_artifact_accounting(&action, &snapshot).is_err());
+}

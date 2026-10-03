@@ -642,6 +642,9 @@ impl RunArtifact {
     /// `public-synthetic`. This is the only constructor of a
     /// [`PublicSyntheticArtifact`] from internal data; protected publication is
     /// the custodian's decision and has no code path here.
+    ///
+    /// The projection is sealed under the schema version of its source: 1.0 for a
+    /// revision-1 artifact, the current version (1.1) for revision 2.
     pub fn to_public_synthetic(&self) -> Result<PublicSyntheticArtifact, Violations> {
         // A tampered or corrupt artifact is never projected.
         crate::document::validate(self)?;

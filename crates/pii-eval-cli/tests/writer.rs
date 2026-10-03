@@ -55,6 +55,7 @@ fn produce() -> Run {
                 ..ExecutorConfig::default()
             },
             diagnostics: true,
+            commit_cancelled: false,
         },
         &CancelToken::new(),
     )

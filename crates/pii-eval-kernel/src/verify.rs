@@ -25,9 +25,9 @@
 use std::fmt;
 
 use pii_eval_contracts::{
-    Collector, ContractError, CorpusSnapshot, EffectiveNBasis, Mechanics, Meta, MetricResult, Path,
-    ProtocolIdentity, PublicSyntheticArtifact, ReasonCode, RunArtifact, ScannerMetrics, Violations,
-    validate_artifact_against_snapshot,
+    Collector, CorpusSnapshot, EffectiveNBasis, Mechanics, MetricResult, Path, ProtocolIdentity,
+    PublicSyntheticArtifact, ReasonCode, RunArtifact, ScannerMetrics, Violations,
+    validate_artifact_against_snapshot, validate_public_artifact_against_snapshot,
 };
 
 use crate::accounting::{
@@ -281,14 +281,11 @@ pub fn verify_public_artifact_accounting(
     artifact: &PublicSyntheticArtifact,
     snapshot: &CorpusSnapshot,
 ) -> Result<(), VerifyFailure> {
+    // The same snapshot binding as the internal artifact, as far as the public
+    // shape carries data: population, counts, coverage and every outcome row.
+    validate_public_artifact_against_snapshot(artifact, snapshot)
+        .map_err(VerifyFailure::Mismatch)?;
     let body = &artifact.semantic;
-    if body.population.population_digest != snapshot.semantic_digest {
-        return Err(VerifyFailure::Mismatch(Violations::single(ContractError {
-            code: ReasonCode::PopulationBindingMismatch,
-            path: Path::ROOT.field("semantic").field("population").render(),
-            meta: Meta::NONE,
-        })));
-    }
     verify_parts(
         Parts {
             protocol: &body.protocol,

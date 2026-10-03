@@ -47,7 +47,7 @@ pub use axes::{
 pub use binding::{
     validate_artifact_against_manifest, validate_artifact_against_snapshot,
     validate_manifest_against_snapshot, validate_observation_against_manifest,
-    validate_observation_against_snapshot,
+    validate_observation_against_snapshot, validate_public_artifact_against_snapshot,
 };
 pub use canonical::{
     DIGEST_CONSTRUCTION, ParseLimits, canonical_bytes, canonical_bytes_of, parse_strict,

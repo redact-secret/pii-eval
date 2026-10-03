@@ -919,6 +919,13 @@ fn probes() -> Vec<Probe> {
             d.semantic.protocol.rules = Some(rules);
         },
     );
+    man2_probe(
+        "rev2-plans-a-subset-of-the-metrics",
+        ReasonCode::ProtocolBindingMismatch,
+        &|d| {
+            d.semantic.metrics.pop();
+        },
+    );
     let mut obs2_probe = |label: &str, code, change: &dyn Fn(&mut ObservationSet)| {
         let doc = typed(&c2.obs_alpha, |d| change(d));
         out.push(doc_probe(

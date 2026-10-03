@@ -156,6 +156,12 @@ function scan(msg) {
     setTimeout(() => { const d = detect(text); out(result(seq, d.findings, d.output)); }, 3000);
     return;
   }
+  if (text.startsWith('#floodlines')) {
+    // Noisy stdout: many newline-terminated lines that are not protocol messages.
+    raw('junk\n'.repeat(50000));
+    setInterval(() => {}, 1000);
+    return;
+  }
   if (text.startsWith('#tmpdir')) { out(result(seq, [], String(process.env.TMPDIR))); return; }
   if (text.startsWith('#slow')) {
     // "#slow <ms>": answer normally after that many milliseconds.
