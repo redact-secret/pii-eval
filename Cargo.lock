@@ -111,6 +111,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pii-eval-app"
+version = "0.0.0"
+dependencies = [
+ "pii-eval-cli",
+ "pii-eval-contracts",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "pii-eval-cli"
 version = "0.0.0"
 dependencies = [

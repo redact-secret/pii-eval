@@ -1,0 +1,22 @@
+[package]
+name = "pii-eval-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "pii-eval internal crate (GitHub App service core); not a consumer contract."
+
+[lints]
+workspace = true
+
+[dependencies]
+pii-eval-contracts.workspace = true
+# The CLI library runs public/synthetic jobs (`pii_eval_cli::execute`). The
+# dependency points one way only: the CLI never depends on this crate
+# (guarded by crates/pii-eval-cli/tests/dependency_policy.rs, ADR 0011).
+pii-eval-cli = { path = "../pii-eval-cli" }
+# Typed parsing of the few webhook fields and of the policy file; already reviewed.
+serde.workspace = true
+serde_json.workspace = true
+# HMAC-SHA256 is built on the reviewed hash (RFC 4231 and GitHub vectors in tests).
+sha2.workspace = true
