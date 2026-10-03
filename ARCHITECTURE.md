@@ -85,7 +85,7 @@ Parallelism must preserve canonical semantic ordering. Timestamps and host timin
 
 ## Protected integration
 
-`private-custodian` verifies the plan and candidate, reserves budget, enforces isolation, invokes a pinned engine, validates private output, and authorizes an allowlisted aggregate. The public engine repository stores neither protected input nor custody ledger. Signatures attest execution identity; they do not prove true expectations or independent review.
+`private-custodian` verifies the plan and candidate, reserves budget, enforces isolation, invokes a pinned engine, validates private output, and authorizes an allowlisted aggregate. The public engine repository stores neither protected input nor custody ledger. Signatures attest execution identity; they do not prove true expectations or independent review. The job, artifact and disclosure boundary, what private-custodian has specified and what remains a proposal is in [docs/custodian-boundary.md](docs/custodian-boundary.md) ([ADR 0014](docs/adr/0014-custodian-boundary-and-consumer-contract.md)); the engine never publishes a protected result.
 
 ## Validation and cutover
 

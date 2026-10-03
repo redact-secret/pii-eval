@@ -1,0 +1,101 @@
+{
+  "artifactSchema": {
+    "id": "pii-eval.public-synthetic-artifact",
+    "version": "1.1"
+  },
+  "engine": {
+    "name": "pii-eval",
+    "version": "0.0.0"
+  },
+  "populations": [
+    {
+      "artifactDigest": "992b97b00e8a6c2dddcb3686b729106e41c8c6ebc9d8e9ec051a1635943e1b53",
+      "label": "population-a",
+      "manifestDigest": "c29f95a954c2d74bb04bb0f03de55e397288ce01216d79dbbda23089d27d532a",
+      "population": {
+        "populationDigest": "ecb5d3aa0c082479cd6485132de2668a869266690c101bf10850e9f9f5500996",
+        "populationId": "consumer-population-a",
+        "populationVersion": 2,
+        "visibility": "public-synthetic"
+      },
+      "retiredArtifactDigests": [
+        "ffcd9da16637330ed37371a8460c95e1a3c285c14fc8d1ef61436556ea58ce54"
+      ],
+      "retiredManifestDigests": [
+        "3ed9202b93da67ace5b93cf846b0dfb0298531a023a24fa448fffc7c23c030e2"
+      ],
+      "runClass": "public-synthetic",
+      "scanners": [
+        {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "redact-secret-core-node",
+            "adapterVersion": "1.0.0",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "35442b4205465fd400852079fa1620eae869ddc2b3ea5f849a4bd92406fb8737",
+          "configurationDigest": "d213ca5dd371adcea382769b656cd9b3d7b6543ea157dbf63e9a3f50eaeb3f21",
+          "product": {
+            "candidateDigest": "35442b4205465fd400852079fa1620eae869ddc2b3ea5f849a4bd92406fb8737",
+            "kind": "candidate"
+          },
+          "scannerId": "redact-secret-core",
+          "scannerVersion": "0.1.0-beta.12"
+        }
+      ]
+    },
+    {
+      "artifactDigest": "7618ea907727938500b565db25fd729e17ca0a6e0a221f6309bd0d5326458bc6",
+      "label": "population-b",
+      "manifestDigest": "c0ad8812fd42289b9c4330d6e7f26a1eb1e01354cde24214c20d80a3f51fc081",
+      "population": {
+        "populationDigest": "61ff27505e9fe72ddcfa5ac0b694106841ab53cc245bc5a1641761384115c139",
+        "populationId": "consumer-population-b",
+        "populationVersion": 1,
+        "visibility": "public-synthetic"
+      },
+      "retiredArtifactDigests": [],
+      "retiredManifestDigests": [],
+      "runClass": "public-synthetic",
+      "scanners": [
+        {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "redact-secret-core-node",
+            "adapterVersion": "1.0.0",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "35442b4205465fd400852079fa1620eae869ddc2b3ea5f849a4bd92406fb8737",
+          "configurationDigest": "d213ca5dd371adcea382769b656cd9b3d7b6543ea157dbf63e9a3f50eaeb3f21",
+          "product": {
+            "candidateDigest": "35442b4205465fd400852079fa1620eae869ddc2b3ea5f849a4bd92406fb8737",
+            "kind": "candidate"
+          },
+          "scannerId": "redact-secret-core",
+          "scannerVersion": "0.1.0-beta.12"
+        }
+      ]
+    }
+  ],
+  "protocol": {
+    "accounting": "pii-v1",
+    "id": "pii-v1",
+    "rules": {
+      "accounting": {
+        "id": "pii-v1-canonical-accounting",
+        "revision": 2
+      },
+      "matching": {
+        "id": "pii-v1-canonical",
+        "revision": 2
+      },
+      "statistics": {
+        "id": "pii-v1-wilson-exact",
+        "revision": 1
+      }
+    },
+    "version": 2
+  },
+  "requireComplete": true,
+  "schema": "pii-eval-consumer-pins/1"
+}
