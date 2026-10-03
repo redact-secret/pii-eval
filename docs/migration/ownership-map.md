@@ -420,6 +420,13 @@ Listed by glob rather than per file (85 PII-named files under `evidence/`, 9 und
 
 ## Gaps and decisions for later phases
 
+P5 reimplemented the seven methods (`methods/*.ts`), `operators.ts` and
+`validators.ts` in `pii-eval-kernel::methods`; the decisions, the exact id and
+seed algorithms and the classified differences from the oracle (D1 to D7) are
+in [ADR 0007](../adr/0007-method-generation-and-variant-provenance.md). The
+evidence-corpus loaders (`benign-collision-evidence.ts`, `context-evidence.ts`)
+stay with the corpus author; the kernel consumes their authored facts.
+
 P2 recorded the contract-bearing `mixed-split` decisions in
 [ADR 0002](../adr/0002-freeze-pii-contracts-v1.md) (versions and metric
 definitions are frozen in `schemas/registry/pii-v1.registry.json` and checked

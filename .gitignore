@@ -36,3 +36,7 @@ public/results/.*.json
 # (docs/official-runs.md).
 /results/local/
 .claude/worktrees
+
+# Python bytecode from vector-generation scripts.
+__pycache__/
+*.pyc
