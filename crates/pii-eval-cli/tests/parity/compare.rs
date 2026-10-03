@@ -451,6 +451,21 @@ pub fn rate_relation(
 // Layer: variants
 // ---------------------------------------------------------------------------
 
+/// The ADR 0007 section 3 variant id, recomputed here from the specification
+/// (length-prefixed preimage of domain, case id and slot; first 24 hex digits of
+/// SHA-256), not by the code under test.
+fn expected_variant_id(case: &str, slot: &str) -> String {
+    let mut preimage = Vec::new();
+    for field in ["pii-eval.variant-id/1", case, slot] {
+        preimage.extend((field.len() as u32).to_be_bytes());
+        preimage.extend(field.as_bytes());
+    }
+    format!(
+        "{slot}-{}",
+        &Sha256Digest::of_bytes(&preimage).as_str()[..24]
+    )
+}
+
 fn check_variants(ds: &Dataset, rc: &RustCorpus, cmp: &mut Comparison) {
     for (case, reason) in &rc.refused {
         cmp.diff(
@@ -575,7 +590,21 @@ fn check_variants(ds: &Dataset, rc: &RustCorpus, cmp: &mut Comparison) {
                     "review-hold",
                     vec!["0007/D4"],
                 ),
-                (oracle, Some(rust)) if oracle == rust => {}
+                (oracle, Some(rust)) if oracle == rust => {
+                    // The operator version is compared too (seeds are not: 0007/D5, D7).
+                    let version = r.variant.derivation.operator.as_ref().map(|o| o.version);
+                    if version != Some(uint(v, "operatorVersion") as u32) {
+                        cmp.diff(
+                            "variant",
+                            "-",
+                            &subject,
+                            "operator-version",
+                            uint(v, "operatorVersion"),
+                            format!("{version:?}"),
+                            vec![],
+                        );
+                    }
+                }
                 (oracle, rust) => cmp.diff(
                     "variant",
                     "-",
@@ -591,7 +620,7 @@ fn check_variants(ds: &Dataset, rc: &RustCorpus, cmp: &mut Comparison) {
             let id = r.variant.variant_id.as_str();
             if id == slot {
                 cmp.diff("variant", "-", &subject, "variant-id", slot, id, vec![]);
-            } else if id.starts_with(&format!("{slot}-")) {
+            } else if id == expected_variant_id(case_id, slot) {
                 cmp.diff(
                     "variant",
                     "-",
@@ -625,6 +654,43 @@ fn check_variants(ds: &Dataset, rc: &RustCorpus, cmp: &mut Comparison) {
 // Layer: outcomes
 // ---------------------------------------------------------------------------
 
+/// An independent check of the canonical primary choice (ADR 0004 section 3.2,
+/// written from the specification with its own arithmetic): among the findings
+/// that overlap the expected range, the primary must have the smallest
+/// (geometry rank, tightness, identity evidence). A primary-selection defect
+/// therefore cannot hide behind the D1 counterfactual below.
+pub fn independent_primary_ok(v: &RVariant, emission: &[Finding], primary: &Finding) -> bool {
+    let e = &v.variant.expectations[0];
+    let (es, ee) = (e.range.start, e.range.end);
+    let key = |f: &Finding| -> Option<(u8, u64, u8)> {
+        let (fs, fe) = (f.range.start, f.range.end);
+        if !(fs < ee && es < fe) {
+            return None;
+        }
+        let (rank, tight) = if fs == es && fe == ee {
+            (0, 0)
+        } else if fs <= es && fe >= ee {
+            (1, (fe - fs) - (ee - es))
+        } else {
+            (2, (ee - es) - (ee.min(fe) - es.max(fs)))
+        };
+        let identity = match &f.family {
+            None => 2,
+            Some(family) if *family == e.family => match (&v.case_jurisdiction, &f.jurisdiction) {
+                (Some(a), Some(b)) if a != b => 1,
+                (Some(_), None) => 1,
+                _ => 0,
+            },
+            Some(_) => 1,
+        };
+        Some((rank, tight, identity))
+    };
+    let Some(chosen) = key(primary) else {
+        return false;
+    };
+    emission.iter().filter_map(key).all(|k| chosen <= k)
+}
+
 /// Attribute a legacy/canonical row difference by counterfactuals.
 ///
 /// 1. Reorder the findings so that the canonical primary comes first and
@@ -650,6 +716,9 @@ pub fn attribute(
         .map(|i| &assessment.findings[i]);
     let mut legacy_prime = legacy.clone();
     if let Some(p) = primary {
+        if !independent_primary_ok(v, emission, p) {
+            return Err(());
+        }
         if let Some(at) = emission.iter().position(|f| f == p) {
             let mut reordered: Vec<Finding> = vec![emission[at].clone()];
             reordered.extend(

@@ -64,7 +64,7 @@ tools/oracle-parity/real-scanner/run.sh "$SCRATCH" --update   # replace it
 
 The script prints the command that runs the Rust adapter and engine over the same
 installed package (`PII_EVAL_REDACT_SECRET_CORE_DIR=... cargo test -p pii-eval-cli
---test real_scanner`). The install is `npm ci --ignore-scripts` against a lockfile
+--test real_scanner -- --ignored`; the test is #[ignore]d so CI shows it as ignored, never passed, and it fails without the variable). The install is `npm ci --ignore-scripts` against a lockfile
 that holds only the `@redact-secret/*` entries of the oracle's verified lockfile,
 so npm refuses any tarball whose integrity differs; nothing else is installed and
 no install script runs. Install into a scratch directory, never into this

@@ -44,6 +44,10 @@ pub const NOT_COMPARED: &[(&str, &str)] = &[
         "Equal by construction (case jurisdiction is the oracle's scope); covered by crates/pii-eval-compat/tests/accounting_oracle.rs.",
     ),
     (
+        "variant ids and seeds",
+        "A variant id is verified by recomputing `<slot>-<first 24 hex digits of SHA-256 of the length-prefixed preimage of domain, case id and slot>` from ADR 0007 section 3 (the `0007/D1` difference is exactly that form), and the operator id and version are compared. Seeds (`0007/D5`, `D7`) are not compared: the oracle's seeds are free-form labels mapped by `legacy_contract_seed`, covered by crates/pii-eval-kernel/tests/methods_ids.rs and methods_oracle.rs.",
+    ),
+    (
         "0007/D2, D3, D5-D9",
         "Method refusals, unknown validators and references, seeds under pii-seed-v1 and the evidence-corpus checks are covered by crates/pii-eval-kernel/tests/methods_oracle.rs; the parity corpus carries no evidence entry and uses the legacy seed rule.",
     ),
@@ -328,6 +332,7 @@ pub fn markdown(r: &Value) -> String {
         uint(census, "compatibilityLayerDifferences")
     ));
     o.push_str("- Mode: identical frozen observations fed to the pinned oracle's own code and to the Rust engine (same-observation parity). It is not a real-scanner run and not a protected run.\n");
+    o.push_str("- **Condition on that claim:** legacy parity holds for the order in which the scanner EMITTED its findings, because the legacy rule lets the first overlapping finding decide. Stored ObservationSets carry findings in canonical order, not emission order (`0004/D2`), so this evidence does not extend to legacy replay of stored sets; the canonical protocol is order invariant.\n");
     o.push_str("- The compatibility protocol (`pii-v1` revision 1, legacy matching and legacy accounting) reproduces the oracle's outcomes, ten metrics, counts, effective N, statuses, withheld states and intervals exactly; every difference of the canonical revision 2 is classified below.\n\n");
     o.push_str("## Pinned identities\n\n| Item | Value |\n| --- | --- |\n");
     let row =

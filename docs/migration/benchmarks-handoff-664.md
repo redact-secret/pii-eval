@@ -57,11 +57,22 @@ silently.
 | Item | Value |
 | --- | --- |
 | Engine | `pii-eval` version `0.0.0` (workspace version, bootstrap); the candidate is the pii-eval commit that contains this file. Record it as `git rev-parse HEAD` of the checkout (or the squash commit that merged P9) next to every result, and the digest of `Cargo.lock` and the binary |
-| Toolchain | Rust 1.98.1 (`rust-toolchain.toml`), MSRV 1.85 |
+| Toolchain | Rust `1.98.1` (`rust-toolchain.toml`, SHA-256 `887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167`), edition 2024, MSRV `1.85` (`workspace.package.rust-version`) |
+| Dependency lock | `Cargo.lock` SHA-256 `e646a917c7dc8a5d5f5744bbfc56456661ebeb5505ac18788b7d5262f29a956a` (build with `--locked`) |
 | CLI | `pii-eval run|replay|validate|compare` ([docs/cli.md](../cli.md)) |
 | Scanner | `@redact-secret/core` `0.1.0-beta.12`, npm integrity `sha512-fDVwt2U7VFSKb/0ixSuU5e+TOGVaUnyR1sIYwgS4S6gMndFnaq0M7ikaqac8wnTMYfYO/LS12JayXXeKbhE4aw==` (the oracle lockfile's), extracted package tree digest `726421636189573bc76024ecf23ec6bd1d71fef6d8272e5da1b3967dee036d03` |
 | Adapter | `redact-secret-core-node` version `1.0.0`, normalization 1, shim SHA-256 `21664407345b099d3f5e44db26bcfb037b2e981635dec0a7b5383b42b737e0a8`, activation `pii:global`, `pii:us` |
 | Product identity | `released` for the lockfile package; a candidate needs its own tree digest (docs/cli.md) |
+
+Identities that cannot live in a file of this repository, and how a consumer
+obtains them: the **commit SHA** that contains this document (a document cannot
+name its own commit; take `rev-parse HEAD` of the checkout, or the squash commit
+of the merged P9 pull request) and the **digest of a release binary** (there is no
+published binary; build with `cargo build --release --locked` and record
+`shasum -a 256 target/release/pii-eval`, docs/cli.md). Record both next to every
+result. The toolchain, MSRV and `Cargo.lock` rows above are checked by
+`oracle_parity_docs.rs`, so a change to any of them fails CI until this table is
+updated on purpose.
 
 The scanner's configuration is the adapter's fixed parameters
 (`detectorProfile=full`, `findingSource=pii-domain-only`,
@@ -101,6 +112,24 @@ tools/oracle-parity/real-scanner/run.sh "$SCRATCH"
 Fresh checkout, no oracle access: step 1 needs only Rust (the pinned toolchain).
 Never use an unpinned oracle checkout; never regenerate against a moved pin
 without a new ADR (ADR 0001).
+
+## 3a. benchmarks #664 acceptance text, mapped
+
+Text of [#664](https://github.com/redact-secret/redact-secret-benchmarks/issues/664),
+read on 2026-10-03, against what this repository proves:
+
+| #664 | State | Evidence |
+| --- | --- | --- |
+| Identical pinned scanners/configurations, frozen public synthetic inputs or bound replay observations | Covered | The same frozen observations go to both engines (report); the real pinned scanner (ADR 0012 P8) |
+| Case and variant identities/counts, seven methods, both axes, ten metrics, numerator/denominator, intervals, unmeasured/review-required/unstable states | Covered | Report layers `variant`, `outcome*`, `accounting*`, `statistics*` and the scanner statuses; review-required through `tv-unavailable` and `rd-unavailable` |
+| Semantic digests | Covered for the engine; the oracle has none | Engine artifact digests are equal across runs (below); the oracle's accounting carries only an unresolved input commitment (report, not compared) |
+| Oracle-plan, qualification-plan, diagnostic-balanced and benign-heavy-stress populations kept separately identified | **Open** | The parity population is one synthetic population (`parity-synthetic`). The kernel has the two views as an external roster (`ViewRoster`, ADR 0007); the product-owned plans were not built or run here. Benchmarks supplies them as snapshots, one population per run |
+| Classification; no tuning | Covered | Report census, ADR 0012 P6, section 4 |
+| Protected runs reuse approved receipts only | Not applicable | No protected corpus was run (custodian contract) |
+| Committed reproducible report, zero unexplained | Covered | `fixtures/oracle-parity/report.json`, generated and compared in CI |
+| At least two same-input runs with equal semantic digest | Covered | `oracle_parity.rs` runs the engine at one and four workers and again (equal artifact semantic digest); `oracle_parity_cli.rs` shows byte-identical documents |
+| Wrong activation / candidate / population bindings rejected | Covered, one case open | Population: `a_manifest_for_another_population_scanner_configuration_or_artifact_is_refused` in `cli_run.rs` (`population-binding-mismatch`, exit 4). Candidate/product: `run_class_and_product_are_independent_identities_each_checked_against_the_manifest` (exit 4, `product`) and `every_provenance_mismatch_is_exit_4_before_any_scanner_starts`. Activation travels in the scanner configuration: a plan whose configuration or adapter version differs is exit 4 `scanner-plan` (the first `cli_run.rs` test above), and the running scanner's activation identity is checked at startup (`PinKind::Activation`, `crates/pii-eval-adapters/tests/process_adapter.rs`). **Open:** no test changes only the manifest's activation selectors and asserts that refusal by name |
+| No protected bytes in the report | Covered | Synthetic only; the report test asserts that no authored value appears |
 
 ## 4. Mismatch handling
 

@@ -8,6 +8,7 @@ Status: generated, deterministic, synthetic only. It states what was compared an
 
 - Unexplained differences: **0**. Differences in the compatibility layers (which promise equality): **0**.
 - Mode: identical frozen observations fed to the pinned oracle's own code and to the Rust engine (same-observation parity). It is not a real-scanner run and not a protected run.
+- **Condition on that claim:** legacy parity holds for the order in which the scanner EMITTED its findings, because the legacy rule lets the first overlapping finding decide. Stored ObservationSets carry findings in canonical order, not emission order (`0004/D2`), so this evidence does not extend to legacy replay of stored sets; the canonical protocol is order invariant.
 - The compatibility protocol (`pii-v1` revision 1, legacy matching and legacy accounting) reproduces the oracle's outcomes, ten metrics, counts, effective N, statuses, withheld states and intervals exactly; every difference of the canonical revision 2 is classified below.
 
 ## Pinned identities
@@ -179,6 +180,7 @@ The live check (opt-in, not in CI) runs the Rust adapter, the Node shim and the 
 | 0004/D4, D5, D11 | Capability-aware differences need a scanner that declares less than full support. The parity scanners declare every capability the legacy protocol assumes, so these are covered by crates/pii-eval-compat/tests/differences.rs and crates/pii-eval-kernel/tests/conformance.rs, not by the oracle export. |
 | 0005/A5, A7 | The oracle's evidence, benignByControlClass, evidenceByClass, contextByLanguage and contextRoster projections are not carried by schema 1.x and are not compared; the ten metrics, their counts, effective N, statuses, intervals and withheld states are. |
 | 0005/A9 | Equal by construction (case jurisdiction is the oracle's scope); covered by crates/pii-eval-compat/tests/accounting_oracle.rs. |
+| variant ids and seeds | A variant id is verified by recomputing `<slot>-<first 24 hex digits of SHA-256 of the length-prefixed preimage of domain, case id and slot>` from ADR 0007 section 3 (the `0007/D1` difference is exactly that form), and the operator id and version are compared. Seeds (`0007/D5`, `D7`) are not compared: the oracle's seeds are free-form labels mapped by `legacy_contract_seed`, covered by crates/pii-eval-kernel/tests/methods_ids.rs and methods_oracle.rs. |
 | 0007/D2, D3, D5-D9 | Method refusals, unknown validators and references, seeds under pii-seed-v1 and the evidence-corpus checks are covered by crates/pii-eval-kernel/tests/methods_oracle.rs; the parity corpus carries no evidence entry and uses the legacy seed rule. |
 | population identity | The oracle accounting carries no population identity beyond sourceCaseCount and rowCount (and an unresolved input commitment); only those counts are compared. The Rust population binding (id, version, visibility, semantic digest) is verified by the engine end-to-end check. |
 | action axis | The oracle has no action axis (ADR 0004 D7); it is not compared. |

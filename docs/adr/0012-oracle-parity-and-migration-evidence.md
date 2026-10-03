@@ -132,6 +132,14 @@ withheld state, scanner failure states, case and row counts.
   * a range the canonical matcher refuses (`0004/D6`) must actually fail
     `validate_range`; the oracle's runtime rejects an empty range as a scanner
     error, and the matcher must refuse the same finding.
+* The D1 counterfactual only shows consistency with the canonical primary, so a
+  second, independent check runs first on every attributed row: from ADR 0004
+  section 3.2 and with its own arithmetic (`independent_primary_ok`), the primary
+  must have the smallest (geometry rank, tightness, identity evidence) among the
+  overlapping findings. A primary-selection defect therefore cannot hide as
+  D1/old bug; a test forges wrong primaries and requires each to be refused.
+  Variant ids are verified by recomputing the ADR 0007 digest, and operator ids
+  and versions are compared; seeds (`0007/D5`, `D7`) are not compared here.
 * The comparator is a pure function of the dataset. Negative tests corrupt a copy
   of the export (a count, a range state, an axis state, an observed count, an
   interval, a withheld state, a status, a variant id, a case family, a text, a
@@ -197,7 +205,7 @@ lockfile digest and the platform) and are compared **in CI** by the same
 comparator and engine pipeline as the synthetic scanners
 (`real_scanner.rs`, test 1).
 
-The live check (`real_scanner.rs`, test 2; `PII_EVAL_REDACT_SECRET_CORE_DIR`)
+The live check (`real_scanner.rs`, test 2, `#[ignore]`d so CI reports it as ignored, never as passed; run with `-- --ignored`; it fails without `PII_EVAL_REDACT_SECRET_CORE_DIR`)
 runs the Rust adapter, the Node shim and the engine over the same installed
 package and requires every variant's observed findings to equal the oracle
 adapter's, then the engine's metrics to equal the canonical accounting. It

@@ -9,7 +9,8 @@
 //!   `tools/oracle-parity/real-scanner/run.sh`) through the same comparator and
 //!   the real engine pipeline as the synthetic scanners. No scanner runs.
 //! * `live_rust_run_*` is opt-in (`PII_EVAL_REDACT_SECRET_CORE_DIR`, an extracted
-//!   package directory installed by `run.sh`; skipped with a printed reason
+//!   package directory installed by `run.sh`; `#[ignore]`d, so CI reports it as ignored,
+//!   never as passed; run it with `-- --ignored`, and without the variable it fails
 //!   otherwise). It runs the Rust adapter, shim and engine over the same package
 //!   and requires the observed findings to equal the oracle adapter's, then the
 //!   engine's metrics to equal the comparator's.
@@ -105,14 +106,11 @@ fn committed_real_scanner_observations_have_no_unexplained_difference() {
 }
 
 #[test]
+#[ignore = "opt-in: needs PII_EVAL_REDACT_SECRET_CORE_DIR (package installed by tools/oracle-parity/real-scanner/run.sh); run with -- --ignored"]
 fn live_rust_run_over_the_real_package_reproduces_the_oracles_observations() {
-    let Some(dir) = std::env::var_os("PII_EVAL_REDACT_SECRET_CORE_DIR") else {
-        eprintln!(
-            "SKIPPED live_rust_run_over_the_real_package: set PII_EVAL_REDACT_SECRET_CORE_DIR to the \
-             package directory installed by tools/oracle-parity/real-scanner/run.sh"
-        );
-        return;
-    };
+    // An explicit run without the package is a failure, never a pass.
+    let dir = std::env::var_os("PII_EVAL_REDACT_SECRET_CORE_DIR")
+        .expect("PII_EVAL_REDACT_SECRET_CORE_DIR must name the installed package directory");
     let node = node_or_skip();
     let ds = Dataset::load_real();
     let rc = rust_corpus(&ds.input, &ds.export);

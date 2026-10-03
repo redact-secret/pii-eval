@@ -36,6 +36,10 @@ fn the_handoff_names_the_current_identities() {
         sha("fixtures/oracle-parity/input.json"),
         sha("fixtures/oracle-parity/oracle-export.json"),
         sha("fixtures/oracle-parity/real-core-export.json"),
+        sha("Cargo.lock"),
+        sha("rust-toolchain.toml"),
+        "`1.98.1`".to_owned(),
+        "MSRV `1.85`".to_owned(),
         NPM_INTEGRITY.to_owned(),
         RELEASED_PACKAGE_TREE_SHA256.to_owned(),
         SHIM_SHA256.to_owned(),
@@ -64,7 +68,7 @@ fn the_handoff_names_the_current_identities() {
 }
 
 #[test]
-fn adr_0011_quotes_the_report_census() {
+fn adr_0012_quotes_the_report_census() {
     let ds = Dataset::load();
     let cmp = compare(&ds);
     let adr = doc("docs/adr/0012-oracle-parity-and-migration-evidence.md");

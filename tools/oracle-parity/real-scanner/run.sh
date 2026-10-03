@@ -48,4 +48,4 @@ fi
 echo
 echo "Live Rust end-to-end check (Rust adapter and shim over the same package):"
 echo "  PII_EVAL_REDACT_SECRET_CORE_DIR=$SCRATCH/real-core/node_modules/@redact-secret/core \\"
-echo "  cargo test -p pii-eval-cli --test real_scanner --locked -- --nocapture"
+echo "  cargo test -p pii-eval-cli --test real_scanner --locked -- --ignored --nocapture"

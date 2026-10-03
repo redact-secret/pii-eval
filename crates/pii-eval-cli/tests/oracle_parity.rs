@@ -646,6 +646,58 @@ fn an_unattributable_matching_difference_is_unexplained() {
     assert!(checked);
 }
 
+#[test]
+fn a_wrong_primary_cannot_hide_behind_the_d1_counterfactual() {
+    let ds = Dataset::load();
+    let rc = rust_corpus(&ds.input, &ds.export);
+    let multi = list(&ds.export, "scanners")
+        .iter()
+        .find(|s| text(s, "id") == "parity-multi")
+        .unwrap();
+    let findings = findings_of(multi);
+    let caps = parity::capabilities();
+    let (mut honest, mut rejected) = (0, 0);
+    for v in &rc.variants {
+        let emission = findings.get(&v.key()).cloned().unwrap_or_default();
+        let a = canonical_assessment(v, ScannerStatus::Complete, &caps, &emission).unwrap();
+        let legacy = legacy_row(v, ScannerStatus::Complete, &emission);
+        let canonical = canonical_row(v, &a);
+        if a.findings.len() < 2 {
+            continue;
+        }
+        // The honest primary passes the independent closeness check.
+        if let Some(i) = a.occurrences[0].primary {
+            assert!(parity::compare::independent_primary_ok(
+                v,
+                &emission,
+                &a.findings[i]
+            ));
+            honest += 1;
+        }
+        // Forcing every other finding to be the primary: any that is not the closest is
+        // refused by the attribution, whatever the legacy row says.
+        for j in 0..a.findings.len() {
+            let mut forged = a.clone();
+            forged.occurrences[0].primary = Some(j);
+            if !parity::compare::independent_primary_ok(v, &emission, &a.findings[j]) {
+                assert!(
+                    attribute(
+                        v,
+                        ScannerStatus::Complete,
+                        &emission,
+                        &forged,
+                        &legacy,
+                        &canonical
+                    )
+                    .is_err()
+                );
+                rejected += 1;
+            }
+        }
+    }
+    assert!(honest >= 10 && rejected >= 5, "{honest} {rejected}");
+}
+
 // ---------------------------------------------------------------------------
 // Determinism and invariance
 // ---------------------------------------------------------------------------

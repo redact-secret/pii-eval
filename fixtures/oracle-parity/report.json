@@ -961,6 +961,10 @@
       "reason": "Equal by construction (case jurisdiction is the oracle's scope); covered by crates/pii-eval-compat/tests/accounting_oracle.rs."
     },
     {
+      "item": "variant ids and seeds",
+      "reason": "A variant id is verified by recomputing `<slot>-<first 24 hex digits of SHA-256 of the length-prefixed preimage of domain, case id and slot>` from ADR 0007 section 3 (the `0007/D1` difference is exactly that form), and the operator id and version are compared. Seeds (`0007/D5`, `D7`) are not compared: the oracle's seeds are free-form labels mapped by `legacy_contract_seed`, covered by crates/pii-eval-kernel/tests/methods_ids.rs and methods_oracle.rs."
+    },
+    {
       "item": "0007/D2, D3, D5-D9",
       "reason": "Method refusals, unknown validators and references, seeds under pii-seed-v1 and the evidence-corpus checks are covered by crates/pii-eval-kernel/tests/methods_oracle.rs; the parity corpus carries no evidence entry and uses the legacy seed rule."
     },
