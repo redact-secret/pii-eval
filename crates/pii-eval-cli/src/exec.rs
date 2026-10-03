@@ -84,6 +84,12 @@ impl CancelToken {
         Self::default()
     }
 
+    /// A token that observes `flag`, so a signal handler that sets the flag
+    /// cancels the run (the CLI registers the flag for SIGINT and SIGTERM).
+    pub fn from_flag(flag: Arc<AtomicBool>) -> Self {
+        Self(flag)
+    }
+
     /// Cancel: running sessions are killed (tree included) and no new work starts.
     pub fn cancel(&self) {
         self.0.store(true, Ordering::SeqCst);
@@ -359,6 +365,7 @@ pub fn effective_limits(
 static SCRATCH_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 fn create_private_dir(path: &Path) -> std::io::Result<()> {
+    #[cfg_attr(not(unix), allow(unused_mut))]
     let mut builder = std::fs::DirBuilder::new();
     #[cfg(unix)]
     std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);

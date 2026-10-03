@@ -163,6 +163,18 @@ fn verify_parts(parts: Parts<'_>, snapshot: &CorpusSnapshot) -> Result<(), Verif
     )?;
     let mut c = Collector::new();
     let root = Path::ROOT.field("semantic");
+    // The review gate (ADR 0007, ADR 0010 C8a): a variant the snapshot holds for
+    // review must have an unmeasured type axis in every stored row, so a row
+    // that scores it as a clean pass is a contradiction, not a verified result.
+    let gate = crate::methods::ReviewGate::from_body(&snapshot.semantic);
+    if gate.held_count() > 0
+        && parts.rows.iter().any(|r| {
+            gate.is_held(r.variant_id)
+                && r.row.type_identity != pii_eval_contracts::TypeState::NotMeasured
+        })
+    {
+        c.push(ReasonCode::OutcomeContradiction, &root.field("outcomes"));
+    }
     // Revision 2 has no unkeyed list.
     if !parts.metrics.is_empty() {
         c.push(ReasonCode::ProtocolBindingMismatch, &root.field("metrics"));

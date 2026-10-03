@@ -68,6 +68,25 @@ const ADAPTER_EXTRA_THIRD_PARTY: &[&str] = &[
 const ADAPTER_FRAGMENT_EXCEPTIONS: &[(&str, &[&str])] =
     &[("libc", &["cpufeatures", "errno", "rustix"])];
 
+/// Third-party crates only the CLI crate may add (P8, ADR 0010): `signal-hook`
+/// (flag-setting handlers for SIGINT and SIGTERM; `std` has no signal API and
+/// first-party crates forbid `unsafe`) and its registry. Each is justified in
+/// docs/dependency-policy.md. Contracts, kernel and adapters may not use them.
+const CLI_EXTRA_THIRD_PARTY: &[&str] = &["signal-hook", "signal-hook-registry"];
+
+/// Reviewed exceptions for the CLI: `libc` may also be reached through the
+/// signal crates.
+const CLI_FRAGMENT_EXCEPTIONS: &[(&str, &[&str])] = &[(
+    "libc",
+    &[
+        "cpufeatures",
+        "errno",
+        "rustix",
+        "signal-hook",
+        "signal-hook-registry",
+    ],
+)];
+
 /// Crates the pure layers must never reach, even if someone widens the
 /// allowlist by mistake. Substring match on the crate name.
 const FORBIDDEN_FRAGMENTS: &[&str] = &[
@@ -235,6 +254,45 @@ fn adapters_use_only_the_reviewed_crates_and_std_for_processes() {
             !FORBIDDEN_FRAGMENTS.iter().any(|f| name.contains(f)),
             "{package} depends on forbidden crate `{name}`"
         );
+    }
+}
+
+/// The CLI crate adds exactly the signal crates to the adapters' reviewed set and
+/// nothing else, and those crates stay out of the contracts, kernel and adapters
+/// closures (so the pure crates' guard above is unchanged).
+#[test]
+fn the_cli_adds_only_the_reviewed_signal_crates() {
+    let package = "pii-eval-cli";
+    let closure = normal_closure(package);
+    assert!(closure.contains(package));
+    for name in &closure {
+        let allowed = WORKSPACE_CRATES.contains(&name.as_str())
+            || ALLOWED_THIRD_PARTY.contains(&name.as_str())
+            || ADAPTER_EXTRA_THIRD_PARTY.contains(&name.as_str())
+            || CLI_EXTRA_THIRD_PARTY.contains(&name.as_str());
+        assert!(allowed, "{package} depends on unreviewed crate `{name}`");
+        if let Some((_, only)) = CLI_FRAGMENT_EXCEPTIONS.iter().find(|(c, _)| c == name) {
+            let dependents = direct_dependents(package, name);
+            let allowed: BTreeSet<String> = only.iter().map(|s| (*s).to_owned()).collect();
+            assert!(
+                !dependents.is_empty() && dependents.is_subset(&allowed),
+                "{package}: `{name}` must be reached only through {only:?}, found {dependents:?}"
+            );
+            continue;
+        }
+        assert!(
+            !FORBIDDEN_FRAGMENTS.iter().any(|f| name.contains(f)),
+            "{package} depends on forbidden crate `{name}`"
+        );
+    }
+    for lower in ["pii-eval-contracts", "pii-eval-kernel", "pii-eval-adapters"] {
+        let lower_closure = normal_closure(lower);
+        for extra in CLI_EXTRA_THIRD_PARTY {
+            assert!(
+                !lower_closure.contains(*extra),
+                "{lower} must not depend on `{extra}`"
+            );
+        }
     }
 }
 

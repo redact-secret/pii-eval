@@ -240,12 +240,25 @@ fn wait_dead(pid: i32) {
     }
 }
 
+/// The scanner creates the file and then writes the pid, so the file can exist
+/// while still empty. Wait for a parseable pid instead of reading once.
+fn try_read_pid(file: &Path) -> Option<i32> {
+    std::fs::read_to_string(file).ok()?.trim().parse().ok()
+}
+
 fn read_pid(file: &Path) -> i32 {
-    std::fs::read_to_string(file)
-        .unwrap()
-        .trim()
-        .parse()
-        .unwrap()
+    let start = Instant::now();
+    loop {
+        if let Some(pid) = try_read_pid(file) {
+            return pid;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(30),
+            "no pid was written to {}",
+            file.display()
+        );
+        thread::sleep(Duration::from_millis(25));
+    }
 }
 
 fn no_scratch_left(root: &Path) {
@@ -372,7 +385,7 @@ fn a_cancel_kills_the_running_scanner_and_is_recorded_as_cancelled() {
         move || {
             // Cancel once the scanner is demonstrably running its descendant.
             let start = Instant::now();
-            while !pidfile.exists() && start.elapsed() < Duration::from_secs(30) {
+            while try_read_pid(&pidfile).is_none() && start.elapsed() < Duration::from_secs(30) {
                 thread::sleep(Duration::from_millis(25));
             }
             cancel.cancel();

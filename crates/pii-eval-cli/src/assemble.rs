@@ -23,6 +23,7 @@ use pii_eval_contracts::{
     RunArtifactBody, RunClass, RunDiagnostics, RunManifest, ScannerMetrics, ScannerStatus,
     TimestampUtc, VersionString, seal,
 };
+use pii_eval_kernel::methods::ReviewGate;
 use pii_eval_kernel::{
     AccountError, AssessError, AuthoredIndex, ScannerInput, ScannerView, VariantInput,
     account_outcomes, assess_variant,
@@ -162,7 +163,11 @@ pub fn assemble(
     let protocol = ProtocolIdentity::CANONICAL_V2;
     let body = &snapshot.semantic;
 
-    // Rows, scanner by scanner, in canonical order.
+    // Rows, scanner by scanner, in canonical order. Every row passes the review
+    // gate of the sealed snapshot (a `review-required` variant has an unmeasured
+    // type axis, ADR 0007), so a replay of a stored snapshot scores exactly what
+    // the run did and a held variant can never read as a clean pass.
+    let gate = ReviewGate::from_body(body);
     let mut rows: Vec<CaseOutcome> = Vec::new();
     for run in runs {
         let by_index = observations_by_index(run, tasks.len())?;
@@ -189,9 +194,10 @@ pub fn assemble(
                         && run.capabilities.action == ActionCapability::SanitizedOutput
                 });
                 for (i, occ) in assessment.occurrences.iter().enumerate() {
+                    let gated = gate.apply(variant.variant_id.as_str(), occ.row);
                     let action = match verified.and_then(|v| v.get(i)) {
                         Some(&verification) => ActionOutcome::OutputVerified { verification },
-                        None => occ.row.action,
+                        None => gated.action,
                     };
                     rows.push(CaseOutcome {
                         scanner_id: run.plan.identity.scanner_id.clone(),
@@ -199,9 +205,9 @@ pub fn assemble(
                         variant_id: variant.variant_id.clone(),
                         occurrence_id: occ.occurrence_id.clone(),
                         method: case.method,
-                        type_identity: occ.row.type_identity,
-                        sensitivity_context: occ.row.sensitivity_context,
-                        range: occ.row.range,
+                        type_identity: gated.type_identity,
+                        sensitivity_context: gated.sensitivity_context,
+                        range: gated.range,
                         action,
                         observed: occ.observed.clone(),
                     });
