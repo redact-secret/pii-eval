@@ -20,7 +20,7 @@ use std::time::{Duration, SystemTime};
 
 use pii_eval_contracts::{
     ActionCapability, ActionOutcome, CorpusSnapshot, Id, ObservationSet, OutputVerification,
-    RunArtifact, RunManifest, ScannerId, ScannerPlan, ScannerStatus,
+    RunArtifact, RunManifest, ScannerId, ScannerPlan, ScannerStatus, Variant,
 };
 
 use crate::assemble::variant_tasks;
@@ -50,6 +50,17 @@ fn zero_timing() -> ScannerTiming {
     }
 }
 
+/// The snapshot's variants in the canonical order of [`variant_tasks`] (cases, then
+/// the variants of each case): one pass, so a lookup by task index is O(1).
+fn variants_in_task_order(snapshot: &CorpusSnapshot) -> Vec<&Variant> {
+    snapshot
+        .semantic
+        .cases
+        .iter()
+        .flat_map(|c| &c.variants)
+        .collect()
+}
+
 /// One [`ScannerRun`] per manifest scanner, in manifest order, from `sets` (any
 /// order, validated against the manifest and snapshot by the caller).
 pub fn runs_from_observations(
@@ -59,6 +70,11 @@ pub fn runs_from_observations(
     original: Option<&RunArtifact>,
 ) -> Result<Vec<ScannerRun>, Failure> {
     let tasks = variant_tasks(snapshot);
+    // The variant at each task index, built once: `variant_tasks` and this list walk the
+    // snapshot in the same canonical order, so `variants[index]` is the variant of task
+    // `index`. (Looking it up with an iterator `nth` per observed input made a replay of a
+    // sanitized-output scanner quadratic in the number of cases: ADR 0013.)
+    let variants = variants_in_task_order(snapshot);
     let index_of: BTreeMap<&Id, usize> = tasks
         .iter()
         .enumerate()
@@ -105,13 +121,7 @@ pub fn runs_from_observations(
         for input in &o.inputs {
             let index = *index_of.get(&input.variant_id).ok_or_else(incomplete)?;
             let verification = if with_verdicts && input.sanitized_output_digest.is_some() {
-                let variant = snapshot
-                    .semantic
-                    .cases
-                    .iter()
-                    .flat_map(|c| &c.variants)
-                    .nth(index)
-                    .ok_or_else(incomplete)?;
+                let variant = *variants.get(index).ok_or_else(incomplete)?;
                 variant
                     .expectations
                     .iter()
@@ -148,4 +158,32 @@ pub fn runs_from_observations(
         });
     }
     Ok(runs)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pii_eval_contracts::parse_default;
+
+    /// `variants[index]` must be the variant of task `index`: replay indexes this list with
+    /// the executor's task indices (ADR 0013 replaced a per-input `nth` walk with it).
+    #[test]
+    fn the_variant_list_is_aligned_with_the_task_indices() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        for name in [
+            "fixtures/contracts/v1/snapshot.json",
+            "examples/quickstart/snapshot.json",
+        ] {
+            let bytes = std::fs::read(root.join(name)).expect("committed snapshot");
+            let snapshot: CorpusSnapshot = parse_default(&bytes).expect("snapshot parses");
+            let tasks = variant_tasks(&snapshot);
+            let variants = variants_in_task_order(&snapshot);
+            assert_eq!(tasks.len(), variants.len());
+            assert!(!tasks.is_empty());
+            for (task, variant) in tasks.iter().zip(&variants) {
+                assert_eq!(task.variant_id, &variant.variant_id);
+                assert_eq!(task.text, variant.text);
+            }
+        }
+    }
 }
