@@ -15,6 +15,7 @@ edition = "2024"
 # Verified minimum, not inherited from another repository. See docs/dependency-policy.md.
 rust-version = "1.85"
 publish = false
+license = "MIT"
 
 [workspace.dependencies]
 pii-eval-contracts = { path = "crates/pii-eval-contracts" }
