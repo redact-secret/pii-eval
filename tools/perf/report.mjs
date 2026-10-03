@@ -127,7 +127,7 @@ function pipelineTables(result) {
           /^cli-run/.test(key) ? `${phase('scanner-startup')} / ${phase('scan')} / ${phase('kernel-replay')} / ${phase('materialization')} / ${phase('serialization')} / ${phase('total')}` : '', c.trials]);
       }
     }
-    out.push(`### ${axis === 'pipeline-cases' ? 'Full CLI over the inert fake scanner package' : 'Real scanner: oracle in-process adapter against the Rust CLI'}\n\n${table(['cases', 'measure', 'wall ms (median ± MAD)', 'wall min', 'CPU ms (user+sys)', 'Minstr', 'peak RSS MiB', 'startup / scan / kernel / materialization / serialization / total ms (diagnostics, summed over sessions for startup and scan)', 'trials'], rows)}`);
+    out.push(`### ${axis === 'pipeline-cases' ? 'Full CLI over the inert fake scanner package' : 'Real scanner: oracle in-process adapter against the Rust CLI (oracle-real rows: 3 evaluations per process; cli-run rows: 1 run)'}\n\n${table(['cases', 'measure', 'wall ms (median ± MAD)', 'wall min', 'CPU ms (user+sys)', 'Minstr', 'peak RSS MiB', 'startup / scan / kernel / materialization / serialization / total ms (diagnostics, summed over sessions for startup and scan)', 'trials'], rows)}`);
   }
   for (const axis of ['pipeline-workers', 'real-workers']) {
     const cells = byAxis(axis).sort((a, b) => a.workload.params.cases - b.workload.params.cases || 0);

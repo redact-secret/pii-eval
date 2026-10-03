@@ -119,13 +119,21 @@ measured work and not to loading JSON and generating variants.
 | Phase wall time | `Instant` (Rust), `performance.now()` (Node) around each phase | Wall time of a loaded host; contention inflates it, so minima are used |
 | Process wall, user, system time | `/usr/bin/time` | CPU time is quantized to 10 ms on macOS; the children of a process (Node scanner sessions) are included |
 | Instructions retired | `/usr/bin/time -l` (Apple silicon) | **The evaluator process only: scanner child processes are not counted** (observed: constant while the number of Node sessions grows 32-fold). So it measures evaluator work and is not a time. macOS only |
-| Peak RSS | maximum resident set size of `/usr/bin/time` | The largest process of the tree, not the sum; includes allocator caching and is bimodal by 20% to 40% for the same input from run to run (see the A/B and the parse table below) |
+| Peak RSS | maximum resident set size of `/usr/bin/time` | The largest process of the tree, not the sum; includes allocator caching and varies by 20% to 40% (up to 2.3x for the multi-repetition replay process) for the same input from run to run (see the A/B and the parse table below) |
 | Allocation counts | **not collected** | A counting allocator needs `unsafe`, which the workspace forbids; no allocator hook or profiler dependency was added. Allocation strategy is described below and cross-checked with RSS per row |
 | Executor sampled tree RSS | `ps` every 250 ms (ADR 0009) | A lower bound; not used here |
 
 ## Results
 
 ### 1. Kernel replay against the pinned TypeScript oracle (suite `scaling`)
+
+Fidelity of the comparison: the workload and configuration are identical on both
+sides, but output equality is verified only for the Rust oracle-faithful (`compat`)
+path, and only up to 6,400 cases (`verification` in each cell; not run at 25,600). The
+`TS / engine run` and `TS / kernel` columns pair the oracle with the canonical kernel,
+whose counts were not compared with the oracle's (the classified differences are the
+P9 report's). They are like-for-like in workload and settings, not verified-output
+ratios at every size.
 
 Reading guide for the tables: all times are milliseconds, the minimum of the warm
 in-process repetitions, then the minimum over trials; `TS / x` divides the oracle's
@@ -277,11 +285,15 @@ What the scaling tables show:
   117 variants, 1.4 s at 6,417, 60 s at 25,617 (the slope between the last two sizes
   is 2.4 for `execute + account`). The 25,617-variant oracle value is one trial of
   three in-process repetitions in which `execute` took 18 to 48 s and `account` 60 to
-  137 s; the minima are used, and the real ratio is likely larger, not smaller.
+  137 s (account repetitions spread 2.3x); every figure derived from it (the 2.4 to 2.5
+  exponent, 2.43 from medians and 2.49 from minima, and the ratio below) rests on that
+  single trial.
 - **Against the oracle.** Like for like (`TS / engine run`) the Rust engine is 1.7x
-  (117 variants, dominated by its fixed overhead), 4.3x, 10.7x, 22.7x and 158x faster
-  as the population grows; against the Rust kernel alone it is 90x to 2,000x.
-  Variant generation is 6x to 12x faster. These ratios are properties of these
+  (117 variants, dominated by its fixed overhead), 4.3x, 10.7x, 22.7x and 126x to 158x
+  faster as the population grows (the table uses the warm minimum of `execute` plus
+  `account`, 98 s, giving 158x; the smallest sum over all repetitions, cold `execute`
+  18.3 s plus `account` 60.0 s, gives 126x); against the Rust kernel alone it is 90x to 2,000x.
+  Variant generation is 3.7x to 11.5x faster (4x to 12x; 3.7x to 4.6x at the largest texts). These ratios are properties of these
   workloads and this oracle (including its file writes and its quadratic accounting
   step); they are not a claim that the oracle is slow in general.
 - **Where the evaluator's own time goes.** The canonical kernel costs about 1.0 us
@@ -365,7 +377,7 @@ is not confused with evaluator work.
 | 25600 | cli-run-candidate-w4-r2 | 2440 ± 80 | 2360 | 4960 ± 10 | 34214 | 610 | 261 / 2437 / 22 / 32 / 762 / 1861 | 3 |
 | 25600 | cli-replay-candidate-w4-r2 | 1710 ± 30 | 1680 | 1670 ± 0 | 30777 | 628 |  | 3 |
 
-**Real scanner: oracle in-process adapter against the Rust CLI**
+**Real scanner: oracle in-process adapter against the Rust CLI** (the `oracle-real` rows cover THREE evaluations in one process, the `cli-run` rows one run; do not divide them, see the restatement below)
 
 | cases | measure | wall ms (median ± MAD) | wall min | CPU ms (user+sys) | Minstr | peak RSS MiB | startup / scan / kernel / materialization / serialization / total ms (diagnostics, summed over sessions for startup and scan) | trials |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -417,12 +429,25 @@ is not confused with evaluator work.
   1.4 million at 1,617 and 1.6 million at 417, where fixed costs show), so a run is
   linear in the population and the scanner's share shrinks as scans get cheaper
   than the evaluator's per-variant document handling.
-- **Against the oracle with the real scanner** (full process wall time; the oracle
-  runs the same pinned package in-process through its own adapter): 400 ms against
-  320 ms at 117 variants (process starts dominate both), then 3.4x, 5.8x and 11.6x at
-  417, 1,617 and 6,417 variants (8.7 s against 0.75 s at the largest). The two sides
-  scan the same texts but their observations at this scale were not compared (the
-  committed parity check covers the frozen population only).
+- **Against the oracle with the real scanner (like-for-like restatement).** The
+  `oracle-real` rows of the table above come from a process that runs the oracle's
+  evaluation **3 times** (`--repeat 3`), while a `cli-run` row is **one** Rust run, so
+  the oracle's wall time, CPU time, instruction and RSS columns cover three
+  evaluations in one process and must not be divided by the Rust columns. Restated
+  per evaluation from the committed per-repetition data (first repetition of the
+  oracle's `totalMs`, plus the oracle's prepare process, against one Rust run at 4
+  workers): 117 variants about 330 ms against 320 ms (1.0x), 417 variants 400 against
+  220 ms (1.8x), 1,617 variants 890 against 340 ms (2.6x), 6,417 variants 3.2 s against
+  0.75 s (4.3x). The evaluation alone (without the prepare process) is 50, 159, 607
+  and 2,845 ms. The earlier 3.4x, 5.8x and 11.6x compared three oracle evaluations with
+  one Rust run and are withdrawn. RSS, CPU time and instruction counts of the oracle
+  cannot be un-batched from this data; a clean single-evaluation process measurement
+  needs a rerun of the oracle side with `--repeat 1` (open item, not run). Limits: the
+  oracle's in-process adapter was not controlled for (it runs the scanner in the same
+  Node process, with the oracle's own file writes), the two sides scan the same texts
+  but their observations at this scale were not compared (the committed parity check
+  covers the frozen population only), and the Rust figure is a full process
+  wall time while the oracle figure is reconstructed.
 - **Oversubscription (workers above the number of CPUs, which is 10 here).** For a
   scanner that starts a process per session, wall time is lowest at 2 to 4 workers
   (310 ms for 1,617 variants), then rises to 370 ms at 8, 480 ms at 16 and 710 ms at
@@ -449,7 +474,7 @@ parsing, and per row or variant for runs:
 - A run needs about 24 KB of peak RSS per variant (610 MiB at 25,617 variants;
   121 MiB at 6,417 with the real scanner) and a replay about 25 KB per variant, almost
   all of it the evaluator's documents, not scanner processes (a Node scanner is
-  about 50 MiB each). The Rust replay process holds about 18.7 KB per outcome row.
+  about 50 MiB each). The Rust replay process holds 8 to 19 KB per outcome row (net peak RSS of the 51,234-row replay was 413 to 942 MiB over five trials, a 2.3x spread: gross 943 to 1,472 MiB over a 530 MiB baseline; the single-repetition `ceilings` run gives 1,137 MiB gross, 588 MiB net).
 - Parsing a document costs about the same multiple of its size at every size from
   0.2 MiB to 31 MiB, so memory is linear in the input:
 
@@ -523,8 +548,7 @@ accounting limits of ADR 0005 (1,000,000 cases, 16,000,000 rows):
 - The writer's refusal is the right outcome (nothing is written, a smaller
   population or fewer scanners per run works), but the error reason does not say the
   cap was hit. A compact serialization or a raised cap is a contract decision outside
-  this phase. Within the cap the memory ceiling is about 900 MiB for a replay process
-  at 51,000 rows and about 610 MiB for a CLI run at 25,600 variants.
+  this phase. Within the cap, memory is measured up to 51,234 rows (replay process: 413 to 942 MiB net over five trials with three in-process repetitions, 588 MiB net in a single repetition); the ceiling at about 58,000 rows is **extrapolated** (about 0.5 to 1.1 GiB), not measured, because a run at 56,034 rows reported 1,256 MiB gross and was a single repetition. A CLI run needs about 610 MiB at 25,600 variants.
 
 ### 6. The optimization: replay variant lookup
 
@@ -638,6 +662,25 @@ its workload digest). The committed observations of the smoke workload are
 regenerated with `node --experimental-strip-types --no-warnings --import tools/oracle-parity/register.mjs tools/perf/oracle-bench.mjs "$SCRATCH/oracle" fixtures/perf/smoke-workload.json --export fixtures/perf/smoke-observations.json`
 (the workload file itself is `node tools/perf/make-workload.mjs '<its recorded parameters>' fixtures/perf/smoke-workload.json`;
 a test asserts that the committed file is what the generator produces).
+
+## Reproducibility and binaries
+
+The results are tied to the recorded binary hashes, not to the head commit of the
+pull request: each result records the base commit (`6bb0e75`) with an uncommitted
+working tree, and a rebuild is not expected to reproduce the binaries bit for bit.
+Suites ran with different builds of the harness (the `scaling` suite on an earlier
+build of the example than the others; the later builds only changed reporting: the
+`validate` parse stage, the recorded writer and parse refusals, the compat
+equality field):
+
+| Suite | perf example sha256 | pii-eval sha256 |
+| --- | --- | --- |
+| `scaling` (cell `findings-001024` re-run on the later example build) | `db142b92fe37` | `3fc9b09847f0` (before the O1 change) |
+| `pipeline`, `real-scanner`, `ceilings` | `38d05fba1a7a` | `b31a65dfd414` (after) |
+| `memory` | `be5c5f417538` | `b31a65dfd414` |
+| `replay-lookup` | `be5c5f417538` | `b31a65dfd414` (after) against `3fc9b09847f0` (before) |
+
+Full hashes, the tool versions and the host are in each result's `binaries` and `host`.
 
 ## What is not claimed
 

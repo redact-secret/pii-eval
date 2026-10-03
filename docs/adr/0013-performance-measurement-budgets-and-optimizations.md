@@ -104,7 +104,8 @@ instructions -8%. A `sample` profile taken earlier on a heavily loaded host had
 attributed more than half of the samples to the function; the A/B shows that this
 overstated the effect (a memory-latency-bound walk is inflated by a contended host),
 which is why the decision and the numbers rest on the A/B. The change is kept
-because it removes the only superlinear term in the evaluator and cannot change a
+because it removes a quadratic lookup in replay (other phases have fitted
+exponents up to 1.24, which this ADR does not call linear) and cannot change a
 result.
 
 Evidence of identical output: the replayed documents are byte-identical before and
