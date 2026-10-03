@@ -283,7 +283,7 @@ fn plan_of(name: &str, salt: i64) -> ScannerPlan {
 /// The scanners the engine path can run: complete scanners with valid ranges and
 /// the four non-complete behaviours. (`parity-midchar` and `parity-badrange`
 /// carry ranges that a real adapter's normalization rejects as malformed output
-/// before matching; ADR 0011.)
+/// before matching; ADR 0012.)
 pub fn engine_scanners(ds: &Dataset) -> Vec<(String, Behaviour)> {
     let mut scanners: Vec<(String, Behaviour)> = list(&ds.export, "scanners")
         .iter()

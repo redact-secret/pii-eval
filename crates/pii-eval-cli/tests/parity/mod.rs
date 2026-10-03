@@ -1,5 +1,5 @@
 //! Oracle parity support: the comparator, the report and the engine
-//! end-to-end check. Test support only (ADR 0011).
+//! end-to-end check. Test support only (ADR 0012).
 #![allow(dead_code, clippy::too_many_arguments, clippy::type_complexity)]
 
 pub mod compare;

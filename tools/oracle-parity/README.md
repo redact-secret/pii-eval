@@ -2,7 +2,7 @@
 
 Manual tooling that produces the committed oracle export used by the parity
 suite (`crates/pii-eval-cli/tests/oracle_parity.rs`). Method, classification and
-limits: [ADR 0011](../../docs/adr/0011-oracle-parity-and-migration-evidence.md);
+limits: [ADR 0012](../../docs/adr/0012-oracle-parity-and-migration-evidence.md);
 results: [the generated report](../../docs/migration/oracle-parity-report.md).
 
 **CI never runs these scripts.** CI has no access to the private oracle

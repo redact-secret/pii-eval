@@ -219,7 +219,7 @@ fn compare_variants(
     let result = g.generate_case(&case);
 
     // D2 (ADR 0007) is resolved: the oracle's 8-frame group is generated like any other
-    // (ADR 0008 R5 and ADR 0011 N1: the generator accepts at least one frame per class).
+    // (ADR 0008 R5 and ADR 0012 N1: the generator accepts at least one frame per class).
     if o.method == "context-discrimination" && variants.len() > 3 {
         assert_eq!(variants.len(), 8, "{}", o.name);
     }

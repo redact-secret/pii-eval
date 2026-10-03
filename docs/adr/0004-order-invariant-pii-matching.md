@@ -243,4 +243,4 @@ The contract impact described in section 5 is resolved by [ADR 0008](0008-protoc
 
 ## Update (P9)
 
-Same-observation parity against the oracle's own code is delivered by [ADR 0011](0011-oracle-parity-and-migration-evidence.md): `legacy-first-overlap` reproduces the oracle's outcomes with zero differences on the frozen corpus (it was fed the scanner emission order, so D2 is not exercised), and every canonical difference is attributed by counterfactual to D1 (class: old bug), D3 or D6. D4, D5 and D11 stay covered by `crates/pii-eval-compat/tests/differences.rs`.
+Same-observation parity against the oracle's own code is delivered by [ADR 0012](0012-oracle-parity-and-migration-evidence.md): `legacy-first-overlap` reproduces the oracle's outcomes with zero differences on the frozen corpus (it was fed the scanner emission order, so D2 is not exercised), and every canonical difference is attributed by counterfactual to D1 (class: old bug), D3 or D6. D4, D5 and D11 stay covered by `crates/pii-eval-compat/tests/differences.rs`.

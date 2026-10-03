@@ -1,4 +1,4 @@
-//! The CLI over the parity population (P9, ADR 0011): the documents the engine
+//! The CLI over the parity population (P9, ADR 0012): the documents the engine
 //! writes for the frozen observations are byte-identical at one and four workers,
 //! `pii-eval validate` verifies them against the snapshot, and `pii-eval replay`
 //! re-derives the artifact from the observation sets alone, byte for byte.

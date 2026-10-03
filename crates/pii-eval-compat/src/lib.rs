@@ -11,7 +11,7 @@
 //! Implemented in P9: [`legacy_accounting`], the oracle's metric accounting
 //! (`accounting.ts`, `primitives.ts`) as a named mode with switchable quirks
 //! (binary64 arithmetic included), used by the oracle parity suite
-//! (`crates/pii-eval-cli/tests/oracle_parity.rs`, ADR 0011) to prove the
+//! (`crates/pii-eval-cli/tests/oracle_parity.rs`, ADR 0012) to prove the
 //! compatibility protocol against the oracle's own output and to attribute
 //! every difference of the canonical accounting.
 

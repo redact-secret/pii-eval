@@ -105,5 +105,5 @@ P-labels, are the stable key.
 
 Parity work reads the oracle only at the pin, through `gh api` by commit, and
 verifies it (commit id, blob ids against the pinned tree, tree digest) before use;
-see [ADR 0011](0011-oracle-parity-and-migration-evidence.md) and
+see [ADR 0012](0012-oracle-parity-and-migration-evidence.md) and
 `tools/oracle-parity/`. The pin did not move.

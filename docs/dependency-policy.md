@@ -95,7 +95,7 @@ contain no floating point); the parity suite lives in `pii-eval-cli`'s tests,
 which already dev-depend on compat, and uses `serde` and `serde_json` as the CLI
 already does. The oracle tooling under `tools/oracle-parity/` is plain Node
 (>= 22.6) with no package: `gh api` fetches the pinned oracle files, which are
-verified against the pinned commit's own tree before use (ADR 0011 P1). The
+verified against the pinned commit's own tree before use (ADR 0012 P1). The
 opt-in real-scanner step installs `@redact-secret/core` 0.1.0-beta.12 and its
 `@redact-secret/*` companions in a scratch directory with `npm ci --ignore-scripts`
 from a lockfile made of the oracle lockfile's entries (sha512 integrity checked

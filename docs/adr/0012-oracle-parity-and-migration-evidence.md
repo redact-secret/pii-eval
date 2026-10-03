@@ -1,4 +1,4 @@
-# ADR 0011: Oracle parity, replay parity and real-scanner dual-run evidence
+# ADR 0012: Oracle parity, replay parity and real-scanner dual-run evidence
 
 - Status: accepted for P9 (issue #10); subject to review.
 - Date: 2026-10-03

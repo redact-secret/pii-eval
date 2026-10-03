@@ -1,4 +1,4 @@
-//! Oracle parity (P9, issue #10, ADR 0011): the Rust engine against the pinned
+//! Oracle parity (P9, issue #10, ADR 0012): the Rust engine against the pinned
 //! TypeScript oracle's own output on frozen synthetic input.
 //!
 //! The oracle side is committed (`fixtures/oracle-parity/oracle-export.json`,

@@ -12,7 +12,7 @@ benchmarks keeps the cutover, rollback and retirement decisions
 ([README](../../README.md), Migration acceptance; [ARCHITECTURE](../../ARCHITECTURE.md),
 Validation and cutover).
 
-Method, classification rules and limits: [ADR 0011](../adr/0011-oracle-parity-and-migration-evidence.md).
+Method, classification rules and limits: [ADR 0012](../adr/0012-oracle-parity-and-migration-evidence.md).
 Generated results: [oracle-parity-report.md](oracle-parity-report.md) and
 `fixtures/oracle-parity/report.json`.
 
@@ -71,7 +71,7 @@ The scanner's configuration is the adapter's fixed parameters
 
 1. **Independent conformance first**: P3 to P5 hand-calculated and
    independent-implementation vectors, plus the legacy accounting port's own
-   checks and the statistics grid (ADR 0011 P4).
+   checks and the statistics grid (ADR 0012 P4).
 2. **Identical-observation parity**: the same frozen findings (in the order the
    oracle saw them) went to the oracle's own code and to the engine. The
    compatibility protocol reproduces the oracle with **zero differences** in
@@ -82,7 +82,7 @@ The scanner's configuration is the adapter's fixed parameters
 3. **Same-pinned-scanner end-to-end**: the real package, through the oracle's own
    adapter, equals the engine's canonical accounting on every metric; the live
    Rust adapter observed the same findings as the oracle's adapter on all 54
-   variants (one platform, opt-in; ADR 0011 P8).
+   variants (one platform, opt-in; ADR 0012 P8).
 
 ## 3. Reproduce
 
@@ -125,7 +125,7 @@ reviewer):
    | intended versioned revision (`0004/D3`, `0004/D6`, `0005/A3`, `0005/S1`, `0008/R3`) | A decided protocol change. Benchmarks decides whether it accepts revision 2 for a consumer; until then it reads the compatibility protocol. Never "fix" a canonical value to match the oracle. |
    | old bug (`0004/D1`, `0005/A2`) | Oracle behavior that depends on emission order or locale; the canonical revision removes the dependence. A number that relied on it is reproducible only under the compatibility protocol with the same emission order. A consumer must not re-introduce it without a versioned decision. |
    | compatibility (`0007/D1`, `0007/D4`) | Representation only: variant ids carry a digest of case and slot (compare by slot), authored variants record no operator or seed. |
-   | new bug | A defect of the engine. Open an issue in pii-eval with the minimal synthetic vector. N1 (the generator rejected the oracle's 8-frame groups) is the only one found and is fixed (ADR 0011). |
+   | new bug | A defect of the engine. Open an issue in pii-eval with the minimal synthetic vector. N1 (the generator rejected the oracle's 8-frame groups) is the only one found and is fixed (ADR 0012). |
    | unresolved | Not decided; blocks acceptance of that item. None now. |
    | unexplained | Fails the suite. Never accepted. Re-run to exclude nondeterminism, then reduce to a minimal vector. |
 
@@ -157,7 +157,7 @@ reviewer):
 - Population views (`diagnostic-balanced`, `benign-heavy-stress`) are an external
   roster in the kernel; artifacts do not carry them yet.
 - The oracle's evidence-entry checks and JSON-schema validation did not run in the
-  harness (`0007/D8`, `D9`; stubs, ADR 0011 P2).
+  harness (`0007/D8`, `D9`; stubs, ADR 0012 P2).
 - Replay without the original artifact is impossible for scanners that return
   sanitized output until schema 1.2 carries the verdicts (ADR 0010).
 - The real-scanner evidence covers one pinned version, one population and one

@@ -1,7 +1,7 @@
 //! The comparator: oracle export versus the Rust engine, layer by layer, with
 //! every difference attributed to a classified id or reported as unexplained.
 //!
-//! Layers (ADR 0011):
+//! Layers (ADR 0012):
 //!
 //! * `variant`: the oracle's generated variants against the kernel's methods;
 //! * `outcome-compat`: oracle outcomes against the legacy compatibility mode
@@ -75,7 +75,7 @@ impl Class {
 
 /// Every id a difference can be attributed to: (qualified id, class, what it is).
 /// The qualified id is `<adr>/<row>` (ADR 0004 D1-D11, ADR 0005 A2-A9 and S1,
-/// ADR 0007 D1-D9, ADR 0008 R1-R7). The classes are decided in ADR 0011.
+/// ADR 0007 D1-D9, ADR 0008 R1-R7). The classes are decided in ADR 0012.
 pub const EXPLANATIONS: &[(&str, Class, &str)] = &[
     (
         "0004/D1",

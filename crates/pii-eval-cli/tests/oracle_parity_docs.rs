@@ -1,5 +1,5 @@
 //! The hand-written parity documents state the identities and numbers the
-//! repository currently has (P9, ADR 0011), so they cannot go stale silently.
+//! repository currently has (P9, ADR 0012), so they cannot go stale silently.
 
 mod parity;
 
@@ -67,7 +67,7 @@ fn the_handoff_names_the_current_identities() {
 fn adr_0011_quotes_the_report_census() {
     let ds = Dataset::load();
     let cmp = compare(&ds);
-    let adr = doc("docs/adr/0011-oracle-parity-and-migration-evidence.md");
+    let adr = doc("docs/adr/0012-oracle-parity-and-migration-evidence.md");
     let count = |c: Class| cmp.differences.iter().filter(|d| d.class() == c).count();
     let census = format!(
         "{} intended versioned revision, {} old bug, {} compatibility",
@@ -77,7 +77,7 @@ fn adr_0011_quotes_the_report_census() {
     );
     assert!(
         adr.contains(&census),
-        "ADR 0011 quotes another census than the report: {census}"
+        "ADR 0012 quotes another census than the report: {census}"
     );
     let variants: u64 = list(&ds.export, "cases")
         .iter()

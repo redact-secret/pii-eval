@@ -1,4 +1,4 @@
-//! Same-pinned-scanner parity (P9, ADR 0011): the real `@redact-secret/core`
+//! Same-pinned-scanner parity (P9, ADR 0012): the real `@redact-secret/core`
 //! 0.1.0-beta.12.
 //!
 //! Two tests:
