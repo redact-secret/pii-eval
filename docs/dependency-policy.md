@@ -45,7 +45,7 @@ measured need (CONVENTIONS.md).
    `crates/pii-eval-cli/tests/dependency_policy.rs`; a name
    outside that list fails the test, as does a name containing a forbidden
    fragment (`tokio`, `reqwest`, `hyper`, `libc`, ...). The test uses
-   `cargo tree` offline and runs under `cargo test --workspace --locked`.
+   `cargo tree` (`--locked`, all targets; it may fetch crate metadata from crates.io, which is already allowed) and runs under `cargo test --workspace --locked`.
 4. `pii-eval-compat` is reachable only from tests of the CLI crate (a
    dev-dependency); no production crate may depend on it. It is deleted by
    removing the crate, its workspace entries and one smoke assertion.

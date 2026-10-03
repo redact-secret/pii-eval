@@ -86,7 +86,6 @@ fn normal_closure(package: &str) -> BTreeSet<String> {
         .args([
             "tree",
             "--locked",
-            "--offline",
             "--edges",
             "normal,build",
             "--target",
@@ -120,7 +119,6 @@ fn direct_dependents(package: &str, target: &str) -> BTreeSet<String> {
         .args([
             "tree",
             "--locked",
-            "--offline",
             "--edges",
             "normal,build",
             "--target",
