@@ -100,3 +100,10 @@ P-labels, are the stable key.
 - The target repository access and pin handoff is partly addressed here (pin,
   read-only access, no imports); the consumer-facing handoff is P12.
 - The mixed-split files in the ownership map need explicit decisions in P2.
+
+## Update (P9)
+
+Parity work reads the oracle only at the pin, through `gh api` by commit, and
+verifies it (commit id, blob ids against the pinned tree, tree digest) before use;
+see [ADR 0012](0012-oracle-parity-and-migration-evidence.md) and
+`tools/oracle-parity/`. The pin did not move.

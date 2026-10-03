@@ -150,7 +150,7 @@ pub enum MethodParams {
     TypeValidation,
     /// `context-discrimination`: one derived variant per frame.
     ContextDiscrimination {
-        /// The frames; exactly one per context class.
+        /// The frames; at least one per context class (ADR 0008 R5).
         frames: Vec<ContextFrame>,
     },
     /// `pii-benign`: the authored variant as a benign control.

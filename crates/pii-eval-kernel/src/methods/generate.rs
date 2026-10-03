@@ -207,7 +207,8 @@ pub enum RefusalReason {
     NotNonSensitive,
     /// `context-discrimination` with a type or obligation it does not accept.
     ContextCaseInvalid,
-    /// The frames are not exactly one per context class.
+    /// A context class has no frame: the frames are not a complete trio (at
+    /// least one per class; ADR 0008 R5).
     ContextFramesNotATrio,
     /// A frame's template does not hold exactly one candidate marker.
     FrameTemplateInvalid,
@@ -651,8 +652,12 @@ impl<'v> Generator<'v> {
         if frames.len() > self.limits.max_variants_per_case {
             return Err(RefusalReason::TooManyVariants);
         }
+        // At least one frame per context class (ADR 0008 R5, the same rule as the
+        // contracts and the accounting index): the oracle's real groups hold 8 and
+        // 11 frames. A class with no frame is not a complete trio.
         let mut classes: Vec<ContextClass> = frames.iter().map(|f| f.context_class).collect();
         classes.sort();
+        classes.dedup();
         if classes
             != [
                 ContextClass::Sensitive,

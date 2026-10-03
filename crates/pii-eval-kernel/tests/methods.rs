@@ -443,15 +443,15 @@ fn context_discrimination_refuses_incomplete_or_malformed_trios() {
         refused(&frames(&|f| f[2].context_class = ContextClass::Neutral)),
         RefusalReason::ContextFramesNotATrio
     );
-    // More than three frames is not a trio either: the contract requires exactly one per class.
-    assert_eq!(
-        refused(&frames(&|f| {
-            let mut extra = f[0].clone();
-            extra.id = id("frame-sensitive-two");
-            f.push(extra);
-        })),
-        RefusalReason::ContextFramesNotATrio
-    );
+    // More than three frames is a complete trio (ADR 0008 R5: at least one frame per class; the
+    // oracle's real groups hold 8 and 11 frames). A group that lost a class stays refused (above).
+    let four = ok(&frames(&|f| {
+        let mut extra = f[0].clone();
+        extra.id = id("frame-sensitive-two");
+        extra.template = "also: {{candidate}}".to_owned();
+        f.push(extra);
+    }));
+    assert_eq!(four.case.variants.len(), 4);
     assert_eq!(
         refused(&frames(&|f| f[0].template = "no marker".to_owned())),
         RefusalReason::FrameTemplateInvalid

@@ -8,9 +8,15 @@
 //! not the canonical model and nothing outside this crate may depend on it. It
 //! is removed when its last consumer is gone.
 //!
-//! No other legacy projection or parity support exists yet.
+//! Implemented in P9: [`legacy_accounting`], the oracle's metric accounting
+//! (`accounting.ts`, `primitives.ts`) as a named mode with switchable quirks
+//! (binary64 arithmetic included), used by the oracle parity suite
+//! (`crates/pii-eval-cli/tests/oracle_parity.rs`, ADR 0012) to prove the
+//! compatibility protocol against the oracle's own output and to attribute
+//! every difference of the canonical accounting.
 
 pub mod legacy;
+pub mod legacy_accounting;
 
 use pii_eval_contracts::{CrateIdentity, Role};
 

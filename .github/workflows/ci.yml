@@ -86,6 +86,18 @@ jobs:
       # The CLI must stay usable with no App: nothing depends on the app crate.
       - name: CLI independence from the App (dependency guard)
         run: cargo test -p pii-eval-cli --locked --test dependency_policy
+      # Also part of the run above; separate so a parity failure is named (P9, ADR 0012): the engine
+      # against the COMMITTED export of the pinned oracle's own output (no oracle or registry access),
+      # the classification census, negative tests, invariance, the engine end to end and the committed
+      # real-scanner observation. The live real-scanner check is opt-in and skipped with a reason here.
+      - name: Oracle parity (committed export, classified differences, negative tests, invariance, engine end to end)
+        run: cargo test -p pii-eval-cli --locked --test oracle_parity --test oracle_parity_cli --test oracle_parity_docs --test real_scanner
+      # The oracle tooling is manual and never runs here; only its syntax is checked.
+      - name: Oracle parity tooling syntax
+        run: |
+          for f in tools/oracle-parity/*.mjs tools/oracle-parity/real-scanner/*.mjs tools/oracle-parity/stubs/*.mjs; do node --check "$f"; done
+          bash -n tools/oracle-parity/regenerate.sh
+          bash -n tools/oracle-parity/real-scanner/run.sh
       # Execution is refused on Windows, but the crate must keep compiling there.
       - name: Windows compile check
         run: rustup target add x86_64-pc-windows-msvc && cargo check --workspace --locked --target x86_64-pc-windows-msvc
