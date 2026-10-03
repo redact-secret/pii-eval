@@ -191,6 +191,17 @@ pub enum Incoming {
     Error(ShimError),
 }
 
+/// Number of `"start":` keys in a raw line, an upper bound on its findings
+/// that costs one pass and allocates nothing. A finding object has exactly one
+/// such key and no other part of a valid line contains the byte sequence
+/// unescaped (a quote inside a JSON string is always preceded by a backslash),
+/// so a line with more of them than the findings limit is refused before the
+/// parse tree is built.
+pub fn count_finding_keys(line: &[u8]) -> usize {
+    const KEY: &[u8] = b"\"start\":";
+    line.windows(KEY.len()).filter(|w| *w == KEY).count()
+}
+
 fn check_fields(
     map: &Map<String, Value>,
     required: &[&str],
@@ -376,6 +387,14 @@ mod tests {
             ]
         );
         assert_eq!(keys(&encode_shutdown()), ["type"]);
+    }
+
+    #[test]
+    fn finding_keys_are_counted_without_parsing_and_escaped_text_is_not_counted() {
+        let line = br#"{"type":"result","seq":1,"findings":[{"start":0,"end":1,"type":"t","detector":"d"},{"start":2,"end":3,"type":"t","detector":"d"}],"output":"x \"start\": y"}"#;
+        assert_eq!(count_finding_keys(line), 2);
+        assert!(matches!(decode(line, true), Ok(Incoming::Result(r)) if r.findings.len() == 2));
+        assert_eq!(count_finding_keys(b""), 0);
     }
 
     #[test]

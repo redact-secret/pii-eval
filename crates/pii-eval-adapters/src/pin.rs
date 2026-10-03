@@ -13,6 +13,11 @@
 //! find . -type f | sed 's|^\./||' | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256
 //! ```
 //!
+//! File names inside a tree must be printable ASCII without a backslash (see
+//! `name_is_listable`); any other name fails the pin with
+//! `artifact-bad-name`. The digest format is unchanged by that rule: it only
+//! refuses trees whose listing could be ambiguous.
+//!
 //! Limits: per file [`MAX_ARTIFACT_BYTES`], per tree [`MAX_TREE_FILES`] files,
 //! [`MAX_TREE_BYTES`] bytes and [`MAX_TREE_DEPTH`] levels.
 //!
@@ -135,6 +140,21 @@ pub fn sha256_of_file(path: &Path) -> Result<Sha256Digest, AdapterError> {
     Ok(Sha256Digest::of_bytes(&read_bounded(path, &mut remaining)?))
 }
 
+/// File names a tree pin accepts: printable ASCII (space to `~`) without a
+/// backslash. Anything else is rejected rather than listed, so the listing
+/// (one `"<hash>  <path>\n"` line per file) is unambiguous: a name holding a
+/// newline could otherwise forge a second line, and non-NFC or look-alike
+/// Unicode spellings of one name could not be told apart by a reviewer. Scanner
+/// packages use ASCII file names.
+fn name_is_listable(name: &str) -> bool {
+    !name.is_empty()
+        && name != "."
+        && name != ".."
+        && name
+            .bytes()
+            .all(|b| (0x20..=0x7e).contains(&b) && b != b'\\')
+}
+
 fn walk(
     dir: &Path,
     prefix: &str,
@@ -148,6 +168,9 @@ fn walk(
     for entry in fs::read_dir(dir).map_err(|_| unreadable())? {
         let entry = entry.map_err(|_| unreadable())?;
         let name = entry.file_name().into_string().map_err(|_| unreadable())?;
+        if !name_is_listable(&name) {
+            return Err(AdapterError::PinMismatch(PinKind::ArtifactBadName));
+        }
         let relative = if prefix.is_empty() {
             name.clone()
         } else {

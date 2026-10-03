@@ -37,7 +37,7 @@ use crate::error::{
 use crate::limits::AdapterLimits;
 use crate::normalize::normalize_findings;
 use crate::pin::{ArtifactPin, PinTarget};
-use crate::process::{Received, ShimProcess, SpawnSpec, resolve_executable};
+use crate::process::{Received, Sent, ShimProcess, SpawnSpec, resolve_executable};
 use crate::vocab::ScannerVocabulary;
 use crate::wire::{self, ErrorStage, Incoming, PROTOCOL, ShimErrorCode};
 
@@ -124,6 +124,11 @@ pub struct SessionStats {
     pub scans: u64,
     /// Stderr bytes counted and discarded (saturating at the configured cap).
     pub stderr_bytes: u64,
+    /// Result of re-verifying every pin when the session ended: `None` means
+    /// the shim, scanner artifact and extra artifacts still match their pins;
+    /// `Some` means one changed during the run and the session's observations
+    /// must not be trusted. See ADR 0006 D5 for exactly what this covers.
+    pub pin_check: Option<AdapterError>,
 }
 
 /// A failed start with what is known about capabilities.
@@ -171,7 +176,9 @@ pub struct ProcessAdapterSpec {
     pub scanner_artifact: ArtifactPin,
     /// Absolute path of the file the shim loads, passed as the second
     /// argument. It must be the artifact itself (file pin) or lie inside it
-    /// (tree pin), so the loaded code is the verified code.
+    /// (tree pin), so the entry is among the verified bytes. The pins are
+    /// re-checked after startup and when the session ends; they do not cover
+    /// anything outside the pinned paths (see ADR 0006 D5).
     pub scanner_entry: PathBuf,
     /// Further files that must match their digests (for example a native addon).
     pub extra_artifacts: Vec<ArtifactPin>,
@@ -441,8 +448,11 @@ impl ScannerAdapter for ProcessAdapter {
             self.spec.return_output,
             &limits,
         );
-        let _ = process.send(init);
         let deadline = Instant::now() + limits.startup_timeout;
+        if process.send(init, deadline) == Sent::Timeout {
+            process.kill();
+            return Err(self.failure(AdapterError::Timeout(CallPhase::Startup), none()));
+        }
         let received = process.receive(deadline);
         let line = match received {
             Received::Line(line) => line,
@@ -486,10 +496,16 @@ impl ScannerAdapter for ProcessAdapter {
             }
         };
 
-        match self.verify_ready(&ready, &selectors) {
+        // The scanner has loaded its code by now: verify the pins again so a
+        // swap between the first check and the load is detected before use.
+        let recheck = self
+            .verify_pins()
+            .and_then(|()| self.verify_ready(&ready, &selectors));
+        match recheck {
             Ok((record, capabilities)) => Ok(Box::new(ProcessSession {
                 process,
                 limits,
+                pins: self.pins(),
                 unit: self.spec.offset_unit,
                 return_output: self.spec.return_output,
                 vocabulary: Arc::clone(&self.spec.vocabulary),
@@ -497,6 +513,8 @@ impl ScannerAdapter for ProcessAdapter {
                 capabilities,
                 seq: 0,
                 closed: false,
+                pin_check: None,
+                pins_checked: false,
             })),
             Err(error) => {
                 process.kill();
@@ -507,6 +525,24 @@ impl ScannerAdapter for ProcessAdapter {
 }
 
 impl ProcessAdapter {
+    fn pins(&self) -> Vec<(ArtifactPin, PinKind)> {
+        let mut pins = vec![
+            (self.spec.shim.clone(), PinKind::ShimDigest),
+            (self.spec.scanner_artifact.clone(), PinKind::ArtifactDigest),
+        ];
+        pins.extend(
+            self.spec
+                .extra_artifacts
+                .iter()
+                .map(|p| (p.clone(), PinKind::ArtifactDigest)),
+        );
+        pins
+    }
+
+    fn verify_pins(&self) -> Result<(), AdapterError> {
+        verify_all(&self.pins())
+    }
+
     fn verify_ready(
         &self,
         ready: &wire::Ready,
@@ -581,8 +617,15 @@ impl ProcessAdapter {
     }
 }
 
+fn verify_all(pins: &[(ArtifactPin, PinKind)]) -> Result<(), AdapterError> {
+    pins.iter().try_for_each(|(pin, kind)| pin.verify(*kind))
+}
+
 struct ProcessSession {
     process: ShimProcess,
+    pins: Vec<(ArtifactPin, PinKind)>,
+    pin_check: Option<AdapterError>,
+    pins_checked: bool,
     limits: AdapterLimits,
     unit: OffsetUnit,
     return_output: bool,
@@ -621,8 +664,10 @@ impl ScanSession for ProcessSession {
             return Err(self.fail(AdapterError::SessionClosed));
         };
         self.seq = seq;
-        let _ = self.process.send(wire::encode_scan(seq, text));
         let deadline = Instant::now() + self.limits.call_timeout;
+        if self.process.send(wire::encode_scan(seq, text), deadline) == Sent::Timeout {
+            return Err(self.fail(AdapterError::Timeout(CallPhase::Scan)));
+        }
         let line = match self.process.receive(deadline) {
             Received::Line(line) => line,
             Received::Timeout => return Err(self.fail(AdapterError::Timeout(CallPhase::Scan))),
@@ -641,6 +686,12 @@ impl ScanSession for ProcessSession {
                 return Err(self.fail(error));
             }
         };
+        // Cheap bound before the full parse: every finding object has exactly
+        // one `"start":` key, so a line claiming more findings than allowed is
+        // refused without building its parse tree.
+        if wire::count_finding_keys(&line) > self.limits.max_findings {
+            return Err(self.fail(AdapterError::OutputLimit(LimitKind::Findings)));
+        }
         let result = match wire::decode(&line, self.return_output) {
             Ok(Incoming::Result(r)) => r,
             Ok(Incoming::Error(e)) if e.stage == ErrorStage::Scan && e.seq == Some(seq) => {
@@ -674,6 +725,7 @@ impl ScanSession for ProcessSession {
             self.unit,
             &result.findings,
             self.vocabulary.as_ref(),
+            &self.capabilities,
             self.limits.max_findings,
         ) {
             Ok(n) => n,
@@ -697,9 +749,14 @@ impl ScanSession for ProcessSession {
             self.closed = true;
             self.process.close(wire::encode_shutdown());
         }
+        if !self.pins_checked {
+            self.pins_checked = true;
+            self.pin_check = verify_all(&self.pins).err();
+        }
         SessionStats {
             scans: self.seq,
             stderr_bytes: self.process.stderr_bytes(),
+            pin_check: self.pin_check,
         }
     }
 }

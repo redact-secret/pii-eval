@@ -261,3 +261,58 @@ fn plan_identity_is_checked_against_the_plans_own_configuration() {
         AdapterError::InvalidSpec(SpecProblem::Parameters)
     );
 }
+
+#[test]
+fn file_names_that_could_forge_a_listing_line_are_rejected() {
+    let scratch = Scratch::new("names");
+    // Tree A: two honest files. Its listing is "<hx>  a\n<hy>  b\n".
+    let honest = scratch.path().join("honest");
+    std::fs::create_dir_all(&honest).unwrap();
+    std::fs::write(honest.join("a"), b"X").unwrap();
+    std::fs::write(honest.join("b"), b"Y").unwrap();
+    let hx = Sha256Digest::of_bytes(b"X");
+    let hy = Sha256Digest::of_bytes(b"Y");
+    let listing = format!("{hx}  a\n{hy}  b\n");
+    assert_eq!(
+        sha256_of_tree(&honest).unwrap(),
+        Sha256Digest::of_bytes(listing.as_bytes())
+    );
+
+    // Tree B: ONE file whose name contains a newline, content "X". Without the
+    // name rule its listing is byte-for-byte the same text as tree A's, so the
+    // two trees would share a digest (the collision this rule closes).
+    let forged = scratch.path().join("forged");
+    std::fs::create_dir_all(&forged).unwrap();
+    std::fs::write(forged.join(format!("a\n{hy}  b")), b"X").unwrap();
+    assert_eq!(
+        sha256_of_tree(&forged).unwrap_err(),
+        AdapterError::PinMismatch(PinKind::ArtifactBadName)
+    );
+
+    for (i, name) in [
+        "tab\there",
+        "back\\slash",
+        "bell\u{7}",
+        "del\u{7f}",
+        "caf\u{e9}",
+        "cafe\u{301}",
+        "\u{ac00}",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let dir = scratch.path().join(format!("bad{i}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(name), b"x").unwrap();
+        assert_eq!(
+            sha256_of_tree(&dir).unwrap_err(),
+            AdapterError::PinMismatch(PinKind::ArtifactBadName),
+            "{i}"
+        );
+    }
+    // Spaces and ordinary punctuation stay allowed.
+    let ok = scratch.path().join("ok");
+    std::fs::create_dir_all(&ok).unwrap();
+    std::fs::write(ok.join("a b-c_d.e"), b"x").unwrap();
+    assert!(sha256_of_tree(&ok).is_ok());
+}

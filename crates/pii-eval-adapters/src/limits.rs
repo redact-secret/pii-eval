@@ -11,9 +11,17 @@ use pii_eval_contracts::limits::{MAX_FINDINGS_PER_INPUT, MAX_TEXT_BYTES, executi
 
 use crate::error::{AdapterError, SpecProblem};
 
-/// Largest accepted shim output line, in bytes. Stricter than the contract's
-/// 1 GiB capture bound: one result for one input of at most 1 MiB.
-pub const MAX_LINE_BYTES_CEILING: usize = 64 * 1024 * 1024;
+/// Largest configurable shim output line, in bytes. Stricter than the
+/// contract's 1 GiB capture bound. One result carries at most 10,000 findings
+/// (about 1.5 MiB) and sanitized output of at most the 1 MiB input, which
+/// JSON escaping can expand six-fold for control characters; 8 MiB (the
+/// default) covers that worst case and 16 MiB is the ceiling.
+///
+/// Memory bound per call: the line (at most `max_line_bytes`), the same bytes
+/// again as the parsed tree (the finding count is checked before the parse, so
+/// the tree holds at most `max_findings` findings), and the range tables of
+/// the kernel translator (at most 8 MiB).
+pub const MAX_LINE_BYTES_CEILING: usize = 16 * 1024 * 1024;
 /// Smallest useful line bound (a handshake or an empty result fits).
 pub const MIN_LINE_BYTES: usize = 1024;
 /// Largest stderr byte count the adapter tracks.

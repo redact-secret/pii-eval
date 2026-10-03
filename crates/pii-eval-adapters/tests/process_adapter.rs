@@ -205,10 +205,18 @@ fn unsupported_jurisdiction_is_a_missing_capability_not_a_clean_scan() {
 }
 
 fn session_failure(adapter: &pii_eval_adapters::ProcessAdapter, text: &str) -> AdapterError {
+    session_failure_within(adapter, text, Duration::from_secs(8))
+}
+
+fn session_failure_within(
+    adapter: &pii_eval_adapters::ProcessAdapter,
+    text: &str,
+    bound: Duration,
+) -> AdapterError {
     let mut session = start(adapter, "normal", &["pii:global"]);
     let started = Instant::now();
     let error = session.scan(text).expect_err("must fail");
-    assert!(started.elapsed() < Duration::from_secs(20));
+    assert!(started.elapsed() < bound, "took {:?}", started.elapsed());
     // A failed session is closed; it never answers with a clean scan.
     assert_eq!(
         session.scan("ann@ex.org").unwrap_err(),
@@ -251,6 +259,7 @@ fn every_scan_failure_is_a_distinct_state_and_never_an_empty_result() {
         ("#midpair \u{1F600} text", m(MalformedKind::InvalidRange)),
         ("#unknownaction text", m(MalformedKind::UnknownAction)),
         ("#badcode", m(MalformedKind::UnknownErrorCode)),
+        ("#undeclared text", m(MalformedKind::Undeclared)),
         (
             "#scanerr",
             AdapterError::ScannerError(ScannerErrorCode::ScanFailed),
@@ -274,7 +283,7 @@ fn every_scan_failure_is_a_distinct_state_and_never_an_empty_result() {
     );
     let adapter = fake_adapter(&node, "normal", slow);
     assert_eq!(
-        session_failure(&adapter, "#hang"),
+        session_failure_within(&adapter, "#hang", Duration::from_millis(3000)),
         AdapterError::Timeout(CallPhase::Scan)
     );
     let adapter = fake_adapter(&node, "normal", few);
@@ -472,15 +481,66 @@ fn plan_rejects_unknown_parameters_and_malformed_selectors() {
     }
 }
 
+const ENV_CHILD: &str = "PII_EVAL_ENV_HARNESS_CHILD";
+
+/// Runs only inside the harness child spawned below; a no-op otherwise.
 #[test]
-fn environment_is_scrubbed_to_the_fixed_allowlist() {
+fn env_harness_child() {
+    if std::env::var_os(ENV_CHILD).is_none() {
+        return;
+    }
     let node = node!();
+    // The hostile variables are really set in this process.
+    for hostile in [
+        "NODE_OPTIONS",
+        "NODE_PATH",
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "DYLD_INSERT_LIBRARIES",
+        "DYLD_LIBRARY_PATH",
+    ] {
+        assert!(std::env::var_os(hostile).is_some(), "{hostile} not set");
+    }
     let adapter = fake_adapter(&node, "normal", fast_limits());
     let mut session = start(&adapter, "normal", &["pii:global"]);
     let out = session.scan("#env").unwrap();
-    let names: Vec<String> =
-        serde_json::from_str(out.sanitized_output.as_ref().unwrap().as_str()).unwrap();
-    // The test process has PATH and Cargo's variables; none may reach the shim.
+    println!(
+        "ENV-NAMES-BEGIN{}ENV-NAMES-END",
+        out.sanitized_output.as_ref().unwrap().as_str()
+    );
+}
+
+#[test]
+fn environment_is_scrubbed_to_the_fixed_allowlist() {
+    let _node = node!();
+    // Launch this test binary as a child with hostile variables in its
+    // environment; the child starts the adapter and reports what its shim saw.
+    let exe = std::env::current_exe().unwrap();
+    let output = std::process::Command::new(exe)
+        .args([
+            "--exact",
+            "env_harness_child",
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .env(ENV_CHILD, "1")
+        .env("NODE_OPTIONS", "--no-warnings")
+        .env("NODE_PATH", "/nonexistent")
+        .env("LD_PRELOAD", "")
+        .env("LD_LIBRARY_PATH", "")
+        .env("DYLD_INSERT_LIBRARIES", "")
+        .env("DYLD_LIBRARY_PATH", "")
+        .output()
+        .expect("harness child runs");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success(), "child failed: {stdout}");
+    let json = stdout
+        .split("ENV-NAMES-BEGIN")
+        .nth(1)
+        .and_then(|t| t.split("ENV-NAMES-END").next())
+        .expect("child reported the shim environment");
+    let names: Vec<String> = serde_json::from_str(json).unwrap();
+    // The child itself had PATH, Cargo's variables and the hostile ones.
     assert!(std::env::var_os("PATH").is_some());
     assert!(std::env::var_os("CARGO_MANIFEST_DIR").is_some());
     for forbidden in [
@@ -490,6 +550,10 @@ fn environment_is_scrubbed_to_the_fixed_allowlist() {
         "NODE_OPTIONS",
         "NODE_PATH",
         "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "DYLD_INSERT_LIBRARIES",
+        "DYLD_LIBRARY_PATH",
+        ENV_CHILD,
     ] {
         assert!(
             !names.iter().any(|n| n == forbidden),
@@ -504,6 +568,146 @@ fn environment_is_scrubbed_to_the_fixed_allowlist() {
         );
     }
     assert!(names.iter().any(|n| n == "PII_EVAL_ADAPTER_PROTOCOL"));
+}
+
+#[test]
+fn a_shim_that_never_reads_stdin_cannot_block_the_caller() {
+    let node = node!();
+    let limits = AdapterLimits {
+        call_timeout: Duration::from_millis(500),
+        ..fast_limits()
+    };
+    let adapter = fake_adapter(&node, "noread", limits);
+    let mut session = start(&adapter, "noread", &["pii:global"]);
+    // Large texts fill the stdin pipe, so the writer thread stalls; the shim
+    // pre-emitted answers to the first scans, so those return. A later send
+    // finds the queue full and must time out instead of blocking forever.
+    let text = "x".repeat(300 * 1024);
+    let started = Instant::now();
+    let mut outcome = None;
+    for _ in 0..12 {
+        match session.scan(&text) {
+            Ok(_) => {}
+            Err(e) => {
+                outcome = Some(e);
+                break;
+            }
+        }
+    }
+    assert_eq!(outcome, Some(AdapterError::Timeout(CallPhase::Scan)));
+    assert!(
+        started.elapsed() < Duration::from_millis(4000),
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(session.scan("a").unwrap_err(), AdapterError::SessionClosed);
+}
+
+#[cfg(unix)]
+fn process_exists(pid: &str) -> bool {
+    std::process::Command::new("kill")
+        .args(["-0", pid])
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
+#[cfg(unix)]
+fn shim_pid(session: &mut dyn pii_eval_adapters::ScanSession) -> String {
+    let out = session.scan("#pid").unwrap();
+    out.sanitized_output.unwrap().as_str().to_owned()
+}
+
+#[cfg(unix)]
+fn assert_gone(pid: &str) {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while process_exists(pid) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(!process_exists(pid), "shim process {pid} is still alive");
+}
+
+#[cfg(unix)]
+#[test]
+fn the_shim_process_is_gone_after_timeout_failure_drop_and_finish() {
+    let node = node!();
+    let slow = AdapterLimits {
+        call_timeout: Duration::from_millis(500),
+        ..fast_limits()
+    };
+    let adapter = fake_adapter(&node, "normal", slow);
+
+    let mut session = start(&adapter, "normal", &["pii:global"]);
+    let pid = shim_pid(session.as_mut());
+    assert!(process_exists(&pid), "positive control: the shim is alive");
+    assert_eq!(
+        session.scan("#hang").unwrap_err(),
+        AdapterError::Timeout(CallPhase::Scan)
+    );
+    assert_gone(&pid);
+
+    let mut session = start(&adapter, "normal", &["pii:global"]);
+    let pid = shim_pid(session.as_mut());
+    assert_eq!(session.scan("#crash").unwrap_err(), AdapterError::Crashed);
+    assert_gone(&pid);
+
+    let mut session = start(&adapter, "normal", &["pii:global"]);
+    let pid = shim_pid(session.as_mut());
+    assert!(process_exists(&pid));
+    drop(session);
+    assert_gone(&pid);
+
+    let mut session = start(&adapter, "normal", &["pii:global"]);
+    let pid = shim_pid(session.as_mut());
+    session.finish();
+    assert_gone(&pid);
+}
+
+#[test]
+fn pins_are_rechecked_when_the_session_ends() {
+    let node = node!();
+    let scratch = Scratch::new("recheck");
+    let tree = scratch.path().join("core");
+    copy_dir(&fake_core_dir(), &tree);
+    let mut spec = fake_spec(&node, startup_param("normal"), fast_limits());
+    spec.scanner_artifact = pii_eval_adapters::ArtifactPin::tree(
+        &tree,
+        pii_eval_adapters::sha256_of_tree(&tree).unwrap(),
+    );
+    spec.scanner_entry = tree.join("lib/index.js");
+    let adapter = pii_eval_adapters::ProcessAdapter::new(spec).unwrap();
+
+    // Untouched: the end-of-session check passes.
+    let mut session = start(&adapter, "normal", &["pii:global"]);
+    session.scan("a ann@ex.org").unwrap();
+    assert_eq!(session.finish().pin_check, None);
+
+    // Swapped while the session runs: detected at the end.
+    let mut session = start(&adapter, "normal", &["pii:global"]);
+    session.scan("a ann@ex.org").unwrap();
+    std::fs::write(tree.join("lib/index.js"), "// swapped\n").unwrap();
+    assert_eq!(
+        session.finish().pin_check,
+        Some(AdapterError::PinMismatch(PinKind::ArtifactDigest))
+    );
+    // The adapter itself refuses a new session on the changed tree.
+    let plan = adapter
+        .plan(configuration("normal", &["pii:global"]))
+        .unwrap();
+    assert!(adapter.start(&plan).is_err());
+}
+
+fn copy_dir(from: &std::path::Path, to: &std::path::Path) {
+    std::fs::create_dir_all(to).unwrap();
+    for entry in std::fs::read_dir(from).unwrap() {
+        let entry = entry.unwrap();
+        let target = to.join(entry.file_name());
+        if entry.file_type().unwrap().is_dir() {
+            copy_dir(&entry.path(), &target);
+        } else {
+            std::fs::copy(entry.path(), target).unwrap();
+        }
+    }
 }
 
 #[test]

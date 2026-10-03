@@ -54,6 +54,13 @@ function init(msg) {
     activation: activationIdentity(),
     offsetUnit: mode === 'wrong-unit' ? 'utf8-bytes' : 'utf16-code-units',
   });
+  if (mode === 'noread') {
+    // Hostile: answer the first scans before they are asked, then stop reading
+    // stdin so the writer side backs up.
+    for (let i = 1; i <= 8; i += 1) out({ type: 'result', seq: i, findings: [], output: '' });
+    process.stdin.pause();
+    setInterval(() => {}, 1000);
+  }
 }
 
 function detect(text) {
@@ -108,6 +115,8 @@ function scan(msg) {
   if (text.startsWith('#badcode')) { out({ type: 'error', stage: 'scan', seq, code: SENTINEL }); return; }
   if (text.startsWith('#toomany')) { out(result(seq, Array.from({ length: maxFindings + 1 }, () => f(0, 1)), text)); return; }
   if (text.startsWith('#dupfind')) { out(result(seq, [f(0, 2), f(0, 2)], text)); return; }
+  if (text.startsWith('#undeclared')) { out(result(seq, [f(0, 2, { type: 'pii_jurisdiction_us_ssn' })], text)); return; }
+  if (text.startsWith('#pid')) { out(result(seq, [], String(process.pid))); return; }
   if (text.startsWith('#unmapped')) { out(result(seq, [f(0, 2, { type: 'pii_novel_kind' })], text)); return; }
   if (text.startsWith('#env')) { out(result(seq, [], JSON.stringify(Object.keys(process.env).sort()))); return; }
   if (text.startsWith('#audit')) { out(result(seq, [], JSON.stringify(seen))); return; }

@@ -98,9 +98,21 @@ Shim to Rust:
   therefore never executed and never interpreted, only compared.
 - Limits (`AdapterLimits`, each with a validated floor and ceiling): startup
   timeout, per-call timeout (default 30 s each, at most one hour), output line
-  bytes (default 8 MiB, ceiling 64 MiB; a longer line is a limit failure, never
+  bytes (default 8 MiB, ceiling 16 MiB; a longer line is a limit failure, never
   truncated), stderr bytes counted (default 64 KiB), findings per input
-  (10,000, the contract bound), text bytes (1 MiB, the contract bound).
+  (10,000, the contract bound), text bytes (1 MiB, the contract bound). The
+  8 MiB default is the worst legitimate result: 10,000 findings (about
+  1.5 MiB) plus sanitized output of a 1 MiB text whose control characters JSON
+  escapes six-fold. Memory per call is bounded by the line (at most
+  `max_line_bytes`), a parse tree of the same order, and the kernel's range
+  tables (at most 8 MiB); the number of findings is checked on the raw line
+  (`wire::count_finding_keys`, one `"start":` key per finding) before the parse
+  tree is built, so a line of many tiny findings cannot inflate it.
+- Writes are bounded as well as reads: a line is queued to the writer thread
+  with the call's deadline (`try_send` and a short wait). A shim that never
+  reads stdin backs the writer up; the next send then times out as
+  `timeout: scan` (or `startup`), the child is killed and reaped, and the
+  caller is never blocked.
 - Threads: a writer thread owns stdin so a shim that never reads cannot block
   the caller; a reader thread splits stdout into bounded lines; a stderr thread
   drains and counts and stores nothing. Stderr is never captured, so it cannot
@@ -137,20 +149,66 @@ sort | xargs shasum -a 256 | shasum -a 256`). It is the scanner's
 `artifactDigest`. For a candidate, `ProductIdentity::Candidate.candidateDigest`
 must equal that digest, so a candidate is identified by the bytes that run.
 
-Residual risk, stated: verification and use are separate operations, so a
-writer with access to the pinned paths between them can substitute content. The
-runner must make installs read-only for the duration of a run (P7).
+The pins are checked again when startup completes (after the scanner has
+loaded its code, so a swap between the first check and the load is detected
+before any input is sent) and when the session ends: `SessionStats.pin_check`
+is `Some(PinMismatch)` when anything changed, and the observations of that
+session must not be trusted. Precisely what this does and does not cover:
+
+- Covered: the bytes of the shim file, of every file in the pinned scanner
+  tree (names and contents), and of each extra artifact, at three points in
+  time (before spawn, after `ready`, at the end).
+- Not covered: content swapped and restored between two checks; code already
+  loaded into the process memory; anything outside the pinned paths, notably
+  `node_modules` above the package (for `@redact-secret/core` its
+  `@redact-secret/wasm` and `@redact-secret/node-<platform>` packages are
+  separate pins the caller must list in `extra_artifacts`, and a platform
+  addon that is not listed is not verified); the identity of the `node`
+  binary (it is canonicalized and must be a regular file, but its bytes are not
+  hashed, and the runtime version in `ready` is reported by the shim itself,
+  so it is a consistency check and not evidence); the shell environment of
+  whoever launches the executor; intermediate directory symlinks above a
+  pinned path (only the pinned path itself and everything inside a tree are
+  checked for symlinks).
+- Therefore the runner must still make installs read-only for the duration of
+  a run and pin the interpreter by digest (P7). This ADR does not claim that
+  the loaded code is proven to be the verified code.
+
+Tree names: file names inside a pinned tree must be printable ASCII without a
+backslash, otherwise the pin fails with `pin-mismatch: artifact-bad-name`. A
+name holding a newline could forge a second listing line (a tree of the files
+`a` and `b` and a tree of one file `a\n<hash of b>  b` would otherwise share a
+digest), and non-NFC or look-alike Unicode spellings cannot be told apart by a
+reviewer. The digest format itself is unchanged; the rule only refuses trees
+whose listing could be ambiguous. A test builds the collision example.
 
 ### D6. Normalization: one translation, closed vocabulary, nothing dropped
 
 `normalize_findings` converts each PII finding with the kernel's
-`translate_range` exactly once, against the exact text that was sent, in the
-unit the shim declared and the adapter pinned. A range that does not convert
-(empty, inverted, past the end, inside a character or surrogate pair) makes the
-whole scan `malformed-output: invalid-range`; it is never clamped, rounded or
-dropped. Findings are sorted into the contract's canonical order; duplicates
-are kept. More than `max_findings` native findings is a limit failure before
-any conversion.
+`RangeTranslator` exactly once, against the exact text that was sent, in the
+unit the shim declared and the adapter pinned. `RangeTranslator` indexes a text
+once (O(text), at most 8 MiB of tables for a 1 MiB text) and converts each
+range in O(log n) with the same semantics, check order and errors as
+`translate_range`, which is now a thin wrapper over it (equivalence is tested
+for every offset pair in all three units on Korean, emoji, CRLF and combining
+text, and on fixed-seed generated text). Before this, every finding cost
+O(text): 10,000 findings over 1 MiB took about 21 s of CPU outside any timeout;
+the probe test `tests/normalize_cost.rs` now measures the same input at about
+30 ms in a debug build and asserts a 5 s ceiling. Total work is bounded by
+`text + max_findings * log(text)`, and `max_findings` is checked before any
+conversion.
+
+A range that does not convert (empty, inverted, past the end, inside a
+character or surrogate pair) makes the whole scan
+`malformed-output: invalid-range`; it is never clamped, rounded or dropped. The
+contract has no finer failure code for a bad range, so all range errors share
+it, except an oversize text (`InputTooLarge`, a caller error that cannot occur
+in a session because oversize text is refused before it is sent). Each
+reported family and jurisdiction is checked against what the running scanner
+declared for its activation: a finding outside it is
+`malformed-output: undeclared`, not a pass-through (an unmapped type with no
+family makes no such claim and is kept). Findings are sorted into the
+contract's canonical order; duplicates are kept.
 
 Per-scanner mapping lives in a `ScannerVocabulary`: selector grammar, selector
 jurisdiction, base capabilities, activation parsing and finding mapping. An
@@ -166,7 +224,7 @@ guessed.
 | `Timeout` | `timeout` | `error` |
 | `Crashed`, `ScannerError` | `execution-error` | `error` |
 | `OutputLimit` (line, findings) | `output-limit-exceeded` | `error` |
-| `MalformedOutput` | `malformed-output` | `error` |
+| `MalformedOutput` (including `invalid-range`, `undeclared`) | `malformed-output` | `error` |
 | `InvalidSpec`, `InputTooLarge`, `SessionClosed` | none (caller errors) | none |
 
 A clean scan is only `Ok(ScanOutput)`. `replay-disagreement`, `unstable` and

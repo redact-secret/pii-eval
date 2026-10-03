@@ -236,19 +236,108 @@ pub fn translate_range(
     start: u64,
     end: u64,
 ) -> Result<ByteRange, RangeError> {
-    check_text(text)?;
-    check_structure(start, end)?;
-    if end > unit_length(text, unit)? {
-        return Err(RangeError::OutOfBounds);
+    RangeTranslator::new(text, unit)?.translate(start, end)
+}
+
+/// Translates many ranges of one text in O(log n) each after one O(n) build.
+///
+/// Same semantics, check order and errors as [`translate_range`], which is a
+/// thin wrapper over this type. Use it when a scanner reports many findings
+/// for one text: [`translate_range`] alone would cost O(text) per finding.
+///
+/// Memory: for the two non-byte units, two `u32` tables with one entry per
+/// scalar value plus one (at most 8 MiB for a [`MAX_TEXT_BYTES`] text).
+#[derive(Debug, Clone)]
+pub struct RangeTranslator<'a> {
+    text: &'a str,
+    unit: OffsetUnit,
+    /// Unit offset of each scalar value start, ascending; empty for `Utf8Bytes`.
+    unit_starts: Vec<u32>,
+    /// Byte offset of each scalar value start, parallel to `unit_starts`.
+    byte_starts: Vec<u32>,
+    /// Length of the text in `unit`.
+    unit_len: u64,
+}
+
+impl<'a> RangeTranslator<'a> {
+    /// Index `text` for `unit`. Fails only with [`RangeError::TextTooLarge`].
+    pub fn new(text: &'a str, unit: OffsetUnit) -> Result<Self, RangeError> {
+        check_text(text)?;
+        if unit == OffsetUnit::Utf8Bytes {
+            return Ok(Self {
+                text,
+                unit,
+                unit_starts: Vec::new(),
+                byte_starts: Vec::new(),
+                unit_len: text.len() as u64,
+            });
+        }
+        // The text is at most MAX_TEXT_BYTES (1 MiB), so every offset fits in u32.
+        let mut unit_starts = Vec::with_capacity(text.len() + 1);
+        let mut byte_starts = Vec::with_capacity(text.len() + 1);
+        let mut units = 0u32;
+        for (byte, ch) in text.char_indices() {
+            unit_starts.push(units);
+            byte_starts.push(byte as u32);
+            units += unit.width(ch) as u32;
+        }
+        unit_starts.push(units);
+        byte_starts.push(text.len() as u32);
+        Ok(Self {
+            text,
+            unit,
+            unit_starts,
+            byte_starts,
+            unit_len: u64::from(units),
+        })
     }
-    let range = ByteRange {
-        start: translate_offset(text, unit, start)?,
-        end: translate_offset(text, unit, end)?,
-    };
-    // Unit offsets are strictly ordered boundaries, so the byte range is too;
-    // validating again keeps the guarantee local instead of argued.
-    validate_range(text, &range)?;
-    Ok(range)
+
+    /// Length of the text in the indexed unit.
+    pub fn unit_length(&self) -> u64 {
+        self.unit_len
+    }
+
+    /// Same as [`translate_offset`] for the indexed text and unit.
+    pub fn translate_offset(&self, offset: u64) -> Result<u64, RangeError> {
+        if offset > MAX_SAFE_INTEGER {
+            return Err(RangeError::OffsetTooLarge);
+        }
+        if self.unit == OffsetUnit::Utf8Bytes {
+            return if offset > self.text.len() as u64 {
+                Err(RangeError::OutOfBounds)
+            } else if self.text.is_char_boundary(offset as usize) {
+                Ok(offset)
+            } else {
+                Err(RangeError::NotOnCharBoundary)
+            };
+        }
+        if offset > self.unit_len {
+            return Err(RangeError::OutOfBounds);
+        }
+        // `offset <= unit_len < 2^32`.
+        let offset = offset as u32;
+        match self.unit_starts.binary_search(&offset) {
+            Ok(i) => Ok(u64::from(self.byte_starts[i])),
+            // Between two scalar starts: only a surrogate pair is wider than one unit.
+            Err(_) => Err(RangeError::InsideSurrogatePair),
+        }
+    }
+
+    /// Same as [`translate_range`] for the indexed text and unit.
+    pub fn translate(&self, start: u64, end: u64) -> Result<ByteRange, RangeError> {
+        check_structure(start, end)?;
+        if end > self.unit_len {
+            return Err(RangeError::OutOfBounds);
+        }
+        let range = ByteRange {
+            start: self.translate_offset(start)?,
+            end: self.translate_offset(end)?,
+        };
+        // Unit offsets are strictly ordered boundaries, so the byte range is too;
+        // validating again keeps the guarantee local instead of argued.
+        validate_range(self.text, &range)?;
+        Ok(range)
+    }
 }
 
 /// Inverse of [`translate_offset`]: the offset in `unit` of the character
@@ -557,6 +646,117 @@ mod tests {
         );
         let max = "a".repeat(MAX_TEXT_BYTES);
         assert_eq!(validate_range(&max, &br(0, MAX_TEXT_BYTES as u64)), Ok(()));
+    }
+
+    /// The pre-index algorithm, kept as an independent reference: O(text) per
+    /// call, built only from `unit_length` and `translate_offset`.
+    fn reference_translate_range(
+        text: &str,
+        unit: OffsetUnit,
+        start: u64,
+        end: u64,
+    ) -> Result<ByteRange, RangeError> {
+        check_text(text)?;
+        check_structure(start, end)?;
+        if end > unit_length(text, unit)? {
+            return Err(RangeError::OutOfBounds);
+        }
+        let range = ByteRange {
+            start: translate_offset(text, unit, start)?,
+            end: translate_offset(text, unit, end)?,
+        };
+        validate_range(text, &range)?;
+        Ok(range)
+    }
+
+    #[test]
+    fn the_translator_matches_the_reference_for_every_pair_in_every_unit() {
+        let texts = [
+            MIXED,
+            "",
+            "a",
+            "\u{AC00}\u{D55C}\u{AE00} \u{1F600}\r\n\u{1F600}\u{1F600}x",
+            "e\u{301}\u{301}\r\n\r\n\u{10FFFF}",
+        ];
+        for text in texts {
+            for unit in OffsetUnit::ALL {
+                let t = RangeTranslator::new(text, unit).unwrap();
+                let len = unit_length(text, unit).unwrap();
+                assert_eq!(t.unit_length(), len);
+                for start in 0..=len + 2 {
+                    assert_eq!(
+                        t.translate_offset(start),
+                        translate_offset(text, unit, start),
+                        "{unit:?} offset {start}"
+                    );
+                    for end in 0..=len + 2 {
+                        let expected = reference_translate_range(text, unit, start, end);
+                        assert_eq!(t.translate(start, end), expected, "{unit:?} {start}..{end}");
+                        assert_eq!(translate_range(text, unit, start, end), expected);
+                    }
+                }
+                assert_eq!(
+                    t.translate_offset(u64::MAX),
+                    translate_offset(text, unit, u64::MAX)
+                );
+                assert_eq!(
+                    t.translate(0, MAX_SAFE_INTEGER + 1),
+                    reference_translate_range(text, unit, 0, MAX_SAFE_INTEGER + 1)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_translator_matches_the_reference_on_generated_text() {
+        // Fixed-seed SplitMix64, as in the property tests.
+        let mut state = 0x9E37_79B9_7F4A_7C15u64;
+        let mut next = move || {
+            state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+            let mut z = state;
+            z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+            z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+            z ^ (z >> 31)
+        };
+        let alphabet = ['a', '\r', '\n', '\u{301}', '\u{D55C}', '\u{1F600}', ' '];
+        for iteration in 0..200 {
+            let n = (next() % 24) as usize;
+            let text: String = (0..n)
+                .map(|_| alphabet[(next() % alphabet.len() as u64) as usize])
+                .collect();
+            for unit in OffsetUnit::ALL {
+                let t = RangeTranslator::new(&text, unit).unwrap();
+                let len = unit_length(&text, unit).unwrap();
+                for _ in 0..40 {
+                    let (s, e) = (next() % (len + 3), next() % (len + 3));
+                    assert_eq!(
+                        t.translate(s, e),
+                        reference_translate_range(&text, unit, s, e),
+                        "iteration {iteration} {unit:?} {s}..{e}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_translator_refuses_oversize_text_like_the_function() {
+        let big = "a".repeat(MAX_TEXT_BYTES + 1);
+        for unit in OffsetUnit::ALL {
+            assert_eq!(
+                RangeTranslator::new(&big, unit).unwrap_err(),
+                RangeError::TextTooLarge
+            );
+        }
+        // The largest allowed text builds, and a late offset resolves.
+        let max = "\u{1F600}".repeat(MAX_TEXT_BYTES / 4);
+        let t = RangeTranslator::new(&max, OffsetUnit::Utf16CodeUnits).unwrap();
+        let units = (MAX_TEXT_BYTES / 4 * 2) as u64;
+        assert_eq!(t.unit_length(), units);
+        assert_eq!(
+            t.translate(units - 2, units),
+            Ok(br(MAX_TEXT_BYTES as u64 - 4, MAX_TEXT_BYTES as u64))
+        );
     }
 
     #[test]

@@ -53,6 +53,16 @@ enum LineEvent {
     Eof,
 }
 
+/// Result of queueing a line.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum Sent {
+    Queued,
+    /// The writer ended (the shim closed stdin or died); `receive` tells which.
+    WriterGone,
+    /// No room before the deadline.
+    Timeout,
+}
+
 /// One received event.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Received {
@@ -190,12 +200,27 @@ impl ShimProcess {
         })
     }
 
-    /// Queue one line for the shim. `false` when the writer already ended; the
-    /// caller then learns what happened from [`Self::receive`].
-    pub(crate) fn send(&self, bytes: Vec<u8>) -> bool {
-        self.to_shim
-            .as_ref()
-            .is_some_and(|tx| tx.send(bytes).is_ok())
+    /// Queue one line for the shim, waiting no later than `deadline` for room.
+    /// The queue is full when the writer is stuck on a shim that does not read
+    /// stdin, which must surface as a timeout, never as a blocked caller.
+    pub(crate) fn send(&self, bytes: Vec<u8>, deadline: Instant) -> Sent {
+        let Some(tx) = self.to_shim.as_ref() else {
+            return Sent::WriterGone;
+        };
+        let mut item = bytes;
+        loop {
+            match tx.try_send(item) {
+                Ok(()) => return Sent::Queued,
+                Err(TrySendError::Disconnected(_)) => return Sent::WriterGone,
+                Err(TrySendError::Full(back)) => {
+                    if Instant::now() >= deadline {
+                        return Sent::Timeout;
+                    }
+                    item = back;
+                    thread::sleep(Duration::from_millis(1));
+                }
+            }
+        }
     }
 
     /// Wait for one line until `deadline`.

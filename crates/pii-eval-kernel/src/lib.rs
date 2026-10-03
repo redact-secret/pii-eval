@@ -20,8 +20,8 @@ pub use matching::{
     overlaps, range_state, relation,
 };
 pub use range::{
-    OffsetUnit, RangeError, byte_to_unit_offset, translate_offset, translate_range, unit_length,
-    validate_range, validate_range_bytes,
+    OffsetUnit, RangeError, RangeTranslator, byte_to_unit_offset, translate_offset,
+    translate_range, unit_length, validate_range, validate_range_bytes,
 };
 
 use pii_eval_contracts::{CrateIdentity, Role};
