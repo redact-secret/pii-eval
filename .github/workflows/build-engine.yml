@@ -1,0 +1,94 @@
+name: build-engine
+
+# Builds the pii-eval engine ONCE and publishes it as an internal workflow
+# artifact (docs/ci-artifacts.md), the way credential-eval shares its engine.
+# Other workflows download and verify that artifact instead of rebuilding:
+# `evaluate.yml`, or any workflow that calls this one with `uses:`.
+#
+# Internal only. This is not a release: no tag, no GitHub Release, no public
+# download, 30-day retention, readable by people with read access to this
+# repository. The artifact is neither signed nor attested.
+
+on:
+  workflow_call:
+    outputs:
+      artifact-name:
+        description: Name of the uploaded artifact (pii-eval-engine-<commit>-linux-x86_64)
+        value: ${{ jobs.build.outputs.artifact-name }}
+      binary-sha256:
+        description: SHA-256 of the built pii-eval binary
+        value: ${{ jobs.build.outputs.binary-sha256 }}
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  build:
+    name: build and publish the engine (linux-x86_64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      artifact-name: pii-eval-engine-${{ github.sha }}-linux-x86_64
+      binary-sha256: ${{ steps.sums.outputs.binary-sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Node runs tools/ci (build information and verification), standard library only.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      # rust-toolchain.toml pins the toolchain; rustup installs it on first use.
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      # Same cache action credential-eval uses, pinned by SHA.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # The command documented in docs/cli.md, restricted to the CLI package.
+      - name: Build (release, locked)
+        run: cargo build --release --locked -p pii-eval-cli
+      - name: Assemble the artifact directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/engine"
+          cp target/release/pii-eval "$RUNNER_TEMP/engine/pii-eval"
+          chmod +x "$RUNNER_TEMP/engine/pii-eval"
+          node tools/ci/build-info.mjs \
+            --dir "$RUNNER_TEMP/engine" \
+            --target linux-x86_64 \
+            --repository "$GITHUB_REPOSITORY" \
+            --commit "$GITHUB_SHA" \
+            --ref "$GITHUB_REF" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+      # The same check every consumer runs, before anything is uploaded.
+      - name: Verify what will be uploaded
+        run: |
+          node tools/ci/verify-engine.mjs \
+            --dir "$RUNNER_TEMP/engine" \
+            --commit "$GITHUB_SHA" \
+            --repository "$GITHUB_REPOSITORY" \
+            --target linux-x86_64 \
+            --make-executable
+      - name: Read the binary digest
+        id: sums
+        run: echo "binary-sha256=$(awk '$2 == "pii-eval" { print $1 }' "$RUNNER_TEMP/engine/SHA256SUMS")" >> "$GITHUB_OUTPUT"
+      - name: Summary
+        run: |
+          {
+            echo "### pii-eval engine artifact"
+            echo
+            echo "- artifact: \`pii-eval-engine-${GITHUB_SHA}-linux-x86_64\`"
+            echo "- commit: \`${GITHUB_SHA}\`"
+            echo "- binary sha256: \`$(awk '$2 == "pii-eval" { print $1 }' "$RUNNER_TEMP/engine/SHA256SUMS")\`"
+            echo "- internal artifact, 30-day retention; not a release (docs/ci-artifacts.md)"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pii-eval-engine-${{ github.sha }}-linux-x86_64
+          path: ${{ runner.temp }}/engine
+          retention-days: 30
+          if-no-files-found: error

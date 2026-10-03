@@ -67,8 +67,10 @@ silently.
 Identities that cannot live in a file of this repository, and how a consumer
 obtains them: the **commit SHA** that contains this document (a document cannot
 name its own commit; take `rev-parse HEAD` of the checkout, or the squash commit
-of the merged P9 pull request) and the **digest of a release binary** (there is no
-published binary; build with `cargo build --release --locked` and record
+of the merged P9 pull request) and the **digest of the binary** (there is no public release; CI
+publishes an internal engine artifact whose `build-info.json` records the commit and
+the binary's SHA-256 and which `tools/ci/verify-engine.mjs` verifies,
+docs/ci-artifacts.md; or build with `cargo build --release --locked` and record
 `shasum -a 256 target/release/pii-eval`, docs/cli.md). Record both next to every
 result. The toolchain, MSRV and `Cargo.lock` rows above are checked by
 `oracle_parity_docs.rs`, so a change to any of them fails CI until this table is

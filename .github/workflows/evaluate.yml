@@ -1,0 +1,155 @@
+name: evaluate
+
+# Runs a PUBLIC / SYNTHETIC pii-eval evaluation with a PREBUILT engine artifact
+# (docs/ci-artifacts.md). It never rebuilds an engine that already exists:
+#
+#   - `engine-run-id` set: download the engine artifact of that workflow run
+#     (for example the last successful `ci` run on main);
+#   - `engine-run-id` empty: build the engine once through build-engine.yml in
+#     THIS run and use that artifact.
+#
+# It can be started by hand, by `gh workflow run evaluate.yml -f ...` or the
+# workflow-dispatch API from another workflow or tool with `actions: write` on
+# this repository, or called from a workflow in this repository with `uses:`.
+# Protected runs are not possible here: the CLI refuses a protected run without
+# a custodian job context and this workflow supplies none.
+
+on:
+  workflow_dispatch:
+    inputs:
+      engine-run-id:
+        description: Workflow run id whose engine artifact to use (empty = build one in this run)
+        required: false
+        type: string
+        default: ""
+      config:
+        description: Run configuration path inside the checkout
+        required: false
+        type: string
+        default: examples/quickstart/run-config.json
+  workflow_call:
+    inputs:
+      engine-run-id:
+        description: Workflow run id whose engine artifact to use (empty = build one in this run)
+        required: false
+        type: string
+        default: ""
+      config:
+        description: Run configuration path inside the checkout
+        required: false
+        type: string
+        default: examples/quickstart/run-config.json
+    outputs:
+      artifact-name:
+        description: Name of the artifact holding the run output
+        value: ${{ jobs.evaluate.outputs.artifact-name }}
+
+# `actions: read` lets the download step read the artifact of another run of
+# this repository. Nothing else is needed; there are no secrets.
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build the engine (only when no run id was given)
+    if: ${{ inputs.engine-run-id == '' }}
+    uses: ./.github/workflows/build-engine.yml
+
+  evaluate:
+    name: evaluate with the engine artifact
+    needs: build
+    # Run when the build job succeeded or was skipped (a run id was given).
+    if: ${{ !cancelled() && needs.build.result != 'failure' && needs.build.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      artifact-name: pii-eval-run-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Node runs the shim of the example scanner and tools/ci.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      # Inputs are untrusted text: they reach shell only through env, and are
+      # checked here before anything uses them.
+      - name: Check the inputs
+        id: inputs
+        env:
+          ENGINE_RUN_ID: ${{ inputs.engine-run-id }}
+          CONFIG: ${{ inputs.config }}
+        run: |
+          if [ -n "$ENGINE_RUN_ID" ] && ! printf '%s' "$ENGINE_RUN_ID" | grep -Eq '^[0-9]{1,20}$'; then
+            echo "engine-run-id must be a workflow run id (digits)" >&2
+            exit 2
+          fi
+          if ! printf '%s' "$CONFIG" | grep -Eq '^[A-Za-z0-9._/-]{1,200}$' \
+            || printf '%s' "$CONFIG" | grep -Eq '(^|/)\.\.(/|$)|^/'; then
+            echo "config must be a relative path inside the checkout" >&2
+            exit 2
+          fi
+          if [ ! -f "$CONFIG" ]; then
+            echo "config not found in the checkout" >&2
+            exit 2
+          fi
+          echo "run-id=${ENGINE_RUN_ID:-$GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: pii-eval-engine-*-linux-x86_64
+          path: ${{ runner.temp }}/engine-download
+          run-id: ${{ steps.inputs.outputs.run-id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+      - name: Verify the engine artifact
+        run: |
+          set -euo pipefail
+          count=$(find "$RUNNER_TEMP/engine-download" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+          if [ "$count" != "1" ]; then
+            echo "expected exactly one engine artifact, found $count" >&2
+            exit 2
+          fi
+          dir=$(find "$RUNNER_TEMP/engine-download" -mindepth 1 -maxdepth 1 -type d)
+          echo "$dir" > "$RUNNER_TEMP/engine-dir.txt"
+          node tools/ci/verify-engine.mjs \
+            --dir "$dir" \
+            --repository "$GITHUB_REPOSITORY" \
+            --target linux-x86_64 \
+            --make-executable | tee "$RUNNER_TEMP/engine-verified.json"
+      - name: Run the evaluation (public, synthetic)
+        env:
+          CONFIG: ${{ inputs.config }}
+          PII_EVAL_REQUIRE_NODE: "1"
+        run: |
+          set -euo pipefail
+          engine="$(cat "$RUNNER_TEMP/engine-dir.txt")/pii-eval"
+          mkdir -p "$RUNNER_TEMP/run-output"
+          "$engine" run --config "$CONFIG" --node "$(command -v node)" --out "$RUNNER_TEMP/run-output/run" \
+            | tee "$RUNNER_TEMP/run-summary.json"
+          snapshot=$(node -e 'const p=require("path"),fs=require("fs");const c=JSON.parse(fs.readFileSync(process.env.CONFIG,"utf8"));process.stdout.write(p.resolve(p.dirname(process.env.CONFIG),c.snapshot.path))')
+          "$engine" validate "$RUNNER_TEMP/run-output/run/run-artifact.json" \
+            --snapshot "$snapshot" --manifest "$RUNNER_TEMP/run-output/run/manifest.json"
+      - name: Summary
+        run: |
+          {
+            echo "### pii-eval evaluation"
+            echo
+            echo "Engine identity (verified before use):"
+            echo '```json'
+            cat "$RUNNER_TEMP/engine-verified.json"
+            echo '```'
+            echo "Run summary (fixed vocabulary, no input text):"
+            echo '```json'
+            cat "$RUNNER_TEMP/run-summary.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pii-eval-run-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/run-output
+          retention-days: 14
+          if-no-files-found: error
