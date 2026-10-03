@@ -322,8 +322,16 @@ fn oversized_input_is_refused_before_it_is_sent_and_does_not_end_the_session() {
 #[test]
 fn startup_failures_are_distinct_from_each_other_and_from_scan_failures() {
     let node = node!();
-    let slow = AdapterLimits {
+    // Only the `hang` mode needs a short startup deadline. Every other mode
+    // must finish well inside a generous one: a short shared deadline made the
+    // table flaky when the machine was loaded (Node start-up plus pin hashing
+    // can exceed 500 ms), turning an expected failure into Timeout(Startup).
+    let hang_limits = AdapterLimits {
         startup_timeout: Duration::from_millis(500),
+        ..fast_limits()
+    };
+    let patient_limits = AdapterLimits {
+        startup_timeout: Duration::from_secs(30),
         ..fast_limits()
     };
     let table: Vec<(&str, AdapterError)> = vec![
@@ -369,7 +377,12 @@ fn startup_failures_are_distinct_from_each_other_and_from_scan_failures() {
         ),
     ];
     for (mode, expected) in table {
-        let adapter = fake_adapter(&node, mode, slow);
+        let limits = if mode == "hang" {
+            hang_limits
+        } else {
+            patient_limits
+        };
+        let adapter = fake_adapter(&node, mode, limits);
         let plan = adapter.plan(configuration(mode, &["pii:global"])).unwrap();
         let Err(failure) = adapter.start(&plan) else {
             panic!("{mode}: start must fail")
