@@ -48,7 +48,7 @@ fn smoke_fixture_is_valid_utf8_and_marked_synthetic() {
 }
 
 #[test]
-fn binary_prints_identity_for_version_flag_only() {
+fn binary_prints_identity_for_version_flag_and_rejects_incomplete_commands() {
     let binary = env!("CARGO_BIN_EXE_pii-eval");
 
     let ok = Command::new(binary)
@@ -65,6 +65,14 @@ fn binary_prints_identity_for_version_flag_only() {
         .arg("run")
         .output()
         .expect("binary runs");
+    // `run` needs its options: a usage error (exit 2) with the JSON summary on
+    // stdout and the usage text on stderr (docs/cli.md).
     assert_eq!(rejected.status.code(), Some(2));
-    assert!(rejected.stdout.is_empty());
+    let stdout = String::from_utf8(rejected.stdout).expect("utf-8");
+    assert!(stdout.contains("\"reason\":\"missing-required-option\""));
+    assert!(
+        String::from_utf8(rejected.stderr)
+            .expect("utf-8")
+            .contains("usage:")
+    );
 }

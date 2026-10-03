@@ -67,6 +67,17 @@ jobs:
         env:
           PII_EVAL_REQUIRE_NODE: "1"
         run: cargo test -p pii-eval-cli --locked --test executor --test process_executor --test writer --test golden_rev2
+      # Also part of the run above; separate so a CLI failure is named (P8,
+      # docs/cli.md): every command, invalid configs, provenance mismatches,
+      # output handling, exit codes, cancellation by signal with real processes,
+      # the documented offline quickstart. Needs Node and `ps`.
+      - name: CLI (run, replay, validate, compare, signals, exit codes, documented quickstart)
+        env:
+          PII_EVAL_REQUIRE_NODE: "1"
+        run: cargo test -p pii-eval-cli --locked --test smoke --test cli_commands --test cli_replay --test cli_gate --test cli_run --test cli_cancel --test cli_docs --test cli_example
+      # The release build command documented in docs/cli.md, and the binary's identity.
+      - name: Release build (documented command)
+        run: cargo build --release --locked && target/release/pii-eval --version
 
   msrv:
     name: tests on declared MSRV

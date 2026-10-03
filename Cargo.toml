@@ -30,6 +30,11 @@ sha2 = { version = "=0.11.0", default-features = false, features = ["alloc"] }
 # Safe wrappers over syscalls std does not expose; first-party crates stay
 # `forbid(unsafe_code)`. Exact pin, process feature only.
 rustix = { version = "=1.1.5", default-features = false, features = ["std", "process"] }
+# Signal handlers for the CLI (P8, ADR 0010): flag-setting handlers for SIGINT and
+# SIGTERM so a signal cancels the run and the scanner trees are cleaned up.
+# `std` has no signal API and first-party crates forbid `unsafe`. CLI crate only,
+# Unix only, no default features (no channel/iterator machinery).
+signal-hook = { version = "=0.4.4", default-features = false }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

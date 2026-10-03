@@ -1,0 +1,23 @@
+{
+  "schema": "pii-eval-run-config/1",
+  "mode": "official",
+  "runClass": "public-synthetic",
+  "product": "candidate",
+  "engineVersion": "0.0.0",
+  "protocol": {"id": "pii-v1", "revision": 2},
+  "snapshot": {"path": "snapshot.json", "semanticDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae"},
+  "manifest": {"path": "manifest.json", "semanticDigest": "dc4dc533fa6d18c021d069583430eadcbd5604ca24d0db7b884f82e1da01f9ed"},
+  "scanners": [
+    {
+      "adapter": "redact-secret-core",
+      "shim": {"path": "../../crates/pii-eval-adapters/shims/node/redact-secret-core.mjs"},
+      "package": {
+        "dir": "../../crates/pii-eval-adapters/tests/fixtures/fake-core",
+        "entry": "lib/index.js",
+        "version": "0.1.0-beta.12",
+        "treeSha256": "35442b4205465fd400852079fa1620eae869ddc2b3ea5f849a4bd92406fb8737"
+      }
+    }
+  ],
+  "host": {"maxWorkers": 2, "resources": "enforce"}
+}

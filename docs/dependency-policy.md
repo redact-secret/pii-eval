@@ -152,6 +152,31 @@ inspect serialized documents in tests. MSRV re-verified on 2026-10-03:
 `cargo +1.85.0 test --workspace --locked` passes; the floor stays 1.85
 (`rustix` declares 1.65).
 
+## CLI: signal handlers (P8)
+
+`pii-eval-cli` gains one third-party crate, **`signal-hook` =0.4.4**
+(`default-features = false`: no `channel` or `iterator` machinery), on Unix only
+(`[target.'cfg(unix)'.dependencies]`), plus its one dependency
+`signal-hook-registry` 1.4.8 (which uses `libc` and `errno`, both already in the
+graph). Need: SIGINT and SIGTERM must cancel a run (scanners lead their own
+process groups, so Ctrl-C never reaches them) and the executor must then kill
+their trees; `std` has no signal API and first-party crates forbid `unsafe`.
+Rejected: `libc::sigaction` (needs `unsafe`), `nix` (large, forbidden fragment),
+`rustix` (does not install handlers), a hand-written handler thread (needs
+`libc`). Only the flag handlers are used (`flag::register` and
+`flag::register_conditional_shutdown`: set an `AtomicBool`; the second signal
+exits at once). Reviewed: MIT OR Apache-2.0, `rust-version` 1.66, no network or
+process code. The guard (`the_cli_adds_only_the_reviewed_signal_crates` in
+`crates/pii-eval-cli/tests/dependency_policy.rs`) allows these two crates for the
+CLI only (`CLI_EXTRA_THIRD_PARTY`), allows `libc` additionally through them, and
+asserts that contracts, kernel and adapters never reach them; the pure-crate
+and adapter guards are unchanged. The CLI also uses `serde_json` (parsing the
+run configuration and job context as values, building the summary) and `serde`
+(only the `Serialize` bound of two helpers; no derive), both already reviewed
+above, with the same pins and feature sets. An argument-parsing crate was
+considered and not added (ADR 0010, C1). MSRV re-verified on 2026-10-03:
+`cargo +1.85.0 test --workspace --locked` passes; the floor stays 1.85.
+
 ## Optional checks
 
 `deny.toml` configures `cargo-deny` bans (process/network crates), sources and
@@ -165,17 +190,19 @@ and is outside the current network allowance. Both are proposed follow-ups.
 
 | Crate | Used by | Why | Version | Reviewed |
 | --- | --- | --- | --- | --- |
-| `serde` (with `derive`) | contracts | Typed (de)serialization of every contract; the derive gives closed, exhaustive types. No std alternative. | =1.0.229 | P2; no I/O, no process or network code |
-| `serde_json` | contracts, adapters | JSON parsing and value model for strict parsing, canonical form and schema output. Pinned exactly: parsing and number handling are semantic. `arbitrary_precision` and `preserve_order` are not enabled; the canonical writer sorts keys itself. | =1.0.151 | P2 |
+| `serde` (with `derive`) | contracts, cli (`Serialize` bound only) | Typed (de)serialization of every contract; the derive gives closed, exhaustive types. No std alternative. | =1.0.229 | P2; no I/O, no process or network code |
+| `serde_json` | contracts, adapters, cli | JSON parsing and value model for strict parsing, canonical form and schema output. Pinned exactly: parsing and number handling are semantic. `arbitrary_precision` and `preserve_order` are not enabled; the canonical writer sorts keys itself. | =1.0.151 | P2 |
 | `schemars` | contracts | Deterministic JSON Schema generation from the same types, so schemas cannot drift from code (drift test). Pinned exactly: output is committed. Derive and std features only. | =1.2.2 | P2 |
 | `rustix` | adapters (Unix) | `killpg` and group-liveness probe for process-tree cleanup; safe wrapper, no `unsafe` in our code. Process-tree control section above. | =1.1.5 | P7 |
+| `signal-hook` | cli (Unix) | SIGINT/SIGTERM flag handlers so a signal cancels the run and the scanner trees are cleaned up; safe API, no `unsafe` in our code. CLI signal-handler section above. No default features. | =0.4.4 | P8 |
 | `sha2` | contracts | SHA-256 for the semantic digest and input identities; a reviewed RustCrypto implementation is preferred over hand-rolled hashing. Pinned exactly. `alloc` feature only. | =0.11.0 | P2 |
 
 Transitive crates (all in `ALLOWED_THIRD_PARTY` in the guard): `serde_core`,
 `serde_derive`, `serde_derive_internals`, `schemars_derive`, `syn`, `quote`,
 `proc-macro2`, `unicode-ident`, `ref-cast`, `ref-cast-impl`, `dyn-clone`,
 `itoa`, `memchr`, `zmij`, `digest`, `block-buffer`, `crypto-common`,
-`hybrid-array`, `typenum`, `cfg-if`, `cpufeatures` and `libc`.
+`hybrid-array`, `typenum`, `cfg-if`, `cpufeatures` and `libc`. The CLI adds
+`signal-hook-registry` (closure of `signal-hook`, CLI only).
 
 `libc` matches a forbidden fragment and is a reviewed exception: it is reached
 only through `cpufeatures` (CPU feature detection used by `sha2`). The guard

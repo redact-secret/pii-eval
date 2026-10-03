@@ -6,13 +6,13 @@ A Rust-based, scanner-neutral engine for reproducible PII measurement.
 
 ## Status
 
-**Bootstrap — measurement not yet implemented.** This repository starts privately and may be published after its contracts, migration evidence, and security boundaries are ready. A Rust workspace, CI, and the migration ownership map exist; contracts, kernel, adapters, and CLI workflows do not. The architecture and commands described here are targets unless the table below says implemented. No throughput, accuracy, or production-readiness claim is established by these documents.
+**Bootstrap.** This repository starts privately and may be published after its contracts, migration evidence, and security boundaries are ready. The Rust workspace, CI, the contracts, the kernel, the adapters, the bounded executor and the standalone CLI exist; real-scanner parity, performance work, the GitHub App and protected execution do not. The architecture and commands described here are targets unless the table below says implemented. No throughput, accuracy, or production-readiness claim is established by these documents.
 
 | Item | State |
 | --- | --- |
 | Cargo workspace (five crates), pinned toolchain 1.98.1, MSRV 1.85, committed lockfile | Implemented (identity-only placeholders) |
 | CI: fmt, Clippy `-D warnings`, locked tests, MSRV test, dependency-policy guard | Implemented |
-| CLI | Implemented: `--version` only; every other input is a usage error |
+| CLI: `run`, `replay`, `validate`, `compare` with a versioned configuration, pinned identities, frozen exit codes and a one-line JSON summary ([CLI contract](docs/cli.md), [ADR 0010](docs/adr/0010-standalone-cli-workflows.md)) | Implemented (Linux and macOS execution; Windows refused; offline clean-checkout example in `examples/quickstart/`; no published binary) |
 | Legacy ownership map and oracle pin ([ownership map](docs/migration/ownership-map.md), [ADR 0001](docs/adr/0001-rust-first-and-oracle-pin.md)) | Implemented (inventory, no code moved) |
 | Versioned contracts (schema 1.0): snapshot, manifest, observation set, internal and public-synthetic artifacts, frozen `pii-v1` registry, canonical digest, committed JSON Schemas ([ADR 0002](docs/adr/0002-freeze-pii-contracts-v1.md), [ADR 0003](docs/adr/0003-canonical-serialization-and-semantic-digest.md)) | Implemented (types, validation, digest, schemas; no measurement) |
 | UTF-8 byte-range rules, adapter offset translation, order-invariant `pii-v1-canonical` matching and outcome axes, and the `legacy-first-overlap` compatibility mode ([ADR 0004](docs/adr/0004-order-invariant-pii-matching.md)) | Implemented (library functions with conformance and property tests; the canonical rule is a proposed protocol revision 2 not yet bindable in a contract document) |
@@ -20,10 +20,9 @@ A Rust-based, scanner-neutral engine for reproducible PII measurement.
 | Indexed accounting of the ten metrics, exact Wilson statistics and the metric verifier ([ADR 0005](docs/adr/0005-indexed-accounting-and-metric-statistics.md)) | Implemented (kernel library with hand-calculated, independent-vector, differential and oracle-compatibility tests; the accounting rule is proposed protocol revision 2, bound by P7 together with the matching rule) |
 | The seven methods with deterministic variant ids, seeds and provenance, the validators `synthetic-mod10` / `us-ssn-allocation` and the `invalidate-final-digit` operator, explicit unavailable-validator states and the two population views ([ADR 0007](docs/adr/0007-method-generation-and-variant-provenance.md)) | Implemented (kernel library with independent-vector and oracle-compatibility tests; adapters, execution and artifact writing are separate phases) |
 | Protocol revision 2 (canonical rules, schema 1.1, per-scanner metrics, A8 any-to-all, sanitized-output verification, parse-memory measurement) ([ADR 0008](docs/adr/0008-protocol-revision-2-and-schema-1-1.md)) | Implemented (legacy revision 1 stays readable and unchanged; not re-measured) |
-| Bounded deterministic execution and artifact writing: worker pool, per-scanner parallelism, deadlines, process-group tree cleanup, sampled memory and scratch limits, fresh process per pass, replay and instability recording, validated atomic writer ([ADR 0009](docs/adr/0009-bounded-execution-and-artifact-writing.md)) | Implemented as a library (`pii-eval-cli`); Linux and macOS; Windows tree cleanup not implemented; process control is not a sandbox; no CLI command yet |
-| `run`, `replay`, `validate`, `compare` | Proposed |
+| Bounded deterministic execution and artifact writing: worker pool, per-scanner parallelism, deadlines, process-group tree cleanup, sampled memory and scratch limits, fresh process per pass, replay and instability recording, validated atomic writer ([ADR 0009](docs/adr/0009-bounded-execution-and-artifact-writing.md)) | Implemented as a library (`pii-eval-cli`), driven by the CLI; Linux and macOS; Windows tree cleanup not implemented; process control is not a sandbox |
 | Internal GitHub App | Proposed |
-| Protected execution via private-custodian | Proposed (owned by that repository) |
+| Protected execution via private-custodian | Proposed (owned by that repository). The CLI validates a custodian job context and refuses a protected run without one; the context grants no access ([CLI contract](docs/cli.md)) |
 
 ## What the engine measures
 
@@ -65,7 +64,7 @@ One run measures one identified population. Consumers may compose several artifa
 
 A Rust workspace (present, see [dependency policy](docs/dependency-policy.md)) separates contracts, kernel, adapters, CLI, and temporary compatibility tooling. The crates are internal; consumers integrate through versioned artifacts and the CLI, not through Rust APIs. Node/Python shims support scanners in those runtimes; scoring is implemented in Rust. Public synthetic runs can execute locally. Protected runs execute only within a separately authorized custodian environment.
 
-The only implemented CLI behavior is `pii-eval --version`. No other CLI command is promised until implemented and tested. The intended capabilities are `run`, `replay`, `validate`, and `compare`; their final syntax is established by the CLI contract.
+The CLI has four commands, `run`, `replay`, `validate` and `compare`; their syntax, configuration, exit codes and stdout and stderr contract are [docs/cli.md](docs/cli.md). Build with `cargo build --release --locked`; the quickstart there runs offline on synthetic data with an inert fake scanner package. No command is promised beyond that document.
 
 ## Migration acceptance
 
