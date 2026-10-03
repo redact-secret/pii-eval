@@ -11,3 +11,8 @@ workspace = true
 
 [dependencies]
 pii-eval-contracts.workspace = true
+
+[dev-dependencies]
+# Test-only: the difference tests compare the legacy rule with the canonical
+# kernel rule on the same vectors. Removing compat removes this line too.
+pii-eval-kernel.workspace = true
