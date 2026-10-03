@@ -82,8 +82,15 @@ fixed_enum!(
 );
 
 fixed_enum!(
-    /// Which call timed out.
-    CallPhase { Startup => "startup", Scan => "scan" }
+    /// Which call timed out. `Total` is the executor's deadline for a whole
+    /// scanner run, enforced by killing the process tree from outside the call.
+    CallPhase { Startup => "startup", Scan => "scan", Total => "total" }
+);
+
+fixed_enum!(
+    /// Which resource limit a supervised session exceeded (P7). Sampled, so a
+    /// limit bounds sustained use, not an instantaneous peak.
+    ResourceKind { Memory => "memory", Temporary => "temporary" }
 );
 
 fixed_enum!(
@@ -145,6 +152,11 @@ pub enum AdapterError {
     OutputLimit(LimitKind),
     /// The output violated the protocol.
     MalformedOutput(MalformedKind),
+    /// The caller cancelled the run; the process tree was killed.
+    Cancelled,
+    /// The supervisor aborted the session for exceeding a resource limit; the
+    /// process tree was killed.
+    ResourceLimit(ResourceKind),
     /// The session already failed or was closed.
     SessionClosed,
 }
@@ -165,6 +177,8 @@ impl AdapterError {
             }
             AdapterError::OutputLimit(_) => Some(FailureCode::OutputLimitExceeded),
             AdapterError::MalformedOutput(_) => Some(FailureCode::MalformedOutput),
+            AdapterError::Cancelled => Some(FailureCode::Cancelled),
+            AdapterError::ResourceLimit(_) => Some(FailureCode::ResourceLimitExceeded),
         }
     }
 
@@ -192,6 +206,8 @@ impl AdapterError {
             AdapterError::ScannerError(_) => "scanner-error",
             AdapterError::OutputLimit(_) => "output-limit",
             AdapterError::MalformedOutput(_) => "malformed-output",
+            AdapterError::Cancelled => "cancelled",
+            AdapterError::ResourceLimit(_) => "resource-limit",
             AdapterError::SessionClosed => "session-closed",
         }
     }
@@ -207,7 +223,11 @@ impl AdapterError {
             AdapterError::ScannerError(d) => d.as_str(),
             AdapterError::OutputLimit(d) => d.as_str(),
             AdapterError::MalformedOutput(d) => d.as_str(),
-            AdapterError::InputTooLarge | AdapterError::Crashed | AdapterError::SessionClosed => "",
+            AdapterError::ResourceLimit(d) => d.as_str(),
+            AdapterError::InputTooLarge
+            | AdapterError::Crashed
+            | AdapterError::Cancelled
+            | AdapterError::SessionClosed => "",
         }
     }
 }
@@ -240,6 +260,10 @@ mod tests {
             AdapterError::ScannerError(ScannerErrorCode::ScanFailed),
             AdapterError::OutputLimit(LimitKind::Line),
             AdapterError::MalformedOutput(MalformedKind::NotJson),
+            AdapterError::Timeout(CallPhase::Total),
+            AdapterError::Cancelled,
+            AdapterError::ResourceLimit(ResourceKind::Memory),
+            AdapterError::ResourceLimit(ResourceKind::Temporary),
         ];
         for e in samples {
             let code = e.failure_code().expect("measurement failure");

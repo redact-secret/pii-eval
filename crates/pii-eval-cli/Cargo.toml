@@ -18,6 +18,8 @@ pii-eval-adapters.workspace = true
 # Test-only: lets the smoke test reach every crate boundary. Compat stays
 # removable; deleting it also deletes this line and the one smoke assertion.
 pii-eval-compat.workspace = true
+# Test-only: inspecting serialized documents (already reviewed for contracts).
+serde_json.workspace = true
 
 [[bin]]
 name = "pii-eval"

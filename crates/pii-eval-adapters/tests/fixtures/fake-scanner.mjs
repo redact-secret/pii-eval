@@ -6,8 +6,13 @@
 //
 // Startup behavior comes from the configuration parameter "startup".
 
+import { spawn as spawnChild } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 const PROTOCOL = 'pii-eval-adapter/1';
 const SENTINEL = 'zq-sentinel-7731';
+const held = []; // memory kept alive on purpose by the `#mem` misbehavior
 
 const out = (obj) => process.stdout.write(`${JSON.stringify(obj)}\n`);
 const raw = (s) => process.stdout.write(s);
@@ -122,6 +127,54 @@ function scan(msg) {
   if (text.startsWith('#audit')) { out(result(seq, [], JSON.stringify(seen))); return; }
   if (text.startsWith('#params')) { out(result(seq, [], JSON.stringify(params))); return; }
   if (text.startsWith('#stderr')) { process.stderr.write(`${SENTINEL}\n`.repeat(40000)); }
+  // P7 misbehaviors: descendants, memory, temporary files, slowness, flakiness.
+  // `<path>` below is a file the test chose; the fake writes only a number to it.
+  if (text.startsWith('#spawn')) {
+    // "#spawn<mode> <path>": start a descendant that outlives this process, record
+    // its pid in <path>, then behave per mode (reply, crash or hang).
+    const [head, file] = text.split(' ');
+    const holder = head.includes('holding') ? 'inherit' : 'ignore';
+    const child = spawnChild(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: ['ignore', holder, holder] });
+    writeFileSync(file, String(child.pid));
+    if (head.startsWith('#spawncrash')) process.exit(3);
+    if (head.startsWith('#spawnhang')) { setInterval(() => {}, 1000); return; }
+    const d = detect(text);
+    out(result(seq, d.findings, d.output));
+    return;
+  }
+  if (text.startsWith('#mem')) {
+    // "#mem <MB>": allocate and touch that many MB, hold them, answer after a while.
+    const mb = Number(text.split(' ')[1]);
+    held.push(Buffer.alloc(mb * 1024 * 1024, 1));
+    setTimeout(() => { const d = detect(text); out(result(seq, d.findings, d.output)); }, 3000);
+    return;
+  }
+  if (text.startsWith('#tmpwrite')) {
+    // "#tmpwrite <MB>": write that many MB under TMPDIR, hold, answer after a while.
+    const mb = Number(text.split(' ')[1]);
+    writeFileSync(join(process.env.TMPDIR ?? '/nonexistent', 'fill.bin'), Buffer.alloc(mb * 1024 * 1024, 2));
+    setTimeout(() => { const d = detect(text); out(result(seq, d.findings, d.output)); }, 3000);
+    return;
+  }
+  if (text.startsWith('#tmpdir')) { out(result(seq, [], String(process.env.TMPDIR))); return; }
+  if (text.startsWith('#slow')) {
+    // "#slow <ms>": answer normally after that many milliseconds.
+    const ms = Number(text.split(' ')[1]);
+    setTimeout(() => { const d = detect(text); out(result(seq, d.findings, d.output)); }, ms);
+    return;
+  }
+  if (text.startsWith('#flaky')) {
+    // "#flaky <path>": the answer alternates between processes: report one
+    // finding when a counter kept in <path> is odd, none when it is even.
+    const file = text.split(' ')[1];
+    let n = 0;
+    try { n = Number(readFileSync(file, 'utf8')); } catch { n = 0; }
+    n += 1;
+    writeFileSync(file, String(n));
+    const findings = n % 2 === 1 ? [f(0, 2)] : [];
+    out(result(seq, findings, text));
+    return;
+  }
   const d = detect(text);
   out(result(seq, d.findings, d.output));
 }

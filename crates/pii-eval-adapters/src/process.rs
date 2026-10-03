@@ -12,12 +12,14 @@
 //!
 //! The process is spawned from a fixed absolute executable with structured
 //! arguments (never through a shell) and a cleared environment plus an explicit
-//! list. On timeout, limit violation or drop the child is killed and reaped.
+//! list, as the leader of a new process group (P7, [`crate::control`]). On
+//! timeout, limit violation, crash, drop and normal end the whole group is
+//! killed (descendants included) and the leader reaped; the group is signalled
+//! before the reap on every failure path.
 //!
-//! Not implemented here, owned by the executor (P7): process-group or job
-//! object cleanup of descendants, a bounded pool of workers, memory and CPU
-//! limits, network or filesystem isolation, temporary-storage limits. A
-//! descendant that inherits the pipes can outlive the killed child.
+//! Not provided, even here: a security sandbox. Network and filesystem
+//! isolation belong to the custodian; a descendant that leaves the group
+//! (`setsid`) escapes cleanup. See [`crate::control`] for the exact statement.
 
 use std::ffi::OsString;
 use std::io::{Read, Write};
@@ -29,6 +31,7 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, SyncSender, TrySendError, sync
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::control::{AbortHandle, AbortReason, ProcessGroup};
 use crate::error::{AdapterError, StartupStage};
 
 /// Grace period for a clean exit after `shutdown` before the child is killed.
@@ -78,6 +81,7 @@ pub(crate) struct ShimProcess {
     to_shim: Option<SyncSender<Vec<u8>>>,
     from_shim: Receiver<LineEvent>,
     stderr_bytes: Arc<AtomicU64>,
+    abort: AbortHandle,
 }
 
 fn read_lines(mut out: impl Read, max_line: usize, tx: SyncSender<LineEvent>) {
@@ -163,19 +167,24 @@ impl ShimProcess {
         max_stderr: usize,
     ) -> Result<Self, AdapterError> {
         let startup = AdapterError::StartupFailure(StartupStage::Spawn);
-        let mut child = Command::new(&spec.executable)
+        let mut command = Command::new(&spec.executable);
+        command
             .args(&spec.args)
             .current_dir(&spec.working_dir)
             .env_clear()
             .envs(spec.env.iter().map(|(k, v)| (k, v)))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|_| startup)?;
+            .stderr(Stdio::piped());
+        // A new process group led by the child, so the whole tree can be signalled.
+        #[cfg(unix)]
+        std::os::unix::process::CommandExt::process_group(&mut command, 0);
+        let mut child = command.spawn().map_err(|_| startup)?;
+        let abort = AbortHandle::new(ProcessGroup::of_leader(child.id()));
         let (Some(stdin), Some(stdout), Some(stderr)) =
             (child.stdin.take(), child.stdout.take(), child.stderr.take())
         else {
+            abort.kill_tree();
             let _ = child.kill();
             let _ = child.wait();
             return Err(startup);
@@ -197,7 +206,19 @@ impl ShimProcess {
             to_shim: Some(to_shim),
             from_shim,
             stderr_bytes,
+            abort,
         })
+    }
+
+    /// The handle that aborts this process tree from another thread.
+    pub(crate) fn abort_handle(&self) -> AbortHandle {
+        self.abort.clone()
+    }
+
+    /// Why the session was aborted from outside, if it was. A failure observed
+    /// after an outside abort is that abort, not a crash or a protocol error.
+    pub(crate) fn abort_reason(&self) -> Option<AbortReason> {
+        self.abort.reason()
     }
 
     /// Queue one line for the shim, waiting no later than `deadline` for room.
@@ -250,16 +271,21 @@ impl ShimProcess {
         }
     }
 
-    /// Kill the child and reap it. Idempotent.
+    /// Kill the whole process tree and reap the child. Idempotent. The group is
+    /// signalled while the leader is still unreaped, so its id cannot have been
+    /// recycled; the leader is signalled directly as well, for platforms
+    /// without process groups.
     pub(crate) fn kill(&mut self) {
         self.to_shim = None;
+        self.abort.kill_tree();
         if let Some(mut child) = self.child.take() {
             let _ = child.kill();
             let _ = child.wait();
         }
     }
 
-    /// Ask the shim to stop, then kill it if it does not exit within the grace period.
+    /// Ask the shim to stop, then kill it if it does not exit within the grace
+    /// period. Whatever the shim left behind in its group is killed either way.
     pub(crate) fn close(&mut self, shutdown_line: Vec<u8>) {
         if let Some(tx) = self.to_shim.take() {
             match tx.try_send(shutdown_line) {
@@ -269,10 +295,13 @@ impl ShimProcess {
         }
         if let Some(mut child) = self.child.take() {
             if wait_bounded(&mut child, EXIT_GRACE).is_none() {
+                self.abort.kill_tree();
                 let _ = child.kill();
                 let _ = child.wait();
             }
         }
+        // The leader is gone (reaped or killed): remove any descendants it left.
+        self.abort.kill_leftovers();
     }
 
     /// Stderr bytes counted so far, saturating at the configured cap.

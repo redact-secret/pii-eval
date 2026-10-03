@@ -15,11 +15,17 @@
 //! - [`inventory`]: every legacy scanner and its disposition;
 //! - [`pin`], [`limits`], [`error`]: digests, bounds, distinct failure states.
 //!
-//! Status: process execution here is minimal and bounded. Worker pools,
-//! process-tree cleanup, resource isolation, replay scheduling and artifact
-//! writing are the executor's (P7). Decisions: `docs/adr/0006-scanner-adapter-boundary.md`.
+//! - [`control`]: process-group cleanup of a scanner's whole process tree and a
+//!   sampling supervisor for resident-set and scratch-directory limits (P7).
+//!   Process hygiene, not a sandbox.
+//!
+//! Status: one bounded session per process, with tree cleanup and resource
+//! limits (P7). Worker pools, replay scheduling and artifact writing are the
+//! executor's, in `pii-eval-cli`. Decisions:
+//! `docs/adr/0006-scanner-adapter-boundary.md`, `docs/adr/0009-bounded-execution-and-artifact-writing.md`.
 
 pub mod adapter;
+pub mod control;
 pub mod error;
 pub mod inventory;
 pub mod limits;
@@ -32,7 +38,11 @@ pub mod wire;
 
 pub use adapter::{
     INHERITABLE_ENV, ProcessAdapter, ProcessAdapterSpec, RuntimeRecord, SanitizedOutput,
-    ScanOutput, ScanSession, ScannerAdapter, SessionStats, StartFailure,
+    ScanOutput, ScanSession, ScannerAdapter, SessionStats, StartFailure, StartOptions,
+};
+pub use control::{
+    AbortHandle, AbortReason, Supervisor, SupervisorError, TREE_CLEANUP_SUPPORTED, WatchGuard,
+    WatchLimits,
 };
 pub use error::AdapterError;
 pub use limits::AdapterLimits;

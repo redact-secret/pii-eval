@@ -42,10 +42,31 @@ const ALLOWED_THIRD_PARTY: &[&str] = &[
 ];
 
 /// Forbidden-fragment matches that are reviewed exceptions, as (crate, the
-/// only crate allowed to depend on it). `libc` is reached solely through
-/// `cpufeatures` (CPU feature detection for `sha2`); the guard verifies that
-/// no other crate depends on it.
-const FRAGMENT_EXCEPTIONS: &[(&str, &str)] = &[("libc", "cpufeatures")];
+/// only crates allowed to depend on it) for the PURE crates. `libc` is reached
+/// solely through `cpufeatures` (CPU feature detection for `sha2`); the guard
+/// verifies that no other crate depends on it.
+const FRAGMENT_EXCEPTIONS: &[(&str, &[&str])] = &[("libc", &["cpufeatures"])];
+
+/// Third-party crates only the adapters crate may add (P7, ADR 0009): `rustix`
+/// signals a process group and reads the peak RSS of waited-for children, safe
+/// wrappers over syscalls `std` does not expose, so first-party crates keep
+/// `forbid(unsafe_code)`. The rest is its reviewed closure (flag types, errno,
+/// the Linux syscall table, the Windows import shims that `--target all`
+/// lists). Each is justified in docs/dependency-policy.md. The pure crates may
+/// not use any of them.
+const ADAPTER_EXTRA_THIRD_PARTY: &[&str] = &[
+    "bitflags",
+    "errno",
+    "linux-raw-sys",
+    "rustix",
+    "windows-link",
+    "windows-sys",
+];
+
+/// Reviewed exceptions for the adapters: `libc` may also be reached through
+/// `rustix` and `errno` (the libc backend on non-Linux Unix targets).
+const ADAPTER_FRAGMENT_EXCEPTIONS: &[(&str, &[&str])] =
+    &[("libc", &["cpufeatures", "errno", "rustix"])];
 
 /// Crates the pure layers must never reach, even if someone widens the
 /// allowlist by mistake. Substring match on the crate name.
@@ -160,8 +181,10 @@ fn pure_crates_have_no_unreviewed_dependencies() {
             if let Some((_, only)) = FRAGMENT_EXCEPTIONS.iter().find(|(c, _)| c == name) {
                 assert_eq!(
                     direct_dependents(package, name),
-                    BTreeSet::from([(*only).to_owned()]),
-                    "{package}: `{name}` must be reached only through `{only}`"
+                    only.iter()
+                        .map(|s| (*s).to_owned())
+                        .collect::<BTreeSet<_>>(),
+                    "{package}: `{name}` must be reached only through {only:?}"
                 );
                 continue;
             }
@@ -186,8 +209,9 @@ fn kernel_and_contracts_do_not_depend_on_adapters_cli_or_compat() {
 }
 
 /// The adapters crate spawns processes through `std` only. It may use the same
-/// reviewed third-party set as the pure crates and nothing else: no async
-/// runtime, HTTP client, process helper or Git library (P6).
+/// reviewed third-party set as the pure crates plus `rustix` and its closure
+/// (P7, [`ADAPTER_EXTRA_THIRD_PARTY`]) and nothing else: no async runtime, HTTP
+/// client, process helper or Git library.
 #[test]
 fn adapters_use_only_the_reviewed_crates_and_std_for_processes() {
     let package = "pii-eval-adapters";
@@ -195,13 +219,15 @@ fn adapters_use_only_the_reviewed_crates_and_std_for_processes() {
     assert!(closure.contains(package));
     for name in &closure {
         let allowed = WORKSPACE_CRATES.contains(&name.as_str())
-            || ALLOWED_THIRD_PARTY.contains(&name.as_str());
+            || ALLOWED_THIRD_PARTY.contains(&name.as_str())
+            || ADAPTER_EXTRA_THIRD_PARTY.contains(&name.as_str());
         assert!(allowed, "{package} depends on unreviewed crate `{name}`");
-        if let Some((_, only)) = FRAGMENT_EXCEPTIONS.iter().find(|(c, _)| c == name) {
-            assert_eq!(
-                direct_dependents(package, name),
-                BTreeSet::from([(*only).to_owned()]),
-                "{package}: `{name}` must be reached only through `{only}`"
+        if let Some((_, only)) = ADAPTER_FRAGMENT_EXCEPTIONS.iter().find(|(c, _)| c == name) {
+            let dependents = direct_dependents(package, name);
+            let allowed: BTreeSet<String> = only.iter().map(|s| (*s).to_owned()).collect();
+            assert!(
+                !dependents.is_empty() && dependents.is_subset(&allowed),
+                "{package}: `{name}` must be reached only through {only:?}, found {dependents:?}"
             );
             continue;
         }

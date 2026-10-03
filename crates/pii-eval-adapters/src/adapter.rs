@@ -17,7 +17,7 @@
 
 use std::collections::BTreeSet;
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -30,8 +30,9 @@ use pii_eval_contracts::{
 };
 use pii_eval_kernel::OffsetUnit;
 
+use crate::control::{AbortHandle, AbortReason, Supervisor, WatchGuard, WatchLimits};
 use crate::error::{
-    AdapterError, CallPhase, LimitKind, MalformedKind, MissingCapability, PinKind,
+    AdapterError, CallPhase, LimitKind, MalformedKind, MissingCapability, PinKind, ResourceKind,
     ScannerErrorCode, SpecProblem, StartupStage,
 };
 use crate::limits::AdapterLimits;
@@ -55,6 +56,12 @@ const MAX_RUNTIME_TEXT: usize = 64;
 pub struct SanitizedOutput(String);
 
 impl SanitizedOutput {
+    /// Wrap sanitized text, for an in-process adapter (a fake or a library
+    /// scanner). The process adapter builds it from the shim's reply.
+    pub fn new(text: impl Into<String>) -> Self {
+        SanitizedOutput(text.into())
+    }
+
     /// The text. Handle as input-derived data.
     pub fn as_str(&self) -> &str {
         &self.0
@@ -124,6 +131,11 @@ pub struct SessionStats {
     pub scans: u64,
     /// Stderr bytes counted and discarded (saturating at the configured cap).
     pub stderr_bytes: u64,
+    /// Highest resident set size of the scanner's process tree that the
+    /// supervisor sampled, in bytes; 0 when the session was not supervised.
+    /// Collection method: one `ps -A -o pgid=,rss=` per sampling interval
+    /// (ADR 0009); it is a lower bound of the true peak.
+    pub peak_rss_bytes: u64,
     /// Result of re-verifying every pin when the session ended: `None` means
     /// the shim, scanner artifact and extra artifacts still match their pins;
     /// `Some` means one changed during the run and the session's observations
@@ -152,6 +164,38 @@ pub trait ScanSession: Send {
     fn scan(&mut self, text: &str) -> Result<ScanOutput, AdapterError>;
     /// Stop the scanner and report counters. Idempotent.
     fn finish(&mut self) -> SessionStats;
+    /// A handle another thread can use to abort this session and kill its
+    /// process tree (a deadline, a cancellation). The default controls nothing,
+    /// which is right for a session that owns no process.
+    fn abort_handle(&self) -> AbortHandle {
+        AbortHandle::inert()
+    }
+}
+
+/// How an executor starts a session beyond the plan: a scratch directory and
+/// the supervisor that enforces resource limits. Everything defaults to "none".
+#[derive(Clone, Default)]
+pub struct StartOptions {
+    /// Directory the scanner is told to use for temporary files (`TMPDIR`,
+    /// `TMP`, `TEMP`), created by the executor with restricted permissions.
+    pub scratch_dir: Option<PathBuf>,
+    /// Supervisor that watches the session, when limits apply.
+    pub supervisor: Option<Arc<Supervisor>>,
+    /// Sustained resident set size allowed for the whole process tree.
+    pub max_rss_bytes: Option<u64>,
+    /// Bytes the scratch directory may hold.
+    pub max_scratch_bytes: Option<u64>,
+}
+
+impl fmt::Debug for StartOptions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("StartOptions")
+            .field("scratch", &self.scratch_dir.is_some())
+            .field("supervised", &self.supervisor.is_some())
+            .field("max_rss_bytes", &self.max_rss_bytes)
+            .field("max_scratch_bytes", &self.max_scratch_bytes)
+            .finish()
+    }
 }
 
 /// A scanner adapter: configuration in, bound plan out, then sessions.
@@ -161,6 +205,20 @@ pub trait ScannerAdapter: Send + Sync {
     fn plan(&self, configuration: ScannerConfiguration) -> Result<ScannerPlan, AdapterError>;
     /// Verify every pin and start a session for `plan`.
     fn start(&self, plan: &ScannerPlan) -> Result<Box<dyn ScanSession>, StartFailure>;
+    /// Start a session with executor-supplied options. The default ignores them,
+    /// which is right for an adapter that owns no process.
+    fn start_with(
+        &self,
+        plan: &ScannerPlan,
+        _options: &StartOptions,
+    ) -> Result<Box<dyn ScanSession>, StartFailure> {
+        self.start(plan)
+    }
+    /// The output bounds this adapter enforces, when it has any. The executor
+    /// refuses a run whose manifest bounds are smaller than the adapter's.
+    fn limits(&self) -> Option<AdapterLimits> {
+        None
+    }
 }
 
 /// Everything that fixes a process adapter. All of it comes from reviewed
@@ -362,11 +420,22 @@ impl ProcessAdapter {
         caps
     }
 
-    fn spawn_spec(&self) -> Result<SpawnSpec, AdapterError> {
+    fn spawn_spec(&self, scratch: Option<&Path>) -> Result<SpawnSpec, AdapterError> {
         let mut env = vec![("PII_EVAL_ADAPTER_PROTOCOL".to_owned(), PROTOCOL.to_owned())];
         for name in &self.spec.inherit_env {
+            // A session scratch directory replaces whatever temp location the
+            // parent environment names.
+            let is_temp = ["TMPDIR", "TMP", "TEMP"].contains(&name.as_str());
+            if scratch.is_some() && is_temp {
+                continue;
+            }
             if let Some(value) = std::env::var_os(name).and_then(|v| v.into_string().ok()) {
                 env.push((name.clone(), value));
+            }
+        }
+        if let Some(dir) = scratch.and_then(Path::to_str) {
+            for name in ["TMPDIR", "TMP", "TEMP"] {
+                env.push((name.to_owned(), dir.to_owned()));
             }
         }
         let working_dir = self
@@ -399,6 +468,18 @@ fn startup_error(received: Received) -> AdapterError {
     }
 }
 
+/// The error to report after an outside abort: the abort reason, not the crash,
+/// end-of-file or protocol error that killing the process tree caused.
+fn error_for_abort(reason: Option<AbortReason>, observed: AdapterError) -> AdapterError {
+    match reason {
+        None => observed,
+        Some(AbortReason::Timeout) => AdapterError::Timeout(CallPhase::Total),
+        Some(AbortReason::Cancelled) => AdapterError::Cancelled,
+        Some(AbortReason::Memory) => AdapterError::ResourceLimit(ResourceKind::Memory),
+        Some(AbortReason::Temporary) => AdapterError::ResourceLimit(ResourceKind::Temporary),
+    }
+}
+
 impl ScannerAdapter for ProcessAdapter {
     fn plan(&self, configuration: ScannerConfiguration) -> Result<ScannerPlan, AdapterError> {
         let identity = self.identity(&configuration)?;
@@ -409,6 +490,18 @@ impl ScannerAdapter for ProcessAdapter {
     }
 
     fn start(&self, plan: &ScannerPlan) -> Result<Box<dyn ScanSession>, StartFailure> {
+        self.start_with(plan, &StartOptions::default())
+    }
+
+    fn limits(&self) -> Option<AdapterLimits> {
+        Some(self.spec.limits)
+    }
+
+    fn start_with(
+        &self,
+        plan: &ScannerPlan,
+        options: &StartOptions,
+    ) -> Result<Box<dyn ScanSession>, StartFailure> {
         let none = undeclared_capabilities;
 
         // 1. Identity and digests, derived again from the plan's own configuration.
@@ -431,11 +524,31 @@ impl ScannerAdapter for ProcessAdapter {
         verify().map_err(|e| self.failure(e, none()))?;
 
         // 3. Spawn, initialize, and verify the runtime identity before any input.
-        let spawn = self.spawn_spec().map_err(|e| self.failure(e, none()))?;
+        let spawn = self
+            .spawn_spec(options.scratch_dir.as_deref())
+            .map_err(|e| self.failure(e, none()))?;
         let limits = self.spec.limits;
         let mut process =
             ShimProcess::spawn(&spawn, limits.max_line_bytes, limits.max_stderr_bytes)
                 .map_err(|e| self.failure(e, none()))?;
+        // Supervised from the moment it exists, so a startup that balloons is
+        // stopped too. The guard ends the watch when the session is dropped.
+        let watch = options.supervisor.as_ref().map(|supervisor| {
+            supervisor.watch(
+                &process.abort_handle(),
+                WatchLimits {
+                    max_rss_bytes: options.max_rss_bytes,
+                    scratch: options.scratch_dir.clone().zip(options.max_scratch_bytes),
+                },
+            )
+        });
+        // Ends the process tree and names the cause: an outside abort wins over
+        // the symptom it produced.
+        let settle = |process: &mut ShimProcess, observed: AdapterError| -> AdapterError {
+            let reason = process.abort_reason();
+            process.kill();
+            error_for_abort(reason, observed)
+        };
         let selectors: Vec<String> = plan
             .configuration
             .activation
@@ -450,15 +563,14 @@ impl ScannerAdapter for ProcessAdapter {
         );
         let deadline = Instant::now() + limits.startup_timeout;
         if process.send(init, deadline) == Sent::Timeout {
-            process.kill();
-            return Err(self.failure(AdapterError::Timeout(CallPhase::Startup), none()));
+            let error = settle(&mut process, AdapterError::Timeout(CallPhase::Startup));
+            return Err(self.failure(error, none()));
         }
         let received = process.receive(deadline);
         let line = match received {
             Received::Line(line) => line,
             other => {
-                let error = startup_error(other);
-                process.kill();
+                let error = settle(&mut process, startup_error(other));
                 return Err(self.failure(error, none()));
             }
         };
@@ -484,15 +596,15 @@ impl ScannerAdapter for ProcessAdapter {
                 return Err(self.failure(error, caps));
             }
             Ok(_) => {
-                process.kill();
-                return Err(self.failure(
+                let error = settle(
+                    &mut process,
                     AdapterError::MalformedOutput(MalformedKind::UnexpectedMessage),
-                    none(),
-                ));
+                );
+                return Err(self.failure(error, none()));
             }
             Err(kind) => {
-                process.kill();
-                return Err(self.failure(AdapterError::MalformedOutput(kind), none()));
+                let error = settle(&mut process, AdapterError::MalformedOutput(kind));
+                return Err(self.failure(error, none()));
             }
         };
 
@@ -503,6 +615,8 @@ impl ScannerAdapter for ProcessAdapter {
             .and_then(|()| self.verify_ready(&ready, &selectors));
         match recheck {
             Ok((record, capabilities)) => Ok(Box::new(ProcessSession {
+                abort: process.abort_handle(),
+                _watch: watch,
                 process,
                 limits,
                 pins: self.pins(),
@@ -623,6 +737,8 @@ fn verify_all(pins: &[(ArtifactPin, PinKind)]) -> Result<(), AdapterError> {
 
 struct ProcessSession {
     process: ShimProcess,
+    abort: AbortHandle,
+    _watch: Option<WatchGuard>,
     pins: Vec<(ArtifactPin, PinKind)>,
     pin_check: Option<AdapterError>,
     pins_checked: bool,
@@ -637,10 +753,14 @@ struct ProcessSession {
 }
 
 impl ProcessSession {
+    /// End the session: kill the process tree, close, and report the cause. An
+    /// outside abort (deadline, cancellation, resource limit) is the cause when
+    /// there was one, whatever symptom it produced.
     fn fail(&mut self, error: AdapterError) -> AdapterError {
+        let reason = self.process.abort_reason();
         self.process.kill();
         self.closed = true;
-        error
+        error_for_abort(reason, error)
     }
 }
 
@@ -656,6 +776,10 @@ impl ScanSession for ProcessSession {
     fn scan(&mut self, text: &str) -> Result<ScanOutput, AdapterError> {
         if self.closed {
             return Err(AdapterError::SessionClosed);
+        }
+        // Aborted from outside between two calls: report why, never a clean scan.
+        if self.process.abort_reason().is_some() {
+            return Err(self.fail(AdapterError::SessionClosed));
         }
         if text.len() > self.limits.max_text_bytes {
             return Err(AdapterError::InputTooLarge);
@@ -756,7 +880,12 @@ impl ScanSession for ProcessSession {
         SessionStats {
             scans: self.seq,
             stderr_bytes: self.process.stderr_bytes(),
+            peak_rss_bytes: self.abort.sampled_peak_rss_bytes(),
             pin_check: self.pin_check,
         }
+    }
+
+    fn abort_handle(&self) -> AbortHandle {
+        self.abort.clone()
     }
 }

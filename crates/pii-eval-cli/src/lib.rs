@@ -4,6 +4,11 @@
 //! intended `run`, `replay`, `validate` and `compare` workflows are not
 //! implemented and have no promised syntax.
 
+pub mod assemble;
+pub mod exec;
+pub mod run;
+pub mod write;
+
 use pii_eval_contracts::{CrateIdentity, ENGINE_NAME, ENGINE_VERSION, Role, WORKSPACE_STAGE};
 
 /// Identity of this crate.
