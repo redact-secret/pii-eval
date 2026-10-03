@@ -1,0 +1,1099 @@
+{
+  "schema": "pii-eval-isolation-node/1",
+  "replicaOf": {
+    "repository": "redact-secret/private-custodian",
+    "commit": "142db34dd4bc02903f47cba951a054351bb55fde",
+    "files": [
+      "crates/custodian-worker/src/bwrap.rs",
+      "crates/custodian-worker/src/sandbox.rs"
+    ]
+  },
+  "host": {
+    "kernel": "Linux 6.17.0-1022-azure",
+    "bwrap": "bubblewrap 0.9.0",
+    "cpus": 2,
+    "node": {
+      "version": "v22.23.3",
+      "sha256": "fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48"
+    },
+    "engine": {
+      "sha256": "f5cbb31169c1dbd6c0f353726dd992aeb9456d253d3844229f76a3f6d6750627",
+      "version": "pii-eval 0.0.0 (bootstrap)"
+    }
+  },
+  "profile": {
+    "cpuSeconds": 30,
+    "wallMs": 20000,
+    "storageBytes": 67108864,
+    "maxProcesses": 32,
+    "stdoutBytes": 65536,
+    "stderrBytes": 1048576,
+    "note": "custodian normal profile except memory (the variable) and a longer wall/cpu budget for the engine run",
+    "custodianNormalMemoryMiB": 512
+  },
+  "controls": {
+    "rlimitsApplied": {
+      "pass": true,
+      "requestedBytes": 536870912,
+      "observed": {
+        "soft": 536870912,
+        "hard": 536870912
+      }
+    },
+    "noCapabilities": {
+      "pass": true,
+      "capEff": "0000000000000000"
+    },
+    "egressDenied": {
+      "pass": true,
+      "probeConnectsOutsideTheSandbox": true,
+      "publicAddress": "BLOCKED",
+      "hostLoopback": "BLOCKED",
+      "hostListenerConnectionsFromTheSandbox": 0
+    },
+    "hostFilesAbsent": {
+      "pass": true
+    },
+    "envScrubbed": {
+      "pass": true,
+      "namesOutsideAllowlist": [],
+      "leakedCanaries": []
+    },
+    "scratchWritable": {
+      "pass": true
+    },
+    "writeOutsideScratchDenied": {
+      "pass": true
+    },
+    "visibleRoot": {
+      "entries": "bin dev lib lib64 proc repo sbin scratch stage usr"
+    },
+    "pass": true
+  },
+  "everyLimitApplied": true,
+  "nodeVirtualMemoryKbAtIdle": {
+    "default": {
+      "VmPeak": 790936,
+      "VmSize": 790684,
+      "VmHWM": 44148,
+      "VmRSS": 44148
+    },
+    "jitless": {
+      "VmPeak": 266648,
+      "VmSize": 266396,
+      "VmHWM": 43868,
+      "VmRSS": 43868
+    },
+    "measuredUnderMemMiB": 8192
+  },
+  "floors": {
+    "nodeStartMiB": {
+      "floor": 800,
+      "monotone": true
+    },
+    "nodeJitlessMiB": {
+      "floor": 320,
+      "monotone": true
+    },
+    "engineVersionMiB": {
+      "floor": 128,
+      "monotone": true
+    },
+    "engineQuickstartRunMiB": {
+      "floor": 800,
+      "monotone": true
+    },
+    "engineQuickstartRunNodeJitlessMiB": {
+      "floor": 320,
+      "monotone": true
+    }
+  },
+  "custodianNormalMemory": {
+    "memMiB": 512,
+    "nodeStarts": false,
+    "engineQuickstartRuns": false,
+    "engineQuickstartRunsWithNodeJitless": true
+  },
+  "matrix": [
+    {
+      "memMiB": 128,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": false,
+        "exitCode": null,
+        "signal": "SIGKILL",
+        "timedOut": true,
+        "elapsedMs": 25025,
+        "stdout": "",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": false,
+        "exitCode": null,
+        "signal": "SIGKILL",
+        "timedOut": true,
+        "elapsedMs": 25024,
+        "stdout": "",
+        "stderr": ""
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 5,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": false,
+        "exitCode": 5,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 30042,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"error\":{\"reason\":\"scanner-failure\"},\"exit\":{\"code\":5,\"name\":\"scanner-failure\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\"...",
+        "stderr": "pii-eval: scanner-failure (scanner-failure, exit 5)"
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": false,
+        "exitCode": 5,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 30027,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"error\":{\"reason\":\"scanner-failure\"},\"exit\":{\"code\":5,\"name\":\"scanner-failure\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\"...",
+        "stderr": "pii-eval: scanner-failure (scanner-failure, exit 5)"
+      }
+    },
+    {
+      "memMiB": 192,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": false,
+        "exitCode": 133,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 210,
+        "stdout": "",
+        "stderr": "# # Fatal process out of memory: Failed to reserve virtual memory for CodeRange # ----- Native stack trace -----  1: 0x10482e1  [/stage/node]  2: 0x2a259f2 v8::base::FatalOOM(v8::base::OOMType, char const*) [/stage/node]  3: 0x12453e2  [/stage/node]  4: 0x1245667 v8::internal::V8::FatalProcessOutOfM..."
+      },
+      "nodeJitless": {
+        "ok": false,
+        "exitCode": 133,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 265,
+        "stdout": "",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags <--- Last few GCs ---> <--- JS stacktrace ---> # # Fatal JavaScript out of memory: MemoryChunk allocation failed during deserialization. # ----- Native stack trace -----  1: 0x10482e1  [/stage/node]  2: 0x2a259f2 v8::base::FatalOOM(v8::b..."
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 7,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": false,
+        "exitCode": 5,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 263,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"error\":{\"reason\":\"scanner-failure\"},\"exit\":{\"code\":5,\"name\":\"scanner-failure\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\"...",
+        "stderr": "pii-eval: scanner-failure (scanner-failure, exit 5)"
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": false,
+        "exitCode": 5,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 437,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"error\":{\"reason\":\"scanner-failure\"},\"exit\":{\"code\":5,\"name\":\"scanner-failure\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\"...",
+        "stderr": "pii-eval: scanner-failure (scanner-failure, exit 5)"
+      }
+    },
+    {
+      "memMiB": 256,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": false,
+        "exitCode": 133,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 286,
+        "stdout": "",
+        "stderr": "# # Fatal process out of memory: Failed to reserve virtual memory for CodeRange # ----- Native stack trace -----  1: 0x10482e1  [/stage/node]  2: 0x2a259f2 v8::base::FatalOOM(v8::base::OOMType, char const*) [/stage/node]  3: 0x12453e2  [/stage/node]  4: 0x1245667 v8::internal::V8::FatalProcessOutOfM..."
+      },
+      "nodeJitless": {
+        "ok": false,
+        "exitCode": 133,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 268,
+        "stdout": "",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags <--- Last few GCs ---> <--- JS stacktrace ---> # # Fatal JavaScript out of memory: MemoryChunk allocation failed during deserialization. # ----- Native stack trace -----  1: 0x10482e1  [/stage/node]  2: 0x2a259f2 v8::base::FatalOOM(v8::b..."
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 14,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": false,
+        "exitCode": 5,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 289,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"error\":{\"reason\":\"scanner-failure\"},\"exit\":{\"code\":5,\"name\":\"scanner-failure\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\"...",
+        "stderr": "pii-eval: scanner-failure (scanner-failure, exit 5)"
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": false,
+        "exitCode": 5,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 349,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"error\":{\"reason\":\"scanner-failure\"},\"exit\":{\"code\":5,\"name\":\"scanner-failure\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\"...",
+        "stderr": "pii-eval: scanner-failure (scanner-failure, exit 5)"
+      }
+    },
+    {
+      "memMiB": 320,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": false,
+        "exitCode": 133,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 249,
+        "stdout": "",
+        "stderr": "# # Fatal process out of memory: Failed to reserve virtual memory for CodeRange # ----- Native stack trace -----  1: 0x10482e1  [/stage/node]  2: 0x2a259f2 v8::base::FatalOOM(v8::base::OOMType, char const*) [/stage/node]  3: 0x12453e2  [/stage/node]  4: 0x1245667 v8::internal::V8::FatalProcessOutOfM..."
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 55,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 7,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": false,
+        "exitCode": 5,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 306,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"error\":{\"reason\":\"scanner-failure\"},\"exit\":{\"code\":5,\"name\":\"scanner-failure\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\"...",
+        "stderr": "pii-eval: scanner-failure (scanner-failure, exit 5)"
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 152,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 384,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": false,
+        "exitCode": 133,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 287,
+        "stdout": "",
+        "stderr": "# # Fatal process out of memory: Failed to reserve virtual memory for CodeRange # ----- Native stack trace -----  1: 0x10482e1  [/stage/node]  2: 0x2a259f2 v8::base::FatalOOM(v8::base::OOMType, char const*) [/stage/node]  3: 0x12453e2  [/stage/node]  4: 0x1245667 v8::internal::V8::FatalProcessOutOfM..."
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 53,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 11,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": false,
+        "exitCode": 5,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 280,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"error\":{\"reason\":\"scanner-failure\"},\"exit\":{\"code\":5,\"name\":\"scanner-failure\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\"...",
+        "stderr": "pii-eval: scanner-failure (scanner-failure, exit 5)"
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 136,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 512,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": false,
+        "exitCode": 133,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 253,
+        "stdout": "",
+        "stderr": "# # Fatal process out of memory: Failed to reserve virtual memory for CodeRange # ----- Native stack trace -----  1: 0x10482e1  [/stage/node]  2: 0x2a259f2 v8::base::FatalOOM(v8::base::OOMType, char const*) [/stage/node]  3: 0x12453e2  [/stage/node]  4: 0x1245667 v8::internal::V8::FatalProcessOutOfM..."
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 71,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 7,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": false,
+        "exitCode": 5,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 283,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"error\":{\"reason\":\"scanner-failure\"},\"exit\":{\"code\":5,\"name\":\"scanner-failure\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\"...",
+        "stderr": "pii-eval: scanner-failure (scanner-failure, exit 5)"
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 142,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 640,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": false,
+        "exitCode": 133,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 278,
+        "stdout": "",
+        "stderr": "# # Fatal process out of memory: Failed to reserve virtual memory for CodeRange # ----- Native stack trace -----  1: 0x10482e1  [/stage/node]  2: 0x2a259f2 v8::base::FatalOOM(v8::base::OOMType, char const*) [/stage/node]  3: 0x12453e2  [/stage/node]  4: 0x1245667 v8::internal::V8::FatalProcessOutOfM..."
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 90,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 11,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": false,
+        "exitCode": 5,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 306,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"error\":{\"reason\":\"scanner-failure\"},\"exit\":{\"code\":5,\"name\":\"scanner-failure\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\"...",
+        "stderr": "pii-eval: scanner-failure (scanner-failure, exit 5)"
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 146,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 768,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": false,
+        "exitCode": 133,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 312,
+        "stdout": "",
+        "stderr": "<--- Last few GCs ---> <--- JS stacktrace ---> # # Fatal JavaScript out of memory: MemoryChunk allocation failed during deserialization. # ----- Native stack trace -----  1: 0x10482e1  [/stage/node]  2: 0x2a259f2 v8::base::FatalOOM(v8::base::OOMType, char const*) [/stage/node]  3: 0x12453e2  [/stage..."
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 67,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 11,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": false,
+        "exitCode": 5,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 310,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"error\":{\"reason\":\"scanner-failure\"},\"exit\":{\"code\":5,\"name\":\"scanner-failure\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\"...",
+        "stderr": "pii-eval: scanner-failure (scanner-failure, exit 5)"
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 138,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 800,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 46,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 103,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 9,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 104,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 138,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 832,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 36,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 48,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 8,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 106,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 136,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 864,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 108,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 44,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 7,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 198,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 135,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 896,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 36,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 45,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 6,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 105,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 197,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 928,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 72,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 65,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 10,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 285,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 166,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 960,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 112,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 49,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 6,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 105,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 120,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 992,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 38,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 99,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 7,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 150,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 165,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 1024,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 40,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 157,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 13,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 108,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 136,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 1536,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 37,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 47,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 8,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 105,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 136,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 2048,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 37,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 48,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 8,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 138,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 137,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 4096,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 38,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 127,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 7,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 303,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 190,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    },
+    {
+      "memMiB": 8192,
+      "limitApplied": true,
+      "nodeStart": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 129,
+        "stdout": "v22.23.3",
+        "stderr": ""
+      },
+      "nodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 48,
+        "stdout": "v22.23.3",
+        "stderr": "Warning: disabling flag --expose_wasm due to conflicting flags"
+      },
+      "engineVersion": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 7,
+        "stdout": "pii-eval 0.0.0 (bootstrap)",
+        "stderr": ""
+      },
+      "engineQuickstartRun": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 241,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      },
+      "engineQuickstartRunNodeJitless": {
+        "ok": true,
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "elapsedMs": 241,
+        "stdout": "{\"command\":\"run\",\"engine\":{\"name\":\"pii-eval\",\"version\":\"0.0.0\"},\"exit\":{\"code\":0,\"name\":\"success\"},\"outputs\":{\"files\":[{\"bytes\":4149,\"name\":\"manifest.json\",\"sha256\":\"95b9305a6152a7b9b1eb10c6e39485b3f7...",
+        "stderr": ""
+      }
+    }
+  ]
+}

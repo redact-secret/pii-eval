@@ -134,8 +134,8 @@ jobs:
       # explicit permissions, no untrusted expression inside a script).
       - name: CI tooling (build information, engine artifact verification) and workflow policy
         run: |
-          node --test tools/ci/test/ci-tools.test.mjs tools/ci/test/workflow-policy.test.mjs
-          for f in tools/ci/*.mjs; do node --check "$f"; done
+          node --test tools/ci/test/ci-tools.test.mjs tools/ci/test/workflow-policy.test.mjs tools/isolation/test/argv.test.mjs tools/isolation/test/lib.test.mjs
+          for f in tools/ci/*.mjs tools/isolation/*.mjs; do node --check "$f"; done
           node tools/ci/workflow-policy.mjs .github/workflows/*.yml
 
   msrv:
@@ -176,6 +176,20 @@ jobs:
     name: evaluate with the engine artifact
     needs: engine
     uses: ./.github/workflows/evaluate.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      engine-run-id: ${{ format('{0}', github.run_id) }}
+
+  # Real Linux bubblewrap measurement of Node and the engine under the custodian's
+  # worker limits (docs/custodian-isolation-node.md): a replica of the custodian's
+  # launcher on a hosted runner, synthetic data, the controls must pass, no limit is
+  # ever loosened. Uses the engine artifact published above (same run id).
+  isolation:
+    name: node and the engine under the custodian sandbox limits
+    needs: engine
+    uses: ./.github/workflows/isolation.yml
     permissions:
       contents: read
       actions: read
