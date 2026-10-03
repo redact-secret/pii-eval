@@ -135,7 +135,62 @@ fn replica_conformance_with_the_custodians_own_result_vectors() {
         (doc("pii", "complete", 5, 6, 0), Reason::RosterMismatch),
         (doc("pii", "complete", 5, 5, 6), Reason::RosterMismatch),
         (vec![b'a'; MAX_RESULT_BYTES + 1], Reason::ResultOversized),
+        // The remaining rows of the custodian's table (staging_result.rs), adapted
+        // from its synthetic protocol to pii-v1 / 2: trailing data, another
+        // protocol name or version, a free-text field, duplicate keys, another
+        // schema version.
+        (
+            [doc("pii", "complete", 5, 5, 0), b"{}".to_vec()].concat(),
+            Reason::ResultMalformed,
+        ),
+        (
+            String::from_utf8(doc("pii", "complete", 5, 5, 0))
+                .unwrap()
+                .replace("pii-v1", "other-protocol")
+                .into_bytes(),
+            Reason::ResultMismatch,
+        ),
+        (
+            String::from_utf8(doc("pii", "complete", 5, 5, 0))
+                .unwrap()
+                .replace("\"version\":\"2\"", "\"version\":\"3\"")
+                .into_bytes(),
+            Reason::ResultMismatch,
+        ),
+        (
+            String::from_utf8(doc("pii", "complete", 5, 5, 0))
+                .unwrap()
+                .replace(
+                    "\"status\"",
+                    "\"message\":\"secret-shaped synthetic text\",\"status\"",
+                )
+                .into_bytes(),
+            Reason::ResultMalformed,
+        ),
+        (
+            String::from_utf8(doc("pii", "complete", 5, 5, 0))
+                .unwrap()
+                .replace("\"status\"", "\"status\":\"complete\",\"status\"")
+                .into_bytes(),
+            Reason::ResultMalformed,
+        ),
+        (
+            String::from_utf8(doc("pii", "complete", 5, 5, 0))
+                .unwrap()
+                .replace("\"failed\":0", "\"failed\":0,\"failed\":0")
+                .into_bytes(),
+            Reason::ResultMalformed,
+        ),
+        (
+            String::from_utf8(doc("pii", "complete", 5, 5, 0))
+                .unwrap()
+                .replace("worker-result/1", "worker-result/2")
+                .into_bytes(),
+            Reason::ResultMalformed,
+        ),
     ];
+    // An empty authorized roster is never complete.
+    assert!(validate_result(&doc("pii", "complete", 0, 0, 0), Domain::Pii, &p, 0).is_err());
     for (bytes, reason) in bad {
         assert_eq!(
             validate_result(&bytes, Domain::Pii, &p, 5).err(),
@@ -333,24 +388,49 @@ fn a_scanner_failure_is_a_partial_outcome_and_no_receipt_can_carry_it() {
     );
 }
 
+/// What the custodian itself would have caught before the run.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Defence {
+    /// A file the plan pins (engine, adapter, candidate, config, scanner-N): the
+    /// custodian's identity check rejects the drift BEFORE the run
+    /// (`Rejected`, `identity_mismatch`). The engine's refusal is defence in depth.
+    PinnedFile,
+    /// The shape of `/input` (an extra or non-regular entry): the custodian's
+    /// `verify_input_shape` fails the staging. Defence in depth likewise.
+    InputShape,
+    /// Content the custodian does not look at (the job document; the entries are
+    /// opaque to it): only the engine can refuse these.
+    EngineOnly,
+}
+
+/// The ENGINE's defence in depth. Every case below mutates something after the
+/// plan pinned the staged world; for pinned files and the input shape the
+/// custodian (replica) would reject or fail it BEFORE the worker starts, and the
+/// test asserts that too. What the engine adds is that, were the mutation to
+/// reach it anyway, it refuses with a non-zero exit and prints nothing, which the
+/// custodian maps to `Failed` (`non_zero_exit`) and never parses.
 #[test]
-fn every_refusal_is_a_failed_outcome_and_prints_nothing_to_parse() {
+fn the_engines_refusals_are_defence_in_depth_and_a_failed_outcome_when_they_are_reached() {
     let node = node_or_return!();
-    let mut cases: Vec<(&str, Mutation)> = Vec::new();
+    let mut cases: Vec<(&str, Defence, Mutation)> = Vec::new();
     cases.push((
         "job roster",
+        Defence::EngineOnly,
         Box::new(|w| w.set_job(&job_json(&w.entries).replace("\"roster\":3", "\"roster\":4"))),
     ));
     cases.push((
         "job unknown field",
+        Defence::EngineOnly,
         Box::new(|w| w.set_job(&job_json(&w.entries).replacen('}', ",\"x\":1}", 1))),
     ));
     cases.push((
         "stale entries",
+        Defence::InputShape,
         Box::new(|w| std::fs::write(w.input.join("extra"), b"x").unwrap()),
     ));
     cases.push((
         "bad entry",
+        Defence::EngineOnly,
         Box::new(|w| {
             let p = w.input.join(&w.entries[0]);
             std::fs::remove_file(&p).unwrap();
@@ -359,30 +439,48 @@ fn every_refusal_is_a_failed_outcome_and_prints_nothing_to_parse() {
     ));
     cases.push((
         "population",
+        Defence::PinnedFile,
         Box::new(|w| w.edit_config(|c| c["population"]["digest"] = json!("0".repeat(64)))),
     ));
     cases.push((
         "run class",
+        Defence::PinnedFile,
         Box::new(|w| w.edit_config(|c| c["runClass"] = json!("public-synthetic"))),
     ));
     cases.push((
         "engine digest",
+        Defence::PinnedFile,
         Box::new(|w| w.stage_put("engine", b"another engine", 0o500)),
     ));
     cases.push((
         "bundle digest",
+        Defence::PinnedFile,
         Box::new(|w| w.stage_put("candidate", b"another bundle", 0o500)),
     ));
     cases.push((
         "runtime digest",
+        Defence::PinnedFile,
         Box::new(|w| w.stage_put("scanner-0", b"#!/bin/sh\nexit 0\n", 0o500)),
     ));
-    for (label, mutate) in cases {
+    for (label, defence, mutate) in cases {
         let w = World::build("wc-refusal", &node, &Opts::default());
-        // The custodian pins the staged files as they are staged (before the
-        // mutation models what the engine sees); for the staging cases the pin
-        // is the original, so the engine and the custodian agree it is wrong.
+        // The plan's pins, taken as the custodian staged the world.
+        let pins = w.pins();
         mutate(&w);
+        match defence {
+            Defence::PinnedFile => assert!(
+                !staged_identity_holds(&w.stage, &pins),
+                "{label}: the custodian's identity check must fail"
+            ),
+            Defence::InputShape => assert!(
+                !input_shape_holds(&w.input, w.entries.len()),
+                "{label}: the custodian's input-shape check must fail"
+            ),
+            Defence::EngineOnly => {
+                assert!(staged_identity_holds(&w.stage, &pins), "{label}");
+                assert!(input_shape_holds(&w.input, w.entries.len()), "{label}");
+            }
+        }
         let rendered = pii_eval_cli::render_worker_result(w.run(&CancelToken::new()));
         assert!(rendered.stdout.is_empty(), "{label}");
         assert_ne!(rendered.exit.code(), 0, "{label}");
@@ -450,4 +548,38 @@ fn forged_results_are_rejected_not_parsed_into_a_measurement() {
         Outcome::Rejected
     );
     assert_eq!(map_outcome(3, good, Domain::Pii, &p, 3).0, Outcome::Failed);
+}
+
+#[test]
+fn the_replica_maps_signal_exit_codes_and_the_two_kinds_of_staging_drift() {
+    let p = pii_protocol();
+    let good = br#"{"schema":"private-custodian.worker-result/1","domain":"pii","protocol":{"name":"pii-v1","version":"2"},"status":"complete","roster":{"expected":3,"observed":3,"failed":0}}"#;
+    // bwrap.rs run: 128 + signal is a signal death; 128 and 193 are plain exits.
+    for (code, reason) in [
+        (129, Reason::Signaled),
+        (137, Reason::Signaled),
+        (192, Reason::Signaled),
+        (128, Reason::NonZeroExit),
+        (193, Reason::NonZeroExit),
+        (1, Reason::NonZeroExit),
+    ] {
+        let (outcome, r, v) = map_outcome(code, good, Domain::Pii, &p, 3);
+        assert_eq!(
+            (outcome, r, v.is_none()),
+            (Outcome::Failed, reason, true),
+            "{code}"
+        );
+    }
+    // A source or staged copy that differs from the plan's pin is
+    // `identity_mismatch`; a staged copy that drifts AFTER staging is its own
+    // reason. Both are Rejected (dispatcher.rs `pins` and `staging.verify`).
+    assert_eq!(Reason::IdentityMismatch.as_str(), "identity_mismatch");
+    assert_eq!(
+        Reason::IdentityChangedAfterStaging.as_str(),
+        "identity_changed_after_staging"
+    );
+    assert_ne!(
+        Reason::IdentityMismatch.as_str(),
+        Reason::IdentityChangedAfterStaging.as_str()
+    );
 }

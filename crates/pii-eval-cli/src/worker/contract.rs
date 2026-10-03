@@ -178,8 +178,9 @@ pub trait StageLayoutAdapter: Send + Sync {
 pub trait BundleFormatAdapter: Send + Sync {
     /// Status of this adapter.
     fn status(&self) -> ContractStatus;
-    /// Extract `archive` into the new directory `dest` under the format's bounds.
-    fn extract(&self, archive: &Path, dest: &Path) -> Result<(), BundleError>;
+    /// Extract the bundle `bytes` into the new directory `dest` under the format's
+    /// bounds. The launcher passes the very bytes whose digest it checked.
+    fn extract(&self, bytes: &[u8], dest: &Path) -> Result<(), BundleError>;
 }
 
 /// Entry adapter (Q1): one entry is one authored case.

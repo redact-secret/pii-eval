@@ -184,9 +184,28 @@ jobs:
       - name: Install pinned toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - name: Build the test engine (feature worker-test-adapters; test code, not the engine artifact)
-        run: cargo build --release --locked -p pii-eval-cli --features worker-test-adapters --example worker_test_engine
-      - name: Run the flow (the controls must pass; no limit is ever loosened)
+      # The marker technique (docs/worker-job.md): the production binary, built WITHOUT the feature,
+      # must not contain the worker test adapters, and the test engine, built WITH it, must. The
+      # second check is the positive control: if the marker ever stops being linked into the test
+      # build, the first check would pass for the wrong reason, so this job fails instead.
+      - name: Build the production binary (no feature) and check it has no test adapters
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --release --locked -p pii-eval-cli
+          marker='pii-eval-worker-test-adapters'
+          if grep -aq -- "$marker" target/release/pii-eval; then
+            echo 'the release pii-eval contains the worker test adapters' >&2
+            exit 1
+          fi
+      - name: Build the test engine (feature worker-test-adapters; test code, not the engine artifact) and check the marker is in it
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --release --locked -p pii-eval-cli --features worker-test-adapters --example worker_test_engine
+          marker='pii-eval-worker-test-adapters'
+          grep -aq -- "$marker" target/release/examples/worker_test_engine
+      - name: Run the flow (the controls must pass; memory is the variable; the hang scenario has a 5 s wall and the sweep a longer budget)
         shell: bash
         env:
           # Node 22.23.3 linux-x64 as installed by actions/setup-node: pinned by digest, not only by version.

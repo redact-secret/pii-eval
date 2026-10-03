@@ -1,0 +1,748 @@
+{
+  "schema": "pii-eval-worker-e2e/1",
+  "replicaOf": {
+    "repository": "redact-secret/private-custodian",
+    "commit": "142db34dd4bc02903f47cba951a054351bb55fde",
+    "files": [
+      "crates/custodian-worker/src/bwrap.rs",
+      "crates/custodian-worker/src/sandbox.rs"
+    ]
+  },
+  "host": {
+    "kernel": "Linux 6.17.0-1022-azure",
+    "bwrap": "bubblewrap 0.9.0",
+    "cpus": 2,
+    "node": {
+      "version": "v22.23.3",
+      "sha256": "fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48"
+    },
+    "engine": {
+      "sha256": "c22f67384d054948dd847518ea414c4336105b6e6b487e634b3c482c3bb77ca0"
+    }
+  },
+  "profile": {
+    "cpuSeconds": 30,
+    "wallMs": 20000,
+    "storageBytes": 67108864,
+    "maxProcesses": 32,
+    "stdoutBytes": 65536,
+    "stderrBytes": 1048576,
+    "note": "the custodian normal profile with memory as the variable; no limit is loosened (the sweep alone gets a longer wall and cpu budget)"
+  },
+  "controls": {
+    "rlimitsApplied": {
+      "pass": true,
+      "requestedBytes": 536870912,
+      "observed": {
+        "soft": 536870912,
+        "hard": 536870912
+      }
+    },
+    "noCapabilities": {
+      "pass": true,
+      "capEff": "0000000000000000"
+    },
+    "egressDenied": {
+      "pass": true,
+      "probeConnectsOutsideTheSandbox": true,
+      "publicAddress": "BLOCKED",
+      "hostLoopback": "BLOCKED",
+      "hostListenerConnectionsFromTheSandbox": 0
+    },
+    "hostFilesAbsent": {
+      "pass": true
+    },
+    "envScrubbed": {
+      "pass": true,
+      "namesOutsideAllowlist": [],
+      "leakedCanaries": []
+    },
+    "scratchWritable": {
+      "pass": true
+    },
+    "writeOutsideScratchDenied": {
+      "pass": true
+    },
+    "visibleRoot": {
+      "entries": "bin dev lib lib64 proc sbin scratch usr"
+    },
+    "pass": true
+  },
+  "runs": [
+    {
+      "scenario": "normal",
+      "memMiB": 512,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 20000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 381,
+      "stdoutBytes": 172,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Partial",
+        "reason": "engine_partial",
+        "roster": {
+          "expected": 3,
+          "failed": 3,
+          "observed": 3
+        },
+        "aggregatesOk": false
+      },
+      "expected": {
+        "outcomes": [
+          "Partial",
+          "Failed",
+          "Rejected"
+        ],
+        "reasons": null
+      },
+      "violations": []
+    },
+    {
+      "scenario": "normal",
+      "memMiB": 1024,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 20000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 185,
+      "stdoutBytes": 172,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Success",
+        "reason": "completed",
+        "roster": {
+          "expected": 3,
+          "failed": 0,
+          "observed": 3
+        },
+        "aggregatesOk": true
+      },
+      "expected": {
+        "outcomes": [
+          "Success"
+        ],
+        "reasons": [
+          "completed"
+        ]
+      },
+      "violations": []
+    },
+    {
+      "scenario": "normal",
+      "memMiB": 1536,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 20000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 202,
+      "stdoutBytes": 172,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Success",
+        "reason": "completed",
+        "roster": {
+          "expected": 3,
+          "failed": 0,
+          "observed": 3
+        },
+        "aggregatesOk": true
+      },
+      "expected": {
+        "outcomes": [
+          "Success"
+        ],
+        "reasons": [
+          "completed"
+        ]
+      },
+      "violations": []
+    },
+    {
+      "scenario": "population-mismatch",
+      "memMiB": 1024,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 20000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 4,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 101,
+      "stdoutBytes": 0,
+      "engineReason": "population-binding-mismatch",
+      "custodian": {
+        "outcome": "Failed",
+        "reason": "non_zero_exit",
+        "roster": null,
+        "aggregatesOk": false
+      },
+      "expected": {
+        "outcomes": [
+          "Failed"
+        ],
+        "reasons": [
+          "non_zero_exit"
+        ]
+      },
+      "violations": []
+    },
+    {
+      "scenario": "run-class-mismatch",
+      "memMiB": 1024,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 20000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 4,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 8,
+      "stdoutBytes": 0,
+      "engineReason": "run-class-mismatch",
+      "custodian": {
+        "outcome": "Failed",
+        "reason": "non_zero_exit",
+        "roster": null,
+        "aggregatesOk": false
+      },
+      "expected": {
+        "outcomes": [
+          "Failed"
+        ],
+        "reasons": [
+          "non_zero_exit"
+        ]
+      },
+      "violations": []
+    },
+    {
+      "scenario": "wrong-bundle-digest",
+      "memMiB": 1024,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 20000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 4,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 12,
+      "stdoutBytes": 0,
+      "engineReason": "candidate-bundle-digest-mismatch",
+      "custodian": {
+        "outcome": "Failed",
+        "reason": "non_zero_exit",
+        "roster": null,
+        "aggregatesOk": false
+      },
+      "expected": {
+        "outcomes": [
+          "Failed"
+        ],
+        "reasons": [
+          "non_zero_exit"
+        ]
+      },
+      "violations": []
+    },
+    {
+      "scenario": "wrong-tree-digest",
+      "memMiB": 1024,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 20000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 4,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 105,
+      "stdoutBytes": 0,
+      "engineReason": "package-tree-digest-mismatch",
+      "custodian": {
+        "outcome": "Failed",
+        "reason": "non_zero_exit",
+        "roster": null,
+        "aggregatesOk": false
+      },
+      "expected": {
+        "outcomes": [
+          "Failed"
+        ],
+        "reasons": [
+          "non_zero_exit"
+        ]
+      },
+      "violations": []
+    },
+    {
+      "scenario": "wrong-runtime-digest",
+      "memMiB": 1024,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 20000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 4,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 101,
+      "stdoutBytes": 0,
+      "engineReason": "runtime-digest-mismatch",
+      "custodian": {
+        "outcome": "Failed",
+        "reason": "non_zero_exit",
+        "roster": null,
+        "aggregatesOk": false
+      },
+      "expected": {
+        "outcomes": [
+          "Failed"
+        ],
+        "reasons": [
+          "non_zero_exit"
+        ]
+      },
+      "violations": []
+    },
+    {
+      "scenario": "stale-job",
+      "memMiB": 1024,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 20000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 4,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 103,
+      "stdoutBytes": 0,
+      "engineReason": "entries-listing-mismatch",
+      "custodian": {
+        "outcome": "Failed",
+        "reason": "non_zero_exit",
+        "roster": null,
+        "aggregatesOk": false
+      },
+      "expected": {
+        "outcomes": [
+          "Failed"
+        ],
+        "reasons": [
+          "non_zero_exit"
+        ]
+      },
+      "violations": []
+    },
+    {
+      "scenario": "scanner-crash",
+      "memMiB": 1024,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 20000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 33,
+      "stdoutBytes": 172,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Partial",
+        "reason": "engine_partial",
+        "roster": {
+          "expected": 3,
+          "failed": 3,
+          "observed": 3
+        },
+        "aggregatesOk": false
+      },
+      "expected": {
+        "outcomes": [
+          "Partial"
+        ],
+        "reasons": [
+          "engine_partial"
+        ]
+      },
+      "violations": []
+    },
+    {
+      "scenario": "scanner-hang",
+      "memMiB": 1024,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 5000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": null,
+        "signal": "SIGKILL",
+        "timedOut": true,
+        "outputLimit": false
+      },
+      "elapsedMs": 5006,
+      "stdoutBytes": 0,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Failed",
+        "reason": "timeout",
+        "roster": null,
+        "aggregatesOk": false
+      },
+      "expected": {
+        "outcomes": [
+          "Failed"
+        ],
+        "reasons": [
+          "timeout"
+        ]
+      },
+      "violations": []
+    },
+    {
+      "scenario": "staged-file-tampered",
+      "memMiB": 1024,
+      "entries": 3,
+      "quotas": {
+        "cpuSeconds": 30,
+        "wallMs": 20000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": false,
+      "termination": null,
+      "elapsedMs": null,
+      "stdoutBytes": 0,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Rejected",
+        "reason": "identity_mismatch",
+        "roster": null,
+        "aggregatesOk": false
+      },
+      "expected": {
+        "outcomes": [
+          "Rejected"
+        ],
+        "reasons": [
+          "identity_mismatch"
+        ]
+      },
+      "violations": []
+    }
+  ],
+  "sweep": [
+    {
+      "scenario": "normal",
+      "memMiB": 1024,
+      "entries": 20,
+      "quotas": {
+        "cpuSeconds": 120,
+        "wallMs": 60000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 203,
+      "stdoutBytes": 174,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Success",
+        "reason": "completed",
+        "roster": {
+          "expected": 20,
+          "failed": 0,
+          "observed": 20
+        },
+        "aggregatesOk": true
+      },
+      "sweep": true
+    },
+    {
+      "scenario": "normal",
+      "memMiB": 1536,
+      "entries": 20,
+      "quotas": {
+        "cpuSeconds": 120,
+        "wallMs": 60000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 202,
+      "stdoutBytes": 174,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Success",
+        "reason": "completed",
+        "roster": {
+          "expected": 20,
+          "failed": 0,
+          "observed": 20
+        },
+        "aggregatesOk": true
+      },
+      "sweep": true
+    },
+    {
+      "scenario": "normal",
+      "memMiB": 1024,
+      "entries": 100,
+      "quotas": {
+        "cpuSeconds": 120,
+        "wallMs": 60000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 267,
+      "stdoutBytes": 176,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Success",
+        "reason": "completed",
+        "roster": {
+          "expected": 100,
+          "failed": 0,
+          "observed": 100
+        },
+        "aggregatesOk": true
+      },
+      "sweep": true
+    },
+    {
+      "scenario": "normal",
+      "memMiB": 1536,
+      "entries": 100,
+      "quotas": {
+        "cpuSeconds": 120,
+        "wallMs": 60000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 266,
+      "stdoutBytes": 176,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Success",
+        "reason": "completed",
+        "roster": {
+          "expected": 100,
+          "failed": 0,
+          "observed": 100
+        },
+        "aggregatesOk": true
+      },
+      "sweep": true
+    },
+    {
+      "scenario": "normal",
+      "memMiB": 1024,
+      "entries": 400,
+      "quotas": {
+        "cpuSeconds": 120,
+        "wallMs": 60000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 531,
+      "stdoutBytes": 176,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Success",
+        "reason": "completed",
+        "roster": {
+          "expected": 400,
+          "failed": 0,
+          "observed": 400
+        },
+        "aggregatesOk": true
+      },
+      "sweep": true
+    },
+    {
+      "scenario": "normal",
+      "memMiB": 1536,
+      "entries": 400,
+      "quotas": {
+        "cpuSeconds": 120,
+        "wallMs": 60000,
+        "storageBytes": 67108864,
+        "maxProcesses": 32,
+        "stdoutBytes": 65536,
+        "stderrBytes": 1048576
+      },
+      "ran": true,
+      "termination": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "outputLimit": false
+      },
+      "elapsedMs": 513,
+      "stdoutBytes": 176,
+      "engineReason": null,
+      "custodian": {
+        "outcome": "Success",
+        "reason": "completed",
+        "roster": {
+          "expected": 400,
+          "failed": 0,
+          "observed": 400
+        },
+        "aggregatesOk": true
+      },
+      "sweep": true
+    }
+  ],
+  "violations": [],
+  "pass": true
+}

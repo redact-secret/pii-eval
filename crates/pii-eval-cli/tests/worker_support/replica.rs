@@ -134,6 +134,7 @@ pub enum Reason {
     Signaled,
     OutputLimit,
     IdentityMismatch,
+    IdentityChangedAfterStaging,
     IdentityChangedAfterExecution,
 }
 
@@ -152,6 +153,7 @@ impl Reason {
             Reason::Signaled => "signaled",
             Reason::OutputLimit => "output_limit",
             Reason::IdentityMismatch => "identity_mismatch",
+            Reason::IdentityChangedAfterStaging => "identity_changed_after_staging",
             Reason::IdentityChangedAfterExecution => "identity_changed_after_execution",
         }
     }
@@ -303,6 +305,11 @@ pub fn map_termination(
         Termination::TimedOut => (Outcome::Failed, Reason::Timeout, None),
         Termination::OutputLimit => (Outcome::Failed, Reason::OutputLimit, None),
         Termination::Signaled(_) => (Outcome::Failed, Reason::Signaled, None),
+        // bwrap.rs run: a child that died of a signal is reported by the shell wrapper
+        // as exit code 128 + signal, so 129..=192 is Signaled, not a plain exit.
+        Termination::Exited(c) if (129..=192).contains(c) => {
+            (Outcome::Failed, Reason::Signaled, None)
+        }
         Termination::Exited(c) if *c != 0 => (Outcome::Failed, Reason::NonZeroExit, None),
         Termination::Exited(_) => {
             match validate_result(stdout, domain, protocol, authorized_roster) {
@@ -403,6 +410,27 @@ pub fn hash_file(path: &Path) -> Option<String> {
 pub fn staged_identity_holds(stage: &Path, pins: &[(String, String)]) -> bool {
     pins.iter()
         .all(|(name, pin)| hash_file(&stage.join(name)).as_deref() == Some(pin.as_str()))
+}
+
+/// `Staging::verify_input_shape`: every entry directly under `input/` is a
+/// regular file with one link, and there are exactly `expected` of them.
+pub fn input_shape_holds(input: &Path, expected: usize) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    let Ok(rd) = std::fs::read_dir(input) else {
+        return false;
+    };
+    let mut n = 0;
+    for e in rd {
+        let Ok(e) = e else { return false };
+        let Ok(m) = std::fs::symlink_metadata(e.path()) else {
+            return false;
+        };
+        if !m.file_type().is_file() || m.nlink() != 1 {
+            return false;
+        }
+        n += 1;
+    }
+    n == expected
 }
 
 // --- aggregates ------------------------------------------------------------

@@ -8,13 +8,15 @@ custodian has and has not decided, with evidence:
 [custodian-contract-status.md](custodian-contract-status.md). The boundary and
 the responsibilities of each side: [custodian-boundary.md](custodian-boundary.md).
 The custodian's sandbox: [custodian-isolation-node.md](custodian-isolation-node.md)
-(the Node-under-`RLIMIT_AS` measurement). This repository did not run, and does
-not claim, any isolation.
+(the Node-under-`RLIMIT_AS` measurement). A REPLICA bubblewrap sandbox ran the whole flow
+in CI with a real Node runtime and synthetic data ("Real sandbox end to end" below); no
+production-host isolation, no custodian code and no real protected data were exercised, and
+this repository claims no isolation.
 
 This document is about a **delivery** of the engine to a sandbox the custodian
 provides. The artifact CI of this repository ([ci-artifacts.md](ci-artifacts.md))
-is a delivery path for the binary, not a sandbox, and protected evaluation never
-runs in GitHub Actions.
+is a delivery path for the binary, not a sandbox. No protected data is used in GitHub
+Actions: the CI flow carries the protected RUN CLASS on a synthetic population.
 
 ## Invocation
 
@@ -58,7 +60,10 @@ Each step before the next; no protected entry is read before step 6.
 
 1. Every adapter slot must hold an adapter the policy admits, else
    `contract-not-final: <slot>` (exit 6) and **nothing is touched, not even the
-   job file** (`worker_default.rs`).
+   job file** (`worker_default.rs`). The cancellation token is checked between the
+   steps below, not only before the run; the extracted packages and the executor's
+   scratch are removed on every exit path (only the run documents of a committed run
+   stay, until the sandbox discards scratch).
 2. Read the job: strict JSON, closed shape, at most 1 MiB, domain `pii`,
    protocol `pii-v1` version `2` (the contracts' `PROTOCOL_ID` and
    `PROTOCOL_VERSION`), `roster == entries.len()`, between 1 and 10 000 entries,
@@ -131,7 +136,7 @@ uses these (`5` is never used: a scanner failure is a result, not an exit):
 | 4 | an identity, digest, binding, population or run-class mismatch | nothing | `Failed` |
 | 6 | `contract-not-final`; refused limits; unusable adapter; no signal handler | nothing | `Failed` |
 | 7 | the output could not be produced: write failure, extraction failure, a result or aggregates document that is over its bound, violates the roster, carries an invalid label or could not be delivered | nothing | `Failed` |
-| 8 | cancelled (SIGINT, SIGTERM, SIGHUP): scanner trees killed, scratch removed | nothing | `Failed` or `Cancelled` (its own supervisor) |
+| 8 | cancelled (SIGINT, SIGTERM, SIGHUP): scanner trees killed, the executor's scratch and the extracted packages removed | nothing | `Failed` or `Cancelled` (its own supervisor) |
 | 1 | an internal defect, including a document this engine built that failed its own verification | nothing | `Failed` |
 
 Exit 9 (protected context) is not used: the custodian's job document and the
@@ -297,9 +302,14 @@ production wiring. Only the Rust API (`worker::launch::run_worker_job` with
    refused (`worker_job.rs`, `publishing_all_ten_metrics_over_a_case_roster...`).
 2. **A partial result cannot become a receipt.** The custodian's
    `InternalReceipt` accepts `Partial` only with `observed < expected`; a failed
-   measurement here has `observed == expected` and `failed > 0` (the only form its
-   `validate_result` accepts for a clean-exit failure). Its documents already say
-   such a result is a private failure record (`worker-isolation.md` section 7).
+   measurement here has `observed == expected` and `failed > 0`. That is the form
+   THIS engine chose, not the only one the custodian accepts: its `validate_result`
+   also accepts `partial` with `observed < expected` and `failed <= observed`, which
+   `InternalReceipt::validate` accepts too. Which form an engine should report when
+   a scanner fails (for example `observed` = entries actually measured) is an open
+   design option for the custodian discussion; the docs of the custodian already say
+   an engine-reported `Partial` with `observed == expected` is a private failure
+   record (`worker-isolation.md` section 7).
 3. **Aggregates delivery (Q2)** and **the stage layout (Q9)**, **bundle (Q4)**,
    **entry (Q1)** and **labels (Q3)**: the proposals above, or others.
 
@@ -350,27 +360,60 @@ environment, writable scratch) run first and must pass.
 | Scenario (memory) | Expected custodian outcome |
 | --- | --- |
 | `normal` (1024, 1536 MiB) | `Success`, `completed`, `observed == expected`, `failed 0`, aggregates decode |
-| `normal` (512 MiB, the custodian's test profile) | **never `Success`** (Partial, Failed or Rejected): the Q7 conflict reproduced end to end; no limit is loosened to avoid it |
-| `population-mismatch`, `run-class-mismatch`, `wrong-bundle-digest`, `wrong-tree-digest`, `wrong-runtime-digest`, `stale-job` (1024 MiB) | `Failed` `non_zero_exit`, empty stdout, the engine's own reason (`population-binding-mismatch`, `run-class-mismatch`, `candidate-bundle-digest-mismatch`, `package-tree-digest-mismatch`, `runtime-digest-mismatch`, `entries-listing-mismatch`), before any entry is read |
+| `normal` (512 MiB, the custodian's test profile) | `Partial`, `engine_partial`, every entry failed (pinned, not a list of acceptable outcomes): the Q7 conflict reproduced end to end; no limit is loosened to avoid it. A Node start probe at 512 MiB in the same run must fail, and its sanitized V8 message is in the report |
+| `population-mismatch`, `run-class-mismatch`, `wrong-bundle-digest`, `wrong-tree-digest`, `wrong-runtime-digest`, `stale-job` (1024 MiB) | `Failed` `non_zero_exit`, empty stdout, the engine's own reason (`population-binding-mismatch`, `run-class-mismatch`, `candidate-bundle-digest-mismatch`, `package-tree-digest-mismatch`, `runtime-digest-mismatch`, `entries-listing-mismatch`). The bundle, tree and runtime digests and the run class are checked before any entry is read; `stale-job` reads only the directory listing; `population-mismatch` is found at step 7, after the entries were read and validated |
 | `scanner-crash` (a runtime that dies) | `Partial` `engine_partial`, every entry failed |
-| `scanner-hang` (wall clock 5 s, the only shortened quota) | `Failed` `timeout` |
-| `staged-file-tampered` (a staged file differs from its pin) | `Rejected` `identity_mismatch`, the worker never starts |
+| `scanner-hang` (wall clock 5 s) | `Failed` `timeout`. The sandbox only sees that the worker did not finish: it cannot tell an engine hang from a scanner hang |
+| `staged-file-tampered` (the file to stage differs from the plan's pin) | `Rejected` `identity_mismatch`, the worker never starts |
+| `staged-copy-drift` (a staged copy changes after staging) | `Rejected` `identity_changed_after_staging` (a different custodian reason), the worker never starts |
+
+The replica also maps exit codes 129 to 192 to `Signaled` (bwrap.rs `run`: 128 plus
+the signal) and more than 1 MiB of stderr to `output_limit` (sandbox.rs `supervise`).
 
 A population sweep (20, 100 and 400 entries at 1024 and 1536 MiB, with a longer
-wall and cpu budget) **records** whether the address-space need grows with the
-population; nothing is asserted about growth. The report
-(`pii-eval-worker-e2e/1`) is uploaded by the job and its summary is written to the
-job summary. Measured numbers are in
-[custodian-isolation-node.md](custodian-isolation-node.md).
+wall and cpu budget) **only records** that those runs ended as they did. It measures no
+`VmPeak`, searches no boundary and asserts nothing about how the address-space need
+grows: the entries are clones of three tiny synthetic cases.
 
-**What this proves, and what it does not.** It shows how this engine behaves, in a
-sandbox built from a replica of the custodian's launcher vector, under the
-custodian's documented limits, with the real Node; and that the custodian's checks
-as replicated here accept the engine's outputs and map each failure as A6 says.
-It does not prove isolation on the production host (the custodian's startup
-self-check is that evidence), it does not run the custodian's code (the replica
-goes stale if the custodian changes), the aggregates channel is a test channel,
-and the data is the synthetic quickstart population cloned to N entries.
+### Measured: the first run of `worker-flow`
+
+Run [37128001013](https://github.com/redact-secret/pii-eval/actions/runs/37128001013), commit and run id are in the report
+(`docs/isolation/worker-flow.json`, schema `pii-eval-worker-e2e/1`; the report committed here
+predates the `ci` identity and the Node start probe, which later runs add). Host: Linux
+6.17.0-1022-azure, bubblewrap 0.9.0, 2 cpus, Node v22.23.3
+(`fde6a4bf...348f48`), synthetic data. Controls passed; no expectation was violated.
+
+| Scenario | Memory | Entries | Custodian outcome | Engine reason | Elapsed |
+| --- | --- | --- | --- | --- | --- |
+| `normal` | 512 MiB | 3 | `Partial` `engine_partial`, failed 3 of 3 | | 381 ms |
+| `normal` | 1024 MiB | 3 | `Success` `completed`, 3/3, failed 0 | | 185 ms |
+| `normal` | 1536 MiB | 3 | `Success` `completed`, 3/3, failed 0 | | 202 ms |
+| `population-mismatch` | 1024 MiB | 3 | `Failed` `non_zero_exit` | `population-binding-mismatch` | 101 ms |
+| `run-class-mismatch` | 1024 MiB | 3 | `Failed` `non_zero_exit` | `run-class-mismatch` | 8 ms |
+| `wrong-bundle-digest` | 1024 MiB | 3 | `Failed` `non_zero_exit` | `candidate-bundle-digest-mismatch` | 12 ms |
+| `wrong-tree-digest` | 1024 MiB | 3 | `Failed` `non_zero_exit` | `package-tree-digest-mismatch` | 105 ms |
+| `wrong-runtime-digest` | 1024 MiB | 3 | `Failed` `non_zero_exit` | `runtime-digest-mismatch` | 101 ms |
+| `stale-job` | 1024 MiB | 3 | `Failed` `non_zero_exit` | `entries-listing-mismatch` | 103 ms |
+| `scanner-crash` | 1024 MiB | 3 | `Partial` `engine_partial`, failed 3 of 3 | | 33 ms |
+| `scanner-hang` | 1024 MiB | 3 | `Failed` `timeout` | | 5006 ms |
+| `staged-file-tampered` | 1024 MiB | 3 | `Rejected` `identity_mismatch` (never ran) | | |
+
+Sweep (recorded only): 20, 100 and 400 entries each ended `Success` `completed` with
+`failed 0` at 1024 MiB and at 1536 MiB (elapsed 203/202 ms, 267/266 ms, 531/513 ms).
+
+**What this proves.** In a sandbox built from a replica of the custodian's launcher
+vector, on one hosted runner image and one Node build, this engine and the real Node
+completed the flow at 1024 and 1536 MiB for the sizes run (3, 20, 100 and 400 tiny
+synthetic entries), did not at 512 MiB (the custodian's test profile), and each
+mismatch, crash, hang and tampering produced the custodian outcome the replica of its
+checks maps (A6). **What it does not prove.** Nothing about isolation on a production
+host (the custodian's startup self-check is that evidence); nothing about the
+custodian's code (the sandbox vector and the validator are replicas written from
+private-custodian@142db34 and go stale if it changes); no boundary between 512 and
+1024 MiB beyond [custodian-isolation-node.md](custodian-isolation-node.md); no growth
+law for real corpora; the aggregates channel is a test channel; the data is the
+synthetic quickstart population cloned to N entries and the scanner is the inert fake
+package, not `@redact-secret/core`.
 
 ## What needs verification after deployment
 

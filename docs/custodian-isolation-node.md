@@ -130,9 +130,17 @@ fails closed: it reports `scanner-failure` and exits 5 (`docs/cli.md`).
 The measurement above runs the standalone quickstart. The custodian's whole worker flow (staged identities, the job document,
 the launcher, real Node as `scanner-0`, the result and aggregates, the outcome mapping) is run in the same replica sandbox by the CI job
 `worker-flow`, with the test engine `worker_test_engine` (the production `pii-eval` refuses until the contract is decided): see
-[worker-job.md](worker-job.md), "Real sandbox end to end". It asserts that the custodian's normal 512 MiB profile does **not** succeed, that
-1024 MiB and above does, and records how the need grows with the population. The numbers of the latest run are in the job's report
-(`pii-eval-worker-e2e/1`).
+[worker-job.md](worker-job.md), "Real sandbox end to end". It pins the custodian's normal 512 MiB profile to `Partial` (every entry
+failed) and requires `Success` at 1024 and 1536 MiB; a Node start probe at 512 MiB records why.
+
+First run ([37128001013](https://github.com/redact-secret/pii-eval/actions/runs/37128001013), report [isolation/worker-flow.json](isolation/worker-flow.json)): `normal` at 512 MiB ended `Partial`
+(`engine_partial`, failed 3 of 3); at 1024 and 1536 MiB it ended `Success` (3 of 3, failed 0); every mismatch scenario ended `Failed`
+`non_zero_exit` with the engine's specific reason; the crash ended `Partial`; the 5 s hang ended `Failed` `timeout`; a tampered staged file
+ended `Rejected` `identity_mismatch`. The population sweep (20, 100 and 400 entries, at 1024 and 1536 MiB) **only records** that those
+runs ended `Success`: it measures no `VmPeak`, searches no boundary, and says nothing about how the need grows with a real corpus (the entries
+are clones of three tiny synthetic cases). Only the sizes run (1024 and 1536 MiB for the whole flow) are claimed to succeed; the boundary
+measured above (800 MiB for Node alone) is unchanged by it. The runs use a replica of the custodian's launcher vector and of its checks, one runner
+image and one Node build, and an inert fake scanner package: they are evidence about this engine under those limits, not about a production host.
 
 ## Not claimed
 

@@ -25,27 +25,28 @@ fn example() -> PathBuf {
     static BUILT: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
     BUILT
         .get_or_init(|| {
+            // The profile directory this test binary lives in (`debug`, `release` or a
+            // custom profile) decides the profile the example is built with, so the
+            // test also works under `cargo test --release`.
+            let exe = std::env::current_exe().unwrap();
+            let profile_dir = exe.parent().and_then(|deps| deps.parent()).unwrap();
+            let profile_flags: Vec<String> = match profile_dir.file_name().and_then(|n| n.to_str())
+            {
+                Some("debug") => vec![],
+                Some("release") => vec!["--release".to_owned()],
+                Some(other) => vec!["--profile".to_owned(), other.to_owned()],
+                None => panic!("cannot tell the cargo profile"),
+            };
             let status = Command::new(option_env!("CARGO").unwrap_or("cargo"))
-                .args([
-                    "build",
-                    "--locked",
-                    "-p",
-                    "pii-eval-cli",
-                    "--features",
-                    "worker-test-adapters",
-                    "--example",
-                    "worker_test_engine",
-                ])
+                .args(["build", "--locked", "-p", "pii-eval-cli"])
+                .args(["--features", "worker-test-adapters"])
+                .args(["--example", "worker_test_engine"])
+                .args(&profile_flags)
                 .current_dir(repo_root())
                 .status()
                 .expect("cargo runs");
             assert!(status.success(), "building the example failed");
-            let exe = std::env::current_exe().unwrap();
-            let path = exe
-                .parent()
-                .and_then(|deps| deps.parent())
-                .unwrap()
-                .join("examples/worker_test_engine");
+            let path = profile_dir.join("examples/worker_test_engine");
             assert!(path.is_file(), "the example was not built at {path:?}");
             path
         })

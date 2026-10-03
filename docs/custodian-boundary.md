@@ -187,7 +187,7 @@ Open questions for the joint design (nothing below is decided):
 | Q4 | Candidate identity: the custodian's candidate id is the SHA-256 of the exact candidate bytes; the engine's candidate digest is the tree digest of a scanner package directory | A package is a tree, not one file; the mapping (or a packaged single artifact) must be agreed |
 | Q5 | Digest syntax: custodian `sha256:` plus hex with domain tags; engine bare hex with its own construction | Bridge code must not conflate them; never compare across syntaxes |
 | Q6 | One scanner per run: the engine artifact has per-scanner metrics, the aggregates have no scanner dimension | One scanner per run today (docs/cli.md known limits); several need an agreed axis |
-| Q7 | Does the isolation self-check cover pii-eval with Node? The engine needs Node and `ps`, and samples memory with `ps`; the custodian applies `RLIMIT_AS`, which a Node runtime may not tolerate | **Untested**; this repository ran no sandbox and makes no claim |
+| Q7 | Does the isolation self-check cover pii-eval with Node? The engine needs Node and `ps`, and samples memory with `ps`; the custodian applies `RLIMIT_AS`, which a Node runtime may not tolerate | Measured in a REPLICA bubblewrap sandbox with a real Node on a hosted runner, synthetic data: [custodian-isolation-node.md](custodian-isolation-node.md) and, for the whole worker flow, [worker-job.md](worker-job.md) ("Real sandbox end to end"). The custodian's own tests never ran Node; no production-host isolation was exercised |
 | Q8 | Defence in depth for a stale context file: an optional `notAfter` in a future `pii-eval-job-context/2`, or the custodian removing the file | Not needed for correctness while the custodian owns freshness |
 | Q9 | Where the staged scanner package, shim and Node live under `/stage` | The allowlist hashes artifacts by file; the engine pins a package tree |
 | Q10 | Adopt the custodian's rejection names (`population-binding-mismatch`, `run-class-mismatch`) in the launcher and the stub | Decided by the custodian; implemented in `worker-job`. The stub of `custodian_round_trip.rs` keeps the engine's vocabulary |
@@ -248,6 +248,6 @@ not a replacement for it, and it does not verify custodian envelopes.
 Limits: the custodian in `custodian_round_trip.rs` is a **stub** written here from the custodian's
 documents (the worker-job tests use a replica written from its source, not its code); it proves our side of the contract, not the custodian's code, and no
 private-custodian code or test ran. The projection mapping is a proposal. No
-sandbox, signature, transport or deployment was exercised. The checks over
+production-host isolation, signature, transport or deployment was exercised (a REPLICA bubblewrap sandbox ran the worker flow in CI, see worker-job.md). The checks over
 committed documents are a tripwire and do not replace a history scan before
 publication.

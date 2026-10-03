@@ -45,6 +45,7 @@ use crate::run::{RunConfig as PipelineConfig, RunError, RunRequest, run_and_writ
 use crate::scanners::build_adapter;
 use crate::status::{Exit, Failure, reason as cli_reason};
 use crate::worker::aggregates;
+use crate::worker::bundle;
 use crate::worker::contract::{
     AdapterPolicy, Adapters, BundleError, Resolved, WorkerLayout, staged,
 };
@@ -73,7 +74,7 @@ pub struct WorkerRequest<'a> {
 }
 
 /// A completed launch.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct WorkerOutput {
     /// The one result document to print.
     pub result: String,
@@ -87,6 +88,18 @@ pub struct WorkerOutput {
     pub aggregates: Option<Vec<u8>>,
     /// Directory of the run's documents (under the scratch directory).
     pub out_dir: PathBuf,
+}
+
+impl std::fmt::Debug for WorkerOutput {
+    /// Counters and identities only: never the aggregates bytes.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WorkerOutput")
+            .field("roster", &self.roster)
+            .field("scanner_status", &self.scanner_status)
+            .field("run_artifact_digest", &self.run_artifact_digest)
+            .field("aggregates_bytes", &self.aggregates.as_ref().map(Vec::len))
+            .finish()
+    }
 }
 
 fn layout_dir(p: &Path, what: &str) -> Result<PathBuf, Failure> {
@@ -215,6 +228,7 @@ pub fn run_worker_job(
     // 2. The job.
     let job = job::read_job(request.job)?;
 
+    ensure_live(cancel)?;
     // 3. The staged files.
     for name in [
         staged::ENGINE,
@@ -248,50 +262,54 @@ pub fn run_worker_job(
         return Err(reason::invalid(reason::SCANNER_COUNT_UNSUPPORTED, ""));
     }
 
-    // 5. Digests, extraction, tree and shim.
+    // 5. Digests, extraction, tree and shim. A bundle is read ONCE: the pinned
+    // digest is computed over, and the extraction reads, the same bytes.
+    ensure_live(cancel)?;
     stage::verify_file(
         &stage_dir.join(staged::ENGINE),
-        &config.engine,
-        reason::ENGINE_DIGEST_MISMATCH,
-        staged::ENGINE,
-    )?;
-    stage::verify_file(
-        &stage_dir.join(staged::ADAPTER),
-        config.adapter_bundle.as_custodian(),
-        reason::ADAPTER_BUNDLE_DIGEST_MISMATCH,
-        staged::ADAPTER,
-    )?;
-    stage::verify_file(
-        &stage_dir.join(staged::CANDIDATE),
-        config.candidate_bundle.as_custodian(),
-        reason::CANDIDATE_BUNDLE_DIGEST_MISMATCH,
-        staged::CANDIDATE,
+        stage::Pinned::Engine(&config.engine),
     )?;
     stage::verify_file(
         &stage_dir.join(staged::RUNTIME),
-        config.runtime.as_custodian(),
-        reason::RUNTIME_DIGEST_MISMATCH,
-        staged::RUNTIME,
+        stage::Pinned::Runtime(&config.runtime),
     )?;
     let work = scratch_dir.join(WORK_DIR);
     create_dir(&work)?;
+    let guard = WorkGuard::new(work.clone());
     let adapter_dir = work.join("adapter");
     let package_dir = work.join("candidate");
-    resolved
-        .bundle_format
-        .extract(&stage_dir.join(staged::ADAPTER), &adapter_dir)
-        .map_err(|e| bundle_failure("adapter", e))?;
-    resolved
-        .bundle_format
-        .extract(&stage_dir.join(staged::CANDIDATE), &package_dir)
-        .map_err(|e| bundle_failure("candidate", e))?;
+    for (name, pin, dir) in [
+        (
+            staged::ADAPTER,
+            stage::Pinned::AdapterBundle(&config.adapter_bundle),
+            &adapter_dir,
+        ),
+        (
+            staged::CANDIDATE,
+            stage::Pinned::CandidateBundle(&config.candidate_bundle),
+            &package_dir,
+        ),
+    ] {
+        let bytes = job::read_bounded(
+            &stage_dir.join(name),
+            bundle::MAX_BUNDLE_FILE_BYTES as usize,
+        )
+        .map_err(|_| reason::mismatch(reason::STAGED_FILE_INVALID, name))?;
+        stage::verify_bytes(&bytes, pin)?;
+        resolved
+            .bundle_format
+            .extract(&bytes, dir)
+            .map_err(|e| bundle_failure(name, e))?;
+    }
     let shim = adapter_dir.join(stage::SHIM_MEMBER);
     stage::verify_shim(&shim)?;
     stage::verify_tree(&package_dir, &config.tree)?;
+    ensure_live(cancel)?;
 
     // 6. The entries.
     let cases = read_entries(&resolved, &input_dir, &job, &config)?;
 
+    ensure_live(cancel)?;
     // 7. The snapshot and its bindings.
     let mut snapshot = CorpusSnapshot::unsealed(CorpusSnapshotBody {
         population: config.header_population.clone(),
@@ -329,6 +347,7 @@ pub fn run_worker_job(
         ));
     }
 
+    ensure_live(cancel)?;
     // 8. The adapter; its plan must equal the manifest's.
     let scanner_config = ScannerConfig {
         node: None,
@@ -354,9 +373,7 @@ pub fn run_worker_job(
     }
 
     // 9. The same pipeline as `pii-eval run`; every file under scratch.
-    if cancel.is_cancelled() {
-        return Err(Failure::new(Exit::Cancelled, cli_reason::CANCELLED));
-    }
+    ensure_live(cancel)?;
     let run_scratch = work.join("run");
     create_dir(&run_scratch)?;
     let executor = ExecutorConfig {
@@ -398,6 +415,7 @@ pub fn run_worker_job(
         Err(e) => return Err(pipeline_failure(e)),
     };
     output.commit();
+    guard.keep_out();
 
     // 10. The result and the aggregates.
     let artifact = &out.assembled.artifact;
@@ -448,6 +466,48 @@ pub fn run_worker_job(
         aggregates: delivered,
         out_dir,
     })
+}
+
+/// Removes what the launcher created in scratch on EVERY exit path: the extracted
+/// packages and the executor's scratch always; the run documents (`out`) are kept
+/// only after a committed run, and only until the sandbox discards scratch.
+struct WorkGuard {
+    dir: PathBuf,
+    keep_out: std::cell::Cell<bool>,
+}
+
+impl WorkGuard {
+    fn new(dir: PathBuf) -> Self {
+        Self {
+            dir,
+            keep_out: std::cell::Cell::new(false),
+        }
+    }
+
+    fn keep_out(&self) {
+        self.keep_out.set(true);
+    }
+}
+
+impl Drop for WorkGuard {
+    fn drop(&mut self) {
+        for name in ["adapter", "candidate", "run"] {
+            let _ = std::fs::remove_dir_all(self.dir.join(name));
+        }
+        if !self.keep_out.get() {
+            let _ = std::fs::remove_dir_all(self.dir.join("out"));
+        }
+        // Succeeds only when nothing is left (kept documents stay).
+        let _ = std::fs::remove_dir(&self.dir);
+    }
+}
+
+fn ensure_live(cancel: &CancelToken) -> Result<(), Failure> {
+    if cancel.is_cancelled() {
+        Err(Failure::new(Exit::Cancelled, cli_reason::CANCELLED))
+    } else {
+        Ok(())
+    }
 }
 
 fn create_dir(path: &Path) -> Result<(), Failure> {

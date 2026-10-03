@@ -27,7 +27,7 @@
 //! mode 0700, every file 0600 (0700 when executable).
 
 use std::collections::BTreeSet;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, Read, Write};
 use std::path::Path;
 
 use pii_eval_contracts::{ParseLimits, Sha256Digest, parse_strict};
@@ -250,11 +250,32 @@ fn create_private_dir(path: &Path, recursive: bool) -> std::io::Result<()> {
     b.create(path)
 }
 
-/// Extract `archive` into the NEW directory `dest`. On any error the partial
-/// destination is removed. Reads the archive once, in order.
-pub fn extract(archive: &Path, dest: &Path) -> Result<(), BundleError> {
+/// Largest bundle file: the header bound plus the member bound plus the framing.
+pub const MAX_BUNDLE_FILE_BYTES: u64 = MAX_TOTAL_BYTES + MAX_HEADER_BYTES as u64 + 64;
+
+/// Read a bundle file once, bounded. The launcher hashes THESE bytes and extracts
+/// THESE bytes, so the pinned digest binds exactly what is extracted.
+pub fn read_file(archive: &Path) -> Result<Vec<u8>, BundleError> {
     let file = std::fs::File::open(archive).map_err(|_| BundleError::Malformed)?;
-    let mut r = BufReader::new(file);
+    let mut bytes = Vec::new();
+    file.take(MAX_BUNDLE_FILE_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| BundleError::Malformed)?;
+    if bytes.len() as u64 > MAX_BUNDLE_FILE_BYTES {
+        return Err(BundleError::Limit);
+    }
+    Ok(bytes)
+}
+
+/// [`extract_bytes`] over a file (one read).
+pub fn extract(archive: &Path, dest: &Path) -> Result<(), BundleError> {
+    extract_bytes(&read_file(archive)?, dest)
+}
+
+/// Extract the bundle `bytes` into the NEW directory `dest`. On any error the
+/// partial destination is removed.
+pub fn extract_bytes(bytes: &[u8], dest: &Path) -> Result<(), BundleError> {
+    let mut r = std::io::Cursor::new(bytes);
     if read_line(&mut r, MAGIC.len())? != MAGIC {
         return Err(BundleError::Malformed);
     }

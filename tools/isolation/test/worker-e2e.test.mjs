@@ -6,9 +6,12 @@ import { describe, it } from 'node:test';
 import { buildArgv } from '../bwrap-argv.mjs';
 import {
   SCENARIOS,
+  PROBE_MEM_MIB,
   SUCCESS_FROM_MIB,
   aggregatesOf,
   checkExpectation,
+  checkProbe,
+  ciIdentity,
   engineReasonOf,
   expectationFor,
   identityMismatches,
@@ -16,6 +19,7 @@ import {
   quotasFor,
   reportRow,
   runPlan,
+  stageScenarioOf,
   summaryMarkdown,
   sweepPlan,
   terminationArg,
@@ -37,6 +41,8 @@ describe('the expectation table', () => {
     const low = expectationFor('normal', 512);
     assert.equal(low.notSuccess, true);
     assert.ok(!low.outcomes.includes('Success'));
+    // Pinned, not a loose list: Partial, every entry failed.
+    assert.deepEqual([low.outcomes, low.reasons, low.allFailed], [['Partial'], ['engine_partial'], true]);
     // The 512 MiB run is part of the plan: the Q7 conflict is reproduced end to end, never papered over.
     assert.ok(runPlan().some((p) => p.scenario === 'normal' && p.memMiB === 512));
   });
@@ -56,6 +62,11 @@ describe('the expectation table', () => {
     assert.deepEqual(expectationFor('scanner-crash', 1024).outcomes, ['Partial']);
     assert.deepEqual(expectationFor('scanner-hang', 1024).reasons, ['timeout']);
     assert.deepEqual([expectationFor('staged-file-tampered', 1024).ran, expectationFor('staged-file-tampered', 1024).outcomes], [false, ['Rejected']]);
+    // Two different custodian reasons: the source differs from the plan's pin; a staged copy drifts after staging.
+    assert.deepEqual(expectationFor('staged-file-tampered', 1024).reasons, ['identity_mismatch']);
+    assert.deepEqual(expectationFor('staged-copy-drift', 1024).reasons, ['identity_changed_after_staging']);
+    assert.equal(stageScenarioOf('staged-copy-drift'), 'normal');
+    assert.equal(stageScenarioOf('scanner-crash'), 'scanner-crash');
   });
 
   it('never loosens a quota: only the hang scenario shortens the wall clock', () => {
@@ -88,7 +99,9 @@ describe('checkExpectation', () => {
     assert.ok(checkExpectation(e, success).some((v) => v.includes('succeeded below')));
     const failed = { ran: true, outcome: 'Partial', reason: 'engine_partial', roster: { expected: 3, observed: 3, failed: 3 }, aggregatesOk: false, stdoutBytes: 190, exitCode: 0 };
     assert.deepEqual(checkExpectation(e, failed), []);
-    assert.deepEqual(checkExpectation(e, { ...failed, outcome: 'Failed', reason: 'signaled', roster: null }), []);
+    // Anything else below the boundary is now a violation: the expectation is pinned to Partial.
+    assert.ok(checkExpectation(e, { ...failed, outcome: 'Failed', reason: 'signaled', roster: null }).length > 0);
+    assert.ok(checkExpectation(e, { ...failed, roster: { expected: 3, observed: 3, failed: 1 } }).length > 0);
   });
 
   it('a refusal must print nothing, exit non-zero and name the engine reason', () => {
@@ -125,6 +138,20 @@ describe('termination, identity and output parsing', () => {
     assert.equal(aggregatesOf('pii-eval-worker-e2e-aggregates {"a":1}\n'), '{"a":1}');
     assert.equal(aggregatesOf('pii-eval-worker-e2e-aggregates {}\npii-eval-worker-e2e-aggregates {}\n'), null);
     assert.equal(aggregatesOf(''), null);
+  });
+});
+
+describe('the Node start probe and the report identity', () => {
+  it('must fail at the custodian test profile size', () => {
+    assert.equal(PROBE_MEM_MIB, 512);
+    assert.deepEqual(checkProbe({ started: false }), []);
+    assert.equal(checkProbe({ started: true }).length, 1);
+  });
+
+  it('records only well-formed CI identifiers', () => {
+    assert.deepEqual(ciIdentity({ GITHUB_SHA: 'a'.repeat(40), GITHUB_RUN_ID: '37128001013', GITHUB_RUN_ATTEMPT: '1' }), { commit: 'a'.repeat(40), runId: '37128001013', runAttempt: '1' });
+    assert.deepEqual(ciIdentity({ GITHUB_SHA: 'nope', GITHUB_RUN_ID: '12 34' }), { commit: null, runId: null, runAttempt: null });
+    assert.deepEqual(ciIdentity({}), { commit: null, runId: null, runAttempt: null });
   });
 });
 

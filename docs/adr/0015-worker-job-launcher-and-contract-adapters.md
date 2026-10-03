@@ -88,6 +88,20 @@ The frozen table is reused. Scanner failures are results (exit 0), because the
 custodian never parses stdout of a non-zero exit (A6) and documents `Partial` for
 the clean-exit form.
 
+### D9. A feature-gated test engine and a CI job run the flow in a replica sandbox
+
+The production binary cannot run a job, so the whole flow in a real Linux bubblewrap sandbox
+with the real Node runtime is run by a TEST example,
+`crates/pii-eval-cli/examples/worker_test_engine.rs` (`required-features =
+["worker-test-adapters"]`: never built by `cargo build`, never in the engine artifact),
+driven by `tools/isolation/worker-e2e.mjs` in the CI job `worker-flow`
+(`.github/workflows/isolation.yml`). The sandbox is a replica of the custodian's launcher
+vector and the custodian side (identity checks, `validate_result`, the outcome mapping, the
+aggregates decode) is a replica; the job fails on any violated expectation. The marker
+technique that keeps test code out of the binary has a positive control (the test engine
+must contain the marker). Alternative rejected: a runtime switch in the production binary
+so that it could run in the sandbox itself (D2).
+
 ## Consequences
 
 - A release binary cannot run a worker job until the custodian decides the slots
@@ -97,5 +111,6 @@ the clean-exit form.
   named step. The default `cargo test --workspace` stays green without it.
 - The replica of the custodian's checks in the tests is written from its source at
   commit 142db34 and goes stale if that changes.
-- Not verified here: a real `bwrap` run, the real Node runtime under `RLIMIT_AS`,
-  the custodian's own code. See docs/worker-job.md.
+- Verified in CI (job `worker-flow`, run 37128001013): the flow in a REPLICA bubblewrap
+  sandbox with a real Node runtime and synthetic data. Not verified: production-host
+  isolation, the custodian's own code, any real protected data. See docs/worker-job.md.

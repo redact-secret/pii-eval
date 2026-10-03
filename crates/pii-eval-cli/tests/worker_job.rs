@@ -662,10 +662,160 @@ fn a_cancelled_job_exits_8_and_leaves_no_scanner_or_artifact() {
             .join("pii-eval-worker/out/run-artifact.json")
             .exists()
     );
-    // The executor removed its scratch directories.
-    let run_dir = w.scratch.join("pii-eval-worker/run");
-    assert_eq!(std::fs::read_dir(run_dir).unwrap().count(), 0);
+    // The executor removed its scratch directories and the launcher the rest:
+    // nothing it created is left in scratch.
+    assert!(!w.scratch.join("pii-eval-worker").exists());
     assert!(!w.scratch.join(channel_file()).exists());
+}
+
+fn scratch_is_clean(w: &World) -> bool {
+    !w.scratch.join("pii-eval-worker").exists()
+}
+
+#[test]
+fn the_extracted_packages_and_work_dirs_are_removed_on_every_exit_path() {
+    let node = node_or_return!();
+    // Success: the extracted adapter, candidate and executor scratch are gone;
+    // only the run documents stay (until the sandbox discards scratch).
+    let w = World::build("wj-clean-ok", &node, &Opts::default());
+    let out = w.run_ok();
+    let work = w.scratch.join("pii-eval-worker");
+    assert_eq!(list_dir(&work), ["out"]);
+    assert!(out.out_dir.join("run-artifact.json").is_file());
+    // A refusal after the extraction (population mismatch) leaves nothing.
+    let w = World::build("wj-clean-refusal", &node, &Opts::default());
+    w.edit_config(|c| c["population"]["digest"] = json!("0".repeat(64)));
+    assert_eq!(w.refusal().reason, reason::POPULATION_BINDING_MISMATCH);
+    assert!(scratch_is_clean(&w));
+    // A refusal at the tree check (the packages are already extracted).
+    let w = World::build("wj-clean-tree", &node, &Opts::default());
+    w.edit_config(|c| c["artifacts"]["candidate"]["treeDigest"] = json!("0".repeat(64)));
+    assert_eq!(w.refusal().reason, reason::PACKAGE_TREE_DIGEST_MISMATCH);
+    assert!(scratch_is_clean(&w));
+    // A scanner failure (partial result) keeps only the run documents.
+    let w = World::build(
+        "wj-clean-partial",
+        &node,
+        &Opts {
+            trigger: Some(CRASH),
+            ..Opts::default()
+        },
+    );
+    w.run_ok();
+    assert_eq!(list_dir(&w.scratch.join("pii-eval-worker")), ["out"]);
+}
+
+#[test]
+fn a_token_cancelled_between_the_steps_stops_the_launch_before_the_next_one() {
+    use pii_eval_cli::worker::contract::{
+        Adapters, BundleError, BundleFormatAdapter, ContractStatus,
+    };
+    use pii_eval_cli::worker::launch::{WorkerRequest, run_worker_job};
+    use pii_eval_cli::worker::test_adapters::*;
+    let node = node_or_return!();
+    // Cancelled while the packages are being extracted: the entries are never
+    // read (the launcher stops at the next step) and nothing is left in scratch.
+    struct CancelsAfterExtract(CancelToken);
+    impl BundleFormatAdapter for CancelsAfterExtract {
+        fn status(&self) -> ContractStatus {
+            ContractStatus::TestOnly
+        }
+        fn extract(&self, bytes: &[u8], dest: &std::path::Path) -> Result<(), BundleError> {
+            let r = TestBundle.extract(bytes, dest);
+            self.0.cancel();
+            r
+        }
+    }
+    let w = World::build("wj-cancel-mid", &node, &Opts::default());
+    // An unreadable entry would be refused (exit 3) if the entries were read.
+    let first = w.input.join(&w.entries[0]);
+    std::fs::remove_file(&first).unwrap();
+    std::fs::write(&first, b"{}").unwrap();
+    let token = CancelToken::new();
+    let adapters = Adapters::production()
+        .with_stage_layout(Box::new(TestLayout(w.layout())))
+        .with_bundle_format(Box::new(CancelsAfterExtract(token.clone())))
+        .with_entry_format(Box::new(TestEntry))
+        .with_aggregates_channel(Box::new(FileChannel { fail: false }))
+        .with_aggregate_labels(Box::new(TestLabels));
+    let f = run_worker_job(
+        &WorkerRequest {
+            job: &w.job,
+            adapters: &adapters,
+            policy: POLICY,
+        },
+        &token,
+    )
+    .unwrap_err();
+    assert_eq!((f.exit, f.reason), (Exit::Cancelled, cli_reason::CANCELLED));
+    assert!(scratch_is_clean(&w));
+    // A token cancelled before the launch stops it before the staged files are read.
+    let w = World::build("wj-cancel-pre2", &node, &Opts::default());
+    std::fs::remove_file(w.stage.join("config")).unwrap();
+    let token = CancelToken::new();
+    token.cancel();
+    let f = w.run(&token).unwrap_err();
+    assert_eq!((f.exit, f.reason), (Exit::Cancelled, cli_reason::CANCELLED));
+}
+
+#[test]
+fn the_bundle_adapter_receives_exactly_the_bytes_whose_digest_was_pinned() {
+    use pii_eval_cli::worker::contract::{
+        Adapters, BundleError, BundleFormatAdapter, ContractStatus,
+    };
+    use pii_eval_cli::worker::launch::{WorkerRequest, run_worker_job};
+    use pii_eval_cli::worker::test_adapters::*;
+    use std::sync::{Arc, Mutex};
+    let node = node_or_return!();
+    let w = World::build("wj-onebuf", &node, &Opts::default());
+    let seen: Arc<Mutex<Vec<String>>> = Arc::default();
+    struct Records(Arc<Mutex<Vec<String>>>);
+    impl BundleFormatAdapter for Records {
+        fn status(&self) -> ContractStatus {
+            ContractStatus::TestOnly
+        }
+        fn extract(&self, bytes: &[u8], dest: &std::path::Path) -> Result<(), BundleError> {
+            self.0.lock().unwrap().push(sha(bytes));
+            TestBundle.extract(bytes, dest)
+        }
+    }
+    let adapters = Adapters::production()
+        .with_stage_layout(Box::new(TestLayout(w.layout())))
+        .with_bundle_format(Box::new(Records(seen.clone())))
+        .with_entry_format(Box::new(TestEntry))
+        .with_aggregates_channel(Box::new(FileChannel { fail: false }))
+        .with_aggregate_labels(Box::new(TestLabels));
+    run_worker_job(
+        &WorkerRequest {
+            job: &w.job,
+            adapters: &adapters,
+            policy: POLICY,
+        },
+        &CancelToken::new(),
+    )
+    .unwrap();
+    let cfg: Value = serde_json::from_slice(&w.stage_bytes("config")).unwrap();
+    let pins = [
+        cfg["artifacts"]["adapter"]["bundleDigest"]
+            .as_str()
+            .unwrap()
+            .to_owned(),
+        cfg["artifacts"]["candidate"]["bundleDigest"]
+            .as_str()
+            .unwrap()
+            .to_owned(),
+    ];
+    assert_eq!(*seen.lock().unwrap(), pins);
+}
+
+#[test]
+fn the_launch_result_debug_never_prints_the_aggregates() {
+    let node = node_or_return!();
+    let w = World::build("wj-debug", &node, &Opts::default());
+    let out = w.run_ok();
+    let text = format!("{out:?}");
+    assert!(text.contains("aggregates_bytes"));
+    assert!(!text.contains("numerator") && !text.contains("overall"));
 }
 
 #[test]

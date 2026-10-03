@@ -47,8 +47,8 @@ impl BundleFormatAdapter for TestBundle {
     fn status(&self) -> ContractStatus {
         ContractStatus::TestOnly
     }
-    fn extract(&self, archive: &Path, dest: &Path) -> Result<(), BundleError> {
-        bundle::extract(archive, dest)
+    fn extract(&self, bytes: &[u8], dest: &Path) -> Result<(), BundleError> {
+        bundle::extract_bytes(bytes, dest)
     }
 }
 

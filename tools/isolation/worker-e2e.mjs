@@ -18,7 +18,11 @@
 //   4. REPLICA post-run identity re-hash (any drift is Rejected whatever the worker printed);
 //   5. `worker_test_engine validate`: the replica of validate_result, the outcome mapping
 //      (A6) and PrivateAggregates::decode.
-// No limit is ever loosened to make a run pass. The controls of the isolation measurement
+// No limit is ever loosened to make a run pass. Memory is the only variable in the `normal`
+// and mismatch scenarios; the hang scenario uses a 5 s wall clock (the only thing that may end
+// it) and the population sweep a longer cpu and wall budget (it records, it does not assert).
+// There is no protected data: the synthetic job carries the protected RUN CLASS.
+// The controls of the isolation measurement
 // (limits applied, no capabilities, no egress, no host files, scrubbed environment, writable
 // scratch) must pass first, or the run is void. The exit status is non-zero on any violated
 // expectation or failed control.
@@ -61,7 +65,17 @@ const REFUSALS = {
 };
 
 /** Every scenario the example can stage, in run order. */
-export const SCENARIOS = ['normal', ...Object.keys(REFUSALS), 'scanner-crash', 'scanner-hang', 'staged-file-tampered'];
+export const SCENARIOS = ['normal', ...Object.keys(REFUSALS), 'scanner-crash', 'scanner-hang', 'staged-file-tampered', 'staged-copy-drift'];
+
+/**
+ * The scenario `worker_test_engine stage` builds for a scenario of this table. `staged-copy-drift`
+ * is a harness-level scenario (a staged copy changes between staging and launch): the world is `normal`.
+ * `scanner-hang` cannot tell an engine hang from a scanner hang: the sandbox only sees that the
+ * worker did not finish within its wall clock.
+ */
+export function stageScenarioOf(scenario) {
+  return scenario === 'staged-copy-drift' ? 'normal' : scenario;
+}
 
 /** Quota overrides of a scenario (the wall clock of the hang scenario is the only thing that may end it). */
 export function quotasFor(scenario) {
@@ -78,7 +92,10 @@ export function expectationFor(scenario, memMiB) {
     if (memMiB >= SUCCESS_FROM_MIB) {
       return { ran: true, outcomes: ['Success'], reasons: ['completed'], aggregatesOk: true, rosterComplete: true };
     }
-    return { ran: true, outcomes: ['Partial', 'Failed', 'Rejected'], notSuccess: true, aggregatesOk: false };
+    // Pinned to what the first CI run showed and the Q7 measurement explains: Node cannot start, the
+    // scanner is unavailable, every entry is failed, the custodian settles Partial. The cause is recorded
+    // in the same report by the Node start probe at this size.
+    return { ran: true, outcomes: ['Partial'], reasons: ['engine_partial'], allFailed: true, notSuccess: true, aggregatesOk: false };
   }
   if (scenario in REFUSALS) {
     return { ran: true, outcomes: ['Failed'], reasons: ['non_zero_exit'], stdoutEmpty: true, nonZeroExit: true, engineReason: REFUSALS[scenario], aggregatesOk: false };
@@ -88,8 +105,12 @@ export function expectationFor(scenario, memMiB) {
       return { ran: true, outcomes: ['Partial'], reasons: ['engine_partial'], allFailed: true, aggregatesOk: false };
     case 'scanner-hang':
       return { ran: true, outcomes: ['Failed'], reasons: ['timeout'], aggregatesOk: false };
+    // The file the custodian would stage differs from the plan's pin (dispatcher.rs `pins`).
     case 'staged-file-tampered':
       return { ran: false, outcomes: ['Rejected'], reasons: ['identity_mismatch'] };
+    // A staged copy changes after staging, before launch (dispatcher.rs `staging.verify`).
+    case 'staged-copy-drift':
+      return { ran: false, outcomes: ['Rejected'], reasons: ['identity_changed_after_staging'] };
     default:
       throw new Error(`unknown scenario ${scenario}`);
   }
@@ -178,6 +199,9 @@ export function summaryMarkdown(r) {
     '',
     `Host: ${r.host.kernel}, ${r.host.bwrap}, Node ${r.host.node.version}. Replica of private-custodian@${r.replicaOf.commit.slice(0, 8)}; synthetic data only; the aggregates channel is a test channel.`,
     `Controls: **${r.controls.pass ? 'pass' : 'FAIL'}**. Violated expectations: **${r.violations.length}**.`,
+    r.nodeStartProbe
+      ? `Node alone at ${r.nodeStartProbe.memMiB} MiB: **${r.nodeStartProbe.started ? 'started' : 'did not start'}** (${r.nodeStartProbe.message || `exit ${r.nodeStartProbe.exitCode}`}).`
+      : 'Node start probe: not run.',
     '',
     '| scenario | memory | entries | custodian outcome | engine reason | violations |',
     '| --- | --- | --- | --- | --- | --- |',
@@ -229,8 +253,9 @@ export function makeWorkerRunner({ bwrap, roots }) {
       exitCode: r.status,
       signal: r.signal,
       timedOut: r.error?.code === 'ETIMEDOUT',
-      // stdout is bounded at 64 KiB by the dispatcher; one byte more is an output-limit kill.
-      outputLimit: r.error?.code === 'ENOBUFS' || Buffer.byteLength(stdout) > q.stdoutBytes,
+      // stdout is bounded at 64 KiB and stderr at 1 MiB by the dispatcher (sandbox.rs supervise);
+      // one byte more is an output-limit kill.
+      outputLimit: r.error?.code === 'ENOBUFS' || Buffer.byteLength(stdout) > q.stdoutBytes || Buffer.byteLength(String(r.stderr ?? '')) > q.stderrBytes,
       spawnError: r.error && r.error.code !== 'ETIMEDOUT' && r.error.code !== 'ENOBUFS' ? sanitize(r.error.message, 120) : null,
       stdout,
       stderr: String(r.stderr ?? ''),
@@ -258,14 +283,31 @@ function validateRun({ engine, dir, work, run, aggregates }) {
   return JSON.parse(execFileSync(engine, args, { encoding: 'utf8', maxBuffer: MIB }).trim());
 }
 
-/** One dispatcher round: stage, pre-check, run, post-check, validate. */
+/** Flip one byte of a staged file in place (a copy that drifts after staging). */
+function driftStagedFile(dir, name) {
+  const p = join(dir, 'stage', name);
+  chmodSync(p, 0o700);
+  const bytes = readFileSync(p);
+  bytes[bytes.length - 1] ^= 1;
+  writeFileSync(p, bytes);
+  chmodSync(p, 0o500);
+}
+
+/**
+ * One dispatcher round: stage, the identity check of the source against the plan's pins, (the staged
+ * copy is re-hashed once more before launch, dispatcher.rs `staging.verify`), run, re-hash after.
+ */
 export function dispatch({ engine, node, work, run, scenario, memMiB, entries, quotas }) {
-  const dir = stageWorld({ engine, node, work, scenario, entries });
+  const dir = stageWorld({ engine, node, work, scenario: stageScenarioOf(scenario), entries });
   try {
     const pins = JSON.parse(readFileSync(join(dir, 'pins.json'), 'utf8')).pins;
     const hash = hashStaged(join(dir, 'stage'));
     if (identityMismatches(pins, hash).length > 0) {
       return { ran: false, outcome: 'Rejected', reason: 'identity_mismatch', roster: null, aggregatesOk: false, stdoutBytes: 0 };
+    }
+    if (scenario === 'staged-copy-drift') driftStagedFile(dir, 'candidate');
+    if (identityMismatches(pins, hash).length > 0) {
+      return { ran: false, outcome: 'Rejected', reason: 'identity_changed_after_staging', roster: null, aggregatesOk: false, stdoutBytes: 0 };
     }
     const r = run('/stage/engine', ['--job', '/job/job.json'], { memMiB, quotas, dir });
     if (identityMismatches(pins, hash).length > 0) {
@@ -288,6 +330,43 @@ export function dispatch({ engine, node, work, run, scenario, memMiB, entries, q
     };
   } finally {
     // Each world holds a copy of Node (about 100 MiB): never keep more than one.
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** The memory of the Node start probe: the custodian's own test profile. */
+export const PROBE_MEM_MIB = 512;
+
+/** What the report records about where it ran (the commit and run of the CI job; null elsewhere). */
+export function ciIdentity(env) {
+  const pick = (k, re) => (typeof env[k] === 'string' && re.test(env[k]) ? env[k] : null);
+  return {
+    commit: pick('GITHUB_SHA', /^[0-9a-f]{40}$/),
+    runId: pick('GITHUB_RUN_ID', /^[0-9]{1,20}$/),
+    runAttempt: pick('GITHUB_RUN_ATTEMPT', /^[0-9]{1,6}$/),
+  };
+}
+
+/** The probe must FAIL at 512 MiB (the Q7 conflict); a start there would void the 512 MiB expectation. */
+export function checkProbe(probe) {
+  return probe.started ? ['Node started under the custodian test profile; the 512 MiB expectation is stale'] : [];
+}
+
+/** Start the staged Node alone (no engine) under `memMiB` and record how it ended, sanitized. */
+export function probeNodeStart({ engine, node, work, run, memMiB }) {
+  const dir = stageWorld({ engine, node, work, scenario: 'normal', entries: 3 });
+  try {
+    const r = run('/stage/scanner-0', ['-e', 'process.stdout.write(process.version)'], { memMiB, dir });
+    return {
+      memMiB,
+      started: r.exitCode === 0 && !r.timedOut && !r.signal && /^v\d+\./.test(r.stdout),
+      exitCode: r.exitCode,
+      signal: r.signal,
+      timedOut: r.timedOut,
+      // The V8 message (for example "Failed to reserve virtual memory for CodeRange"), printable ASCII only.
+      message: sanitize(r.stderr, 300),
+    };
+  } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 }
@@ -324,7 +403,12 @@ export async function main(argv) {
   const runs = [];
   const sweep = [];
   const violations = [];
+  let nodeStartProbe = null;
   if (controls.pass) {
+    // The cause of the 512 MiB result, in the same report: does the pinned Node start at all at that size?
+    nodeStartProbe = probeNodeStart({ engine: a.engine, node: a.node, work, run, memMiB: PROBE_MEM_MIB });
+    for (const x of checkProbe(nodeStartProbe)) violations.push(`node-start-probe@${PROBE_MEM_MIB}MiB: ${x}`);
+    process.stdout.write(`${JSON.stringify({ nodeStartProbe })}\n`);
     for (const p of runPlan()) {
       const quotas = quotasFor(p.scenario);
       const observed = dispatch({ engine: a.engine, node: a.node, work, run, ...p, quotas });
@@ -345,9 +429,11 @@ export async function main(argv) {
   const result = {
     schema: SCHEMA,
     replicaOf: REPLICA_OF,
+    ci: ciIdentity(process.env),
     host,
-    profile: { ...NORMAL, note: 'the custodian normal profile with memory as the variable; no limit is loosened (the sweep alone gets a longer wall and cpu budget)' },
+    profile: { ...NORMAL, note: 'the custodian normal profile; memory is the only variable in the normal and mismatch scenarios; the hang scenario has a 5 s wall clock and the sweep a longer cpu and wall budget; no limit is loosened to make a run pass' },
     controls,
+    nodeStartProbe,
     runs: runs.map((r) => ({ ...r, violations: r.violations ?? [] })),
     sweep,
     violations,

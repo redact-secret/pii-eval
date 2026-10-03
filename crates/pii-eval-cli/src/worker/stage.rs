@@ -22,7 +22,9 @@ use pii_eval_adapters::{ArtifactPin, sha256_of_tree};
 use pii_eval_contracts::Sha256Digest;
 
 use crate::status::Failure;
-use crate::worker::digest::{CustodianDigest, EngineDigest, TreeDigest};
+use crate::worker::digest::{
+    BundleDigest, CustodianDigest, EngineDigest, RuntimeDigest, TreeDigest,
+};
 use crate::worker::reason;
 
 /// File name of the shim inside the adapter bundle.
@@ -46,16 +48,75 @@ pub fn check_shape(path: &Path, slot: &str) -> Result<(), Failure> {
     Ok(())
 }
 
-/// Hash a staged file and compare with its pin; a difference is `mismatch`.
-pub fn verify_file(
-    path: &Path,
-    pin: &CustodianDigest,
-    mismatch: &'static str,
-    slot: &str,
-) -> Result<(), Failure> {
+/// A staged file with the pin of ITS slot. The variants take different digest
+/// types, so a bundle, runtime, engine or tree pin cannot be passed for another
+/// slot (and the reason of a mismatch is the slot's own):
+///
+/// ```compile_fail
+/// use pii_eval_cli::worker::digest::{BundleDigest, RuntimeDigest};
+/// use pii_eval_cli::worker::stage::Pinned;
+/// let bundle: BundleDigest = unimplemented!();
+/// let _ = Pinned::Runtime(&bundle); // a bundle digest is not a runtime digest
+/// ```
+///
+/// ```compile_fail
+/// use pii_eval_cli::worker::digest::TreeDigest;
+/// use pii_eval_cli::worker::stage::Pinned;
+/// let tree: TreeDigest = unimplemented!();
+/// let _ = Pinned::Engine(tree.as_engine()); // an engine-syntax digest is not a file digest
+/// ```
+#[derive(Debug, Clone, Copy)]
+pub enum Pinned<'a> {
+    /// `engine`.
+    Engine(&'a CustodianDigest),
+    /// The adapter bundle FILE.
+    AdapterBundle(&'a BundleDigest),
+    /// The candidate bundle FILE.
+    CandidateBundle(&'a BundleDigest),
+    /// The Node runtime file.
+    Runtime(&'a RuntimeDigest),
+}
+
+impl Pinned<'_> {
+    fn parts(&self) -> (&CustodianDigest, &'static str, &'static str) {
+        match self {
+            Pinned::Engine(d) => (d, reason::ENGINE_DIGEST_MISMATCH, "engine"),
+            Pinned::AdapterBundle(d) => (
+                d.as_custodian(),
+                reason::ADAPTER_BUNDLE_DIGEST_MISMATCH,
+                "adapter",
+            ),
+            Pinned::CandidateBundle(d) => (
+                d.as_custodian(),
+                reason::CANDIDATE_BUNDLE_DIGEST_MISMATCH,
+                "candidate",
+            ),
+            Pinned::Runtime(d) => (
+                d.as_custodian(),
+                reason::RUNTIME_DIGEST_MISMATCH,
+                "scanner-0",
+            ),
+        }
+    }
+}
+
+/// Hash a staged file (streamed) and compare with its pin.
+pub fn verify_file(path: &Path, pin: Pinned<'_>) -> Result<(), Failure> {
+    let (want, mismatch, slot) = pin.parts();
     let got = CustodianDigest::from_file(path)
         .map_err(|_| reason::mismatch(reason::STAGED_FILE_INVALID, slot))?;
-    if got == *pin {
+    if got == *want {
+        Ok(())
+    } else {
+        Err(reason::mismatch(mismatch, slot))
+    }
+}
+
+/// Compare the digest of bundle `bytes` already in memory with its pin. The
+/// caller extracts from the same bytes, so the pin binds what is extracted.
+pub fn verify_bytes(bytes: &[u8], pin: Pinned<'_>) -> Result<(), Failure> {
+    let (want, mismatch, slot) = pin.parts();
+    if CustodianDigest::from_file_bytes(bytes) == *want {
         Ok(())
     } else {
         Err(reason::mismatch(mismatch, slot))
