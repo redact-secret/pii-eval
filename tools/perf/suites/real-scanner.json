@@ -1,0 +1,262 @@
+{
+ "schema": "pii-eval-perf-suite/1",
+ "id": "real-scanner",
+ "description": "The real @redact-secret/core 0.1.0-beta.12 (opt-in): oracle adapter in-process against the Rust CLI over a process boundary, worker oversubscription, scanner startup.",
+ "trials": 5,
+ "warmupTrials": 1,
+ "innerRepeat": 3,
+ "cells": [
+  {
+   "id": "real-cases-000100",
+   "axis": "real-cases",
+   "trials": 5,
+   "workload": {
+    "id": "real-cases-000100",
+    "cases": 100,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "5af28d70f5fab1b9bba7517530de0de0e81698b5a1fd2a9dd0ca100adbac8cf7",
+   "measures": [
+    "oracle-real",
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 4,
+     "replays": 2
+    },
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 1,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "real-cases-000400",
+   "axis": "real-cases",
+   "trials": 5,
+   "workload": {
+    "id": "real-cases-000400",
+    "cases": 400,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "048aa9edcbf7233a6e6c790f2621b19ed6e324b9a4dca29b2a288432270edbf2",
+   "measures": [
+    "oracle-real",
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 4,
+     "replays": 2
+    },
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 1,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "real-cases-001600",
+   "axis": "real-cases",
+   "trials": 5,
+   "workload": {
+    "id": "real-cases-001600",
+    "cases": 1600,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "a9fa85e77167af4a7d2af81c2a3a104e4bcdd6f9a55b58381e5b0a265bff3d15",
+   "measures": [
+    "oracle-real",
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 4,
+     "replays": 2
+    },
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 1,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "real-cases-006400",
+   "axis": "real-cases",
+   "trials": 3,
+   "workload": {
+    "id": "real-cases-006400",
+    "cases": 6400,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "e219ef7fb7c305813975356ff12a46a0cd27ceca4a03169b64ac155429707fa5",
+   "measures": [
+    "oracle-real",
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 4,
+     "replays": 2
+    },
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 1,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "real-workers-000001",
+   "axis": "real-workers",
+   "trials": 3,
+   "workload": {
+    "id": "real-workers-000001",
+    "cases": 1600,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "61a5ae43b494dda043297fc5205f557a212d3d19a53e5182a5d6c5280b187494",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 1,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "real-workers-000002",
+   "axis": "real-workers",
+   "trials": 3,
+   "workload": {
+    "id": "real-workers-000002",
+    "cases": 1600,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "6a49cb6d3d18f68e3227c97da953da45a26b36472336223dcd85d2fed8f66ff2",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "real-workers-000004",
+   "axis": "real-workers",
+   "trials": 3,
+   "workload": {
+    "id": "real-workers-000004",
+    "cases": 1600,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "c72a18930d2ff67e2f03930eef07c87ff03541dde7d939cbb214b537ee151fb3",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 4,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "real-workers-000008",
+   "axis": "real-workers",
+   "trials": 3,
+   "workload": {
+    "id": "real-workers-000008",
+    "cases": 1600,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "00eb2f2ba704e9a8c196d37c1b07f290a7f34fec089630a6419f30574802bfbb",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 8,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "real-workers-000016",
+   "axis": "real-workers",
+   "trials": 3,
+   "workload": {
+    "id": "real-workers-000016",
+    "cases": 1600,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "a634a30790b3c2ec6ab80a9706469b6ee53a675feff4099f17b27904b59b118b",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 16,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "real-workers-000032",
+   "axis": "real-workers",
+   "trials": 3,
+   "workload": {
+    "id": "real-workers-000032",
+    "cases": 1600,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "f603a9a7ecd532f6dd2546e89be1f734f6a1ffee8872e965515ff8a2ccd50d20",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "released",
+     "workers": 32,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "real-scanner-released",
+   "axis": "real-scanner",
+   "trials": 3,
+   "workload": {
+    "id": "real-scanner-released",
+    "cases": 10,
+    "scanners": 1
+   },
+   "digest": "e7e2475c6d0316908f807807e20052c8d9a4bbe96cffe29994cce21b69c32d72",
+   "measures": [
+    {
+     "name": "scanner-rust",
+     "pin": "released",
+     "texts": 2000,
+     "sessions": 5
+    },
+    {
+     "name": "scanner-node",
+     "pin": "released",
+     "texts": 2000
+    }
+   ]
+  }
+ ]
+}

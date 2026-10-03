@@ -1,0 +1,970 @@
+{
+ "schema": "pii-eval-perf-suite/1",
+ "id": "scaling",
+ "description": "Evaluator scaling over frozen observations: oracle against Rust, increasing size per axis.",
+ "trials": 5,
+ "warmupTrials": 1,
+ "innerRepeat": 3,
+ "cells": [
+  {
+   "id": "cases-000100",
+   "axis": "cases",
+   "trials": 7,
+   "workload": {
+    "id": "cases-000100",
+    "cases": 100,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "12c5a4876dee17db8786adbc336c2b34c39f55b2c529f341c86feb25203af1ae",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "cases-000400",
+   "axis": "cases",
+   "trials": 7,
+   "workload": {
+    "id": "cases-000400",
+    "cases": 400,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "de4c1d9ba8060303ae9a811ac37b2abc3f3ee9e9dc346b1e8a78b96bb1e33be0",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "cases-001600",
+   "axis": "cases",
+   "trials": 5,
+   "workload": {
+    "id": "cases-001600",
+    "cases": 1600,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "007e52227a75da6c62df14f8420251de896f52ed7b0e909a7bf44d93dd09e4fa",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "cases-006400",
+   "axis": "cases",
+   "trials": 5,
+   "workload": {
+    "id": "cases-006400",
+    "cases": 6400,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "cdb934ddc6609192d8b0519d3a1adb83bbe25a38dc25fed786ec3cc08204aefe",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "cases-025600",
+   "axis": "cases",
+   "trials": 5,
+   "workload": {
+    "id": "cases-025600",
+    "cases": 25600,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "3f0327afad7912ebbf2d1d835e1f7d6a20824506754a9e5b0620ac7a9b3944b3",
+   "measures": [
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "scanners-000001",
+   "axis": "scanners",
+   "trials": 3,
+   "workload": {
+    "id": "scanners-000001",
+    "cases": 800,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "f7099105ffb840944410c6973a5d6e1816d96f2e24fc4886a0692845bc2d1a73",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "scanners-000002",
+   "axis": "scanners",
+   "trials": 3,
+   "workload": {
+    "id": "scanners-000002",
+    "cases": 800,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "9cb6ba599f2df23da9431a35ee90300eb156a72b854ffc2f066c17a9a893bbfa",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "scanners-000004",
+   "axis": "scanners",
+   "trials": 3,
+   "workload": {
+    "id": "scanners-000004",
+    "cases": 800,
+    "scanners": 4,
+    "findings": 1
+   },
+   "digest": "d8367186145834362db25c2ee9599c2e80cb7dec76450583c5c6697c740b5080",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "scanners-000008",
+   "axis": "scanners",
+   "trials": 3,
+   "workload": {
+    "id": "scanners-000008",
+    "cases": 800,
+    "scanners": 8,
+    "findings": 1
+   },
+   "digest": "4ee0b7d8da5e64d40fad6b759a006f52616d10f4cf8ec229509b7473a1600cd5",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "scanners-000016",
+   "axis": "scanners",
+   "trials": 3,
+   "workload": {
+    "id": "scanners-000016",
+    "cases": 800,
+    "scanners": 16,
+    "findings": 1
+   },
+   "digest": "3e0a74d4493eb016dea6bd73735431967e6e0d4b47ab5a744335b0e4d31fd49b",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "findings-000001",
+   "axis": "findings",
+   "trials": 3,
+   "workload": {
+    "id": "findings-000001",
+    "cases": 200,
+    "scanners": 2,
+    "findings": 1,
+    "padBytes": 1024
+   },
+   "digest": "24a066f80075d120e4e3a9639c7679df74149dbb362e12ba62445b05ce6c4f8f",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "findings-000004",
+   "axis": "findings",
+   "trials": 3,
+   "workload": {
+    "id": "findings-000004",
+    "cases": 200,
+    "scanners": 2,
+    "findings": 4,
+    "padBytes": 1024
+   },
+   "digest": "a5ab1867854a13b0fb012c99a9ca2cfaa26857d3d69d8061f39cbb3624caa022",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "findings-000016",
+   "axis": "findings",
+   "trials": 3,
+   "workload": {
+    "id": "findings-000016",
+    "cases": 200,
+    "scanners": 2,
+    "findings": 16,
+    "padBytes": 1024
+   },
+   "digest": "0c97cc079db6d06034cd97f0e535148624889d9a9424f80e60bd128673dd79a8",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "findings-000064",
+   "axis": "findings",
+   "trials": 3,
+   "workload": {
+    "id": "findings-000064",
+    "cases": 200,
+    "scanners": 2,
+    "findings": 64,
+    "padBytes": 1024
+   },
+   "digest": "4a5c0f8f2b68523166e13597312ea3f1847fd5b166fce7a571c48ae24eb44e51",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "findings-000256",
+   "axis": "findings",
+   "trials": 3,
+   "workload": {
+    "id": "findings-000256",
+    "cases": 200,
+    "scanners": 2,
+    "findings": 256,
+    "padBytes": 1024
+   },
+   "digest": "33b53ed633e8a6e02411b4d21e19f513b56e6a52e6b7ff434324b264077434bd",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "findings-001024",
+   "axis": "findings",
+   "trials": 3,
+   "workload": {
+    "id": "findings-001024",
+    "cases": 200,
+    "scanners": 2,
+    "findings": 1024,
+    "padBytes": 1024
+   },
+   "digest": "cad64248fe71f2a22653396d33fae72e8f494280df5507c44195b27b0866b366",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "language-ko000000",
+   "axis": "language",
+   "trials": 3,
+   "workload": {
+    "id": "language-ko000000",
+    "cases": 800,
+    "scanners": 2,
+    "findings": 1,
+    "koShare": 0
+   },
+   "digest": "2760b840b1294447112b66f139d8c356e6b86b84949a4fe91b1b0a6c8f03fa59",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "language-ko000025",
+   "axis": "language",
+   "trials": 3,
+   "workload": {
+    "id": "language-ko000025",
+    "cases": 800,
+    "scanners": 2,
+    "findings": 1,
+    "koShare": 25
+   },
+   "digest": "815135aaae4b1b1f3956c1c02be60552e7e848dcaa55d2e37a0d43519f39c220",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "language-ko000050",
+   "axis": "language",
+   "trials": 3,
+   "workload": {
+    "id": "language-ko000050",
+    "cases": 800,
+    "scanners": 2,
+    "findings": 1,
+    "koShare": 50
+   },
+   "digest": "c0720dc23618465672eee7b840b6d87931700728cce2f87a55f90333947ba167",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "language-ko000100",
+   "axis": "language",
+   "trials": 3,
+   "workload": {
+    "id": "language-ko000100",
+    "cases": 800,
+    "scanners": 2,
+    "findings": 1,
+    "koShare": 100
+   },
+   "digest": "befcaf542167227ffba432bd5739d3013322f5fb1b19e3e5fe3fbf576c539381",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "text-000000",
+   "axis": "text",
+   "trials": 3,
+   "workload": {
+    "id": "text-000000",
+    "cases": 100,
+    "scanners": 2,
+    "findings": 1,
+    "padBytes": 0
+   },
+   "digest": "630e536f3d34b327bb748cdd56393232357134de11ee48380ce45b86040dcb41",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "text-001024",
+   "axis": "text",
+   "trials": 3,
+   "workload": {
+    "id": "text-001024",
+    "cases": 100,
+    "scanners": 2,
+    "findings": 1,
+    "padBytes": 1024
+   },
+   "digest": "04ac50529da9004a6be7ba0802ff3d1a953e6a674d4e09bcb3c73a925d52e042",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "text-016384",
+   "axis": "text",
+   "trials": 3,
+   "workload": {
+    "id": "text-016384",
+    "cases": 100,
+    "scanners": 2,
+    "findings": 1,
+    "padBytes": 16384
+   },
+   "digest": "cb2c0c8b2a976caa29964440e3429dd4aef4635beff77b40a1653c4b7013d8ab",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "text-262144",
+   "axis": "text",
+   "trials": 3,
+   "workload": {
+    "id": "text-262144",
+    "cases": 100,
+    "scanners": 2,
+    "findings": 1,
+    "padBytes": 262144
+   },
+   "digest": "684f9eb5f73282bd777ec8e430979a5c06ef58942caab738a432fc843390aee2",
+   "measures": [
+    "oracle",
+    "rust-generate",
+    "rust-replay",
+    "rust-compat",
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "replays-000002",
+   "axis": "replays",
+   "trials": 3,
+   "workload": {
+    "id": "replays-000002",
+    "cases": 1600,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "6615dc01a0e76642864f93d5630870635c955e0042474fead6cf1d32abe2c4bb",
+   "measures": [
+    {
+     "name": "oracle",
+     "replays": 2
+    },
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "replays-000003",
+   "axis": "replays",
+   "trials": 3,
+   "workload": {
+    "id": "replays-000003",
+    "cases": 1600,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "5a3de94f3ff712778cca81f6faa5e5e56711faf66c0f4cbe81b38bf5587a2035",
+   "measures": [
+    {
+     "name": "oracle",
+     "replays": 3
+    },
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 3
+    }
+   ]
+  },
+  {
+   "id": "replays-000004",
+   "axis": "replays",
+   "trials": 3,
+   "workload": {
+    "id": "replays-000004",
+    "cases": 1600,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "78bd30accdafbe8470919150726fd39921c0cd8b4757719a9728aaa60663bda8",
+   "measures": [
+    {
+     "name": "oracle",
+     "replays": 4
+    },
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 4
+    }
+   ]
+  },
+  {
+   "id": "replays-000008",
+   "axis": "replays",
+   "trials": 3,
+   "workload": {
+    "id": "replays-000008",
+    "cases": 1600,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "e0392c81862c41f867895b893e66a4241cc349610f2e7fb7b907e956d91f9d1f",
+   "measures": [
+    {
+     "name": "oracle",
+     "replays": 8
+    },
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 8
+    }
+   ]
+  },
+  {
+   "id": "workers-000001",
+   "axis": "workers",
+   "trials": 3,
+   "workload": {
+    "id": "workers-000001",
+    "cases": 6400,
+    "scanners": 4,
+    "findings": 1
+   },
+   "digest": "fbc2def7ec10cdca6ef7acc2f613cc2813a716701173c1077e6b14b4f7298c1f",
+   "measures": [
+    {
+     "name": "rust-engine",
+     "workers": 1,
+     "perScanner": 1,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "workers-000002",
+   "axis": "workers",
+   "trials": 3,
+   "workload": {
+    "id": "workers-000002",
+    "cases": 6400,
+    "scanners": 4,
+    "findings": 1
+   },
+   "digest": "38ded8bbc7e5b40033d731b84d3619fb896605f8f3c201037def02b716fb3e26",
+   "measures": [
+    {
+     "name": "rust-engine",
+     "workers": 2,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "workers-000004",
+   "axis": "workers",
+   "trials": 3,
+   "workload": {
+    "id": "workers-000004",
+    "cases": 6400,
+    "scanners": 4,
+    "findings": 1
+   },
+   "digest": "e155bfc63364f082dff973ff82f22bcd9cc534fa9b0551525fd105ed8fc39ac9",
+   "measures": [
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 4,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "workers-000008",
+   "axis": "workers",
+   "trials": 3,
+   "workload": {
+    "id": "workers-000008",
+    "cases": 6400,
+    "scanners": 4,
+    "findings": 1
+   },
+   "digest": "903b904ef7be28cda704dca215e58ea1d8afe0c3fe2d7e27051b5d0024fb1466",
+   "measures": [
+    {
+     "name": "rust-engine",
+     "workers": 8,
+     "perScanner": 8,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "workers-000016",
+   "axis": "workers",
+   "trials": 3,
+   "workload": {
+    "id": "workers-000016",
+    "cases": 6400,
+    "scanners": 4,
+    "findings": 1
+   },
+   "digest": "6f27ec4b3443180b37eecc379216030cedd90d147c457793ff6b47071f64c0f7",
+   "measures": [
+    {
+     "name": "rust-engine",
+     "workers": 16,
+     "perScanner": 16,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "workers-000032",
+   "axis": "workers",
+   "trials": 3,
+   "workload": {
+    "id": "workers-000032",
+    "cases": 6400,
+    "scanners": 4,
+    "findings": 1
+   },
+   "digest": "4ab020b1d44a0a231dae4e6eabb11323c5bdcb550b7a5aee1037a3ee13fb5ad5",
+   "measures": [
+    {
+     "name": "rust-engine",
+     "workers": 32,
+     "perScanner": 32,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "batch-000001",
+   "axis": "batch",
+   "trials": 3,
+   "workload": {
+    "id": "batch-000001",
+    "cases": 6400,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "cba047f0a2101600e54bc7167f116a8b5391309034e41b899787a44e427fb4a9",
+   "measures": [
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 1,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "batch-000002",
+   "axis": "batch",
+   "trials": 3,
+   "workload": {
+    "id": "batch-000002",
+    "cases": 6400,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "deebab06154f0b80c54bc1b1121d8387cc16e28499ca9555c5de13424d6f47ba",
+   "measures": [
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "batch-000008",
+   "axis": "batch",
+   "trials": 3,
+   "workload": {
+    "id": "batch-000008",
+    "cases": 6400,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "a8e488b0cb38700d4b3feeb12f525b5defdbf61838b8a70d49cda3afc43b3774",
+   "measures": [
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 8,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "batch-000032",
+   "axis": "batch",
+   "trials": 3,
+   "workload": {
+    "id": "batch-000032",
+    "cases": 6400,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "af64373d5bb86bb2db1b5d64d1af1938f935d076f7c3f5d0a4f35e821acf21dc",
+   "measures": [
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 32,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "batch-000128",
+   "axis": "batch",
+   "trials": 3,
+   "workload": {
+    "id": "batch-000128",
+    "cases": 6400,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "5e17f035bc24637a4149cf0658f8013a91555650b97b6580b3563cf7039a67f5",
+   "measures": [
+    {
+     "name": "rust-engine",
+     "workers": 4,
+     "perScanner": 2,
+     "batch": 128,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "cases-025600-oracle",
+   "axis": "cases",
+   "trials": 1,
+   "warmupTrials": 0,
+   "workload": {
+    "id": "cases-025600",
+    "cases": 25600,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "3f0327afad7912ebbf2d1d835e1f7d6a20824506754a9e5b0620ac7a9b3944b3",
+   "measures": [
+    "oracle"
+   ]
+  }
+ ]
+}

@@ -110,6 +110,19 @@ jobs:
         env:
           PII_EVAL_REQUIRE_NODE: "1"
         run: cargo test -p pii-eval-cli --locked --test consumer_fixtures --test custodian_round_trip --test public_release_hygiene --test consumer_handoff_docs
+      # Also part of the run above; separate so a performance-harness failure is named (P10, ADR 0013):
+      # the harness at tiny sizes, work-counter guards (scan calls, sessions, concurrency bounds, rows),
+      # semantic equality of the executor, replay and every host worker cap, and CLI replay equality.
+      # No wall-time assertion exists anywhere. Needs Node and `ps`.
+      - name: Performance harness (tiny sizes, deterministic work-counter and equality guards)
+        env:
+          PII_EVAL_REQUIRE_NODE: "1"
+        run: cargo test -p pii-eval-cli --locked --test perf_harness
+      # The measurement suites are manual (they need the oracle through `gh`); only the tooling's pure parts run here.
+      - name: Performance tooling (generator determinism, report parsers) and syntax
+        run: |
+          node --test tools/perf/test/perf-tools.test.mjs
+          for f in tools/perf/*.mjs tools/perf/suites/*.mjs; do node --check "$f"; done
       # Execution is refused on Windows, but the crate must keep compiling there.
       - name: Windows compile check
         run: rustup target add x86_64-pc-windows-msvc && cargo check --workspace --locked --target x86_64-pc-windows-msvc

@@ -1,0 +1,2871 @@
+{
+ "cases": [
+  {
+   "id": "en-email-core",
+   "method": "context-discrimination",
+   "variants": [
+    {
+     "candidate": {
+      "end": 33,
+      "start": 10
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "en-case-equals",
+     "text": "\"EMAIL\" = subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 38,
+      "start": 15
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "en-underscore",
+     "text": "customer_email=subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 40,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "en-hyphen-colon",
+     "text": "customer-e-mail: subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 39,
+      "start": 16
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "en-natural-label",
+     "text": "contact details subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 31,
+      "start": 8
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "sensitivity": "not-established"
+     },
+     "slot": "en-neutral",
+     "text": "value = subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 32,
+      "start": 9
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "sensitivity": "not-established"
+     },
+     "slot": "en-ambiguous",
+     "text": "contact: subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 45,
+      "start": 22
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "sensitivity": "non-sensitive"
+     },
+     "slot": "en-negative",
+     "text": "documentation example subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 64,
+      "start": 41
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "sensitivity": "not-established"
+     },
+     "slot": "en-benign-prose",
+     "text": "the guide discusses contact wording near subject@example.invalid"
+    }
+   ]
+  },
+  {
+   "id": "ko-email-core",
+   "method": "context-discrimination",
+   "variants": [
+    {
+     "candidate": {
+      "end": 40,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "ko-space",
+     "text": "\uace0\uac1d \uc774\uba54\uc77c subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 42,
+      "start": 19
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "ko-mixed-underscore",
+     "text": "customer_\uc774\uba54\uc77c=subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 40,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "ko-hyphen",
+     "text": "\uace0\uac1d-\uc774\uba54\uc77c subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 34,
+      "start": 11
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "ko-colon",
+     "text": "\uc774\uba54\uc77c: subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 33,
+      "start": 10
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "ko-equals",
+     "text": "\uc774\uba54\uc77c=subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 46,
+      "start": 23
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "ko-nfd",
+     "text": "\u110b\u1175\u1106\u1166\u110b\u1175\u11af: subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 39,
+      "start": 16
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "ko-governed-invisible",
+     "text": "\uc774\u200b\uba54\ufe0f\uc77c-subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 29,
+      "start": 6
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "sensitivity": "not-established"
+     },
+     "slot": "ko-neutral",
+     "text": "\uac12 = subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 23,
+      "start": 0
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "sensitivity": "not-established"
+     },
+     "slot": "ko-ambiguous",
+     "text": "subject@example.invalid \uc5f0\ub77d\ucc98"
+    },
+    {
+     "candidate": {
+      "end": 30,
+      "start": 7
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "sensitivity": "non-sensitive"
+     },
+     "slot": "ko-negative",
+     "text": "\uc608\uc2dc subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 73,
+      "start": 50
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "sensitivity": "not-established"
+     },
+     "slot": "ko-benign-prose",
+     "text": "\uc774 \ubb38\uc11c\ub294 \uc5f0\ub77d\ucc98 \ud45c\ud604\uc744 \uc124\uba85\ud569\ub2c8\ub2e4 subject@example.invalid"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000002",
+   "method": "type-validation",
+   "variants": [
+    {
+     "candidate": {
+      "end": 35,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "validated",
+     "text": "smoke-0000002: value=SYNTHETIC-5555 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000003",
+   "method": "type-validation",
+   "variants": [
+    {
+     "candidate": {
+      "end": 31,
+      "start": 22
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "sensitivity": "non-sensitive"
+     },
+     "slot": "validated",
+     "text": "smoke-0000003: \ubc88\ud638=123450000 \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000004",
+   "method": "pii-benign",
+   "variants": [
+    {
+     "candidate": {
+      "end": 35,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "sensitivity": "non-sensitive"
+     },
+     "slot": "placeholder",
+     "text": "smoke-0000004: value=SYNTHETIC-0001 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000005",
+   "method": "jurisdiction-collision",
+   "variants": [
+    {
+     "candidate": {
+      "end": 28,
+      "start": 19
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "collision",
+     "text": "smoke-0000005: ssn=333333333 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000006",
+   "method": "mutation",
+   "variants": [
+    {
+     "candidate": {
+      "end": 33,
+      "start": 19
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "sensitivity": "not-established"
+     },
+     "slot": "mutated",
+     "text": "smoke-0000006: \uac12=SYNTHETIC-1237 \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000007",
+   "method": "reference-differential",
+   "variants": [
+    {
+     "candidate": {
+      "end": 35,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "reference",
+     "text": "smoke-0000007: value=SYNTHETIC-1237 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000008",
+   "method": "type-validation",
+   "variants": [
+    {
+     "candidate": {
+      "end": 35,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "sensitivity": "non-sensitive"
+     },
+     "slot": "validated",
+     "text": "smoke-0000008: value=SYNTHETIC-1237 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000009",
+   "method": "schema-only",
+   "variants": [
+    {
+     "candidate": {
+      "end": 43,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "authored",
+     "text": "smoke-0000009: value=person@example.invalid xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000010",
+   "method": "schema-only",
+   "variants": [
+    {
+     "candidate": {
+      "end": 30,
+      "start": 19
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "authored",
+     "text": "smoke-0000010: ssn=123-45-6789 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000011",
+   "method": "type-validation",
+   "variants": [
+    {
+     "candidate": {
+      "end": 33,
+      "start": 19
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "validated",
+     "text": "smoke-0000011: \uac12=SYNTHETIC-5555 \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000012",
+   "method": "type-validation",
+   "variants": [
+    {
+     "candidate": {
+      "end": 28,
+      "start": 19
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "sensitivity": "non-sensitive"
+     },
+     "slot": "validated",
+     "text": "smoke-0000012: ssn=666123456 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000013",
+   "method": "pii-benign",
+   "variants": [
+    {
+     "candidate": {
+      "end": 43,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "sensitivity": "non-sensitive"
+     },
+     "slot": "documentation",
+     "text": "smoke-0000013: value=person@example.invalid xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000014",
+   "method": "jurisdiction-collision",
+   "variants": [
+    {
+     "candidate": {
+      "end": 31,
+      "start": 22
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "collision",
+     "text": "smoke-0000014: \ubc88\ud638=333333333 \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000015",
+   "method": "mutation",
+   "variants": [
+    {
+     "candidate": {
+      "end": 35,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "sensitivity": "not-established"
+     },
+     "slot": "mutated",
+     "text": "smoke-0000015: value=SYNTHETIC-1237 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000016",
+   "method": "reference-differential",
+   "variants": [
+    {
+     "candidate": {
+      "end": 35,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "reference",
+     "text": "smoke-0000016: value=SYNTHETIC-1236 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000017",
+   "method": "type-validation",
+   "variants": [
+    {
+     "candidate": {
+      "end": 35,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "sensitivity": "non-sensitive"
+     },
+     "slot": "validated",
+     "text": "smoke-0000017: value=SYNTHETIC-9999 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000018",
+   "method": "schema-only",
+   "variants": [
+    {
+     "candidate": {
+      "end": 43,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "sensitivity": "non-sensitive"
+     },
+     "slot": "authored",
+     "text": "smoke-0000018: value=person@example.invalid xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000019",
+   "method": "schema-only",
+   "variants": [
+    {
+     "candidate": {
+      "end": 33,
+      "start": 22
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "authored",
+     "text": "smoke-0000019: \ubc88\ud638=123-45-6789 \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000020",
+   "method": "type-validation",
+   "variants": [
+    {
+     "candidate": {
+      "end": 35,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "validated",
+     "text": "smoke-0000020: value=SYNTHETIC-5555 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000021",
+   "method": "type-validation",
+   "variants": [
+    {
+     "candidate": {
+      "end": 28,
+      "start": 19
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "sensitivity": "non-sensitive"
+     },
+     "slot": "validated",
+     "text": "smoke-0000021: ssn=123450000 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000022",
+   "method": "pii-benign",
+   "variants": [
+    {
+     "candidate": {
+      "end": 33,
+      "start": 19
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "sensitivity": "non-sensitive"
+     },
+     "slot": "placeholder",
+     "text": "smoke-0000022: \uac12=SYNTHETIC-0001 \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c"
+    }
+   ]
+  },
+  {
+   "id": "smoke-0000023",
+   "method": "jurisdiction-collision",
+   "variants": [
+    {
+     "candidate": {
+      "end": 28,
+      "start": 19
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "sensitivity": "sensitive"
+     },
+     "slot": "collision",
+     "text": "smoke-0000023: ssn=333333333 xxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  }
+ ],
+ "provenance": {
+  "node": "v22.16.0",
+  "oracleCommit": "4b846967346505baca11e0b98cab1475fbce6773",
+  "oracleFilesTreeDigest": "6f35613cc5a6a827f19609d8c3d22a56362c0f7f526553f17cc1bc4e9ec8a83b",
+  "tool": "tools/perf/oracle-bench.mjs"
+ },
+ "scanners": [
+  {
+   "id": "perf-scanner-00",
+   "metricCounts": {
+    "metrics": {
+     "benign-suppression-rate": {
+      "counts": {
+       "eligible": 3,
+       "measured": 3,
+       "notApplicable": 21,
+       "notMeasured": 0,
+       "numerator": 1,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 3,
+      "status": "measured"
+     },
+     "context-discrimination-rate": {
+      "counts": {
+       "eligible": 2,
+       "measured": 2,
+       "notApplicable": 0,
+       "notMeasured": 0,
+       "numerator": 1,
+       "total": 2,
+       "unresolved": 0
+      },
+      "effectiveN": 2,
+      "status": "measured"
+     },
+     "jurisdiction-collision-rate": {
+      "counts": {
+       "eligible": 3,
+       "measured": 3,
+       "notApplicable": 21,
+       "notMeasured": 0,
+       "numerator": 3,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 3,
+      "status": "measured"
+     },
+     "measurable-share": {
+      "counts": {
+       "eligible": 48,
+       "measured": 44,
+       "notApplicable": 0,
+       "notMeasured": 0,
+       "numerator": 44,
+       "total": 48,
+       "unresolved": 4
+      },
+      "effectiveN": 48,
+      "status": "partial"
+     },
+     "non-sensitive-flag-rate": {
+      "counts": {
+       "eligible": 11,
+       "measured": 11,
+       "notApplicable": 13,
+       "notMeasured": 0,
+       "numerator": 6,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 11,
+      "status": "measured"
+     },
+     "range-collateral-rate": {
+      "counts": {
+       "eligible": 15,
+       "measured": 15,
+       "notApplicable": 9,
+       "notMeasured": 0,
+       "numerator": 7,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 15,
+      "status": "measured"
+     },
+     "sensitive-miss-rate": {
+      "counts": {
+       "eligible": 13,
+       "measured": 13,
+       "notApplicable": 11,
+       "notMeasured": 0,
+       "numerator": 2,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 13,
+      "status": "measured"
+     },
+     "type-miss-rate": {
+      "counts": {
+       "eligible": 15,
+       "measured": 15,
+       "notApplicable": 9,
+       "notMeasured": 0,
+       "numerator": 0,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 15,
+      "status": "measured"
+     },
+     "wrong-family-rate": {
+      "counts": {
+       "eligible": 15,
+       "measured": 15,
+       "notApplicable": 9,
+       "notMeasured": 0,
+       "numerator": 5,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 15,
+      "status": "measured"
+     },
+     "wrong-jurisdiction-rate": {
+      "counts": {
+       "eligible": 5,
+       "measured": 5,
+       "notApplicable": 19,
+       "notMeasured": 0,
+       "numerator": 0,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 5,
+      "status": "measured"
+     }
+    },
+    "rowCount": 41,
+    "scanner": "perf-scanner-00"
+   },
+   "returned": [
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 32,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 9
+      },
+      {
+       "end": 32,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 8
+      },
+      {
+       "end": 32,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 7
+      }
+     ],
+     "slot": "en-ambiguous"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 64,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 40
+      },
+      {
+       "end": 64,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 39
+      }
+     ],
+     "slot": "en-benign-prose"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 33,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 8
+      },
+      {
+       "end": 33,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 9
+      },
+      {
+       "end": 33,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 8
+      }
+     ],
+     "slot": "en-case-equals"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 37,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 17
+      },
+      {
+       "end": 40,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 16
+      },
+      {
+       "end": 40,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 15
+      }
+     ],
+     "slot": "en-hyphen-colon"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 39,
+       "family": "pii:global:phone",
+       "sensitive": true,
+       "start": 16
+      },
+      {
+       "end": 39,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 15
+      },
+      {
+       "end": 39,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 14
+      }
+     ],
+     "slot": "en-natural-label"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 45,
+       "family": "pii:kr:national-id",
+       "jurisdiction": "KR",
+       "sensitive": true,
+       "start": 22
+      },
+      {
+       "end": 45,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 21
+      },
+      {
+       "end": 45,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 20
+      }
+     ],
+     "slot": "en-negative"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 31,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 8
+      },
+      {
+       "end": 31,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 7
+      },
+      {
+       "end": 31,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 6
+      }
+     ],
+     "slot": "en-neutral"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 38,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 15
+      },
+      {
+       "end": 38,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 14
+      },
+      {
+       "end": 38,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 13
+      }
+     ],
+     "slot": "en-underscore"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 23,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 0
+      },
+      {
+       "end": 24,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 0
+      },
+      {
+       "end": 24,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 0
+      }
+     ],
+     "slot": "ko-ambiguous"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 73,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 49
+      },
+      {
+       "end": 73,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 46
+      }
+     ],
+     "slot": "ko-benign-prose"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 34,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 9
+      },
+      {
+       "end": 34,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 10
+      },
+      {
+       "end": 34,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 9
+      }
+     ],
+     "slot": "ko-colon"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 30,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 10
+      },
+      {
+       "end": 33,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 9
+      },
+      {
+       "end": 33,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 6
+      }
+     ],
+     "slot": "ko-equals"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 39,
+       "family": "pii:global:phone",
+       "sensitive": true,
+       "start": 16
+      },
+      {
+       "end": 39,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 15
+      },
+      {
+       "end": 39,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 12
+      }
+     ],
+     "slot": "ko-governed-invisible"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 40,
+       "family": "pii:kr:national-id",
+       "jurisdiction": "KR",
+       "sensitive": true,
+       "start": 17
+      },
+      {
+       "end": 40,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 16
+      },
+      {
+       "end": 40,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 13
+      }
+     ],
+     "slot": "ko-hyphen"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 42,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 42,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 18
+      },
+      {
+       "end": 42,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 15
+      }
+     ],
+     "slot": "ko-mixed-underscore"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 30,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 7
+      },
+      {
+       "end": 30,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 6
+      },
+      {
+       "end": 30,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 3
+      }
+     ],
+     "slot": "ko-negative"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 29,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 6
+      },
+      {
+       "end": 29,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 5
+      },
+      {
+       "end": 29,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 4
+      }
+     ],
+     "slot": "ko-neutral"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 46,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 22
+      },
+      {
+       "end": 46,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 21
+      }
+     ],
+     "slot": "ko-nfd"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 40,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 13
+      },
+      {
+       "end": 40,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 16
+      },
+      {
+       "end": 40,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 13
+      }
+     ],
+     "slot": "ko-space"
+    },
+    {
+     "case": "smoke-0000002",
+     "findings": [
+      {
+       "end": 32,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": true,
+       "start": 20
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000003",
+     "findings": [
+      {
+       "end": 31,
+       "family": "pii:global:phone",
+       "sensitive": true,
+       "start": 22
+      },
+      {
+       "end": 32,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 21
+      },
+      {
+       "end": 32,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000004",
+     "findings": [
+      {
+       "end": 35,
+       "family": "pii:kr:national-id",
+       "jurisdiction": "KR",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 20
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "placeholder"
+    },
+    {
+     "case": "smoke-0000005",
+     "findings": [
+      {
+       "end": 28,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 29,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 18
+      },
+      {
+       "end": 29,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 17
+      }
+     ],
+     "slot": "collision"
+    },
+    {
+     "case": "smoke-0000006",
+     "findings": [
+      {
+       "end": 33,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 34,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 18
+      },
+      {
+       "end": 34,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 15
+      }
+     ],
+     "slot": "mutated"
+    },
+    {
+     "case": "smoke-0000007",
+     "findings": [
+      {
+       "end": 35,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": true,
+       "start": 20
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "reference"
+    },
+    {
+     "case": "smoke-0000008",
+     "findings": [
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 20
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000009",
+     "findings": [
+      {
+       "end": 46,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 44,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 20
+      },
+      {
+       "end": 44,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "authored"
+    },
+    {
+     "case": "smoke-0000010",
+     "findings": [
+      {
+       "end": 27,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 31,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 18
+      },
+      {
+       "end": 31,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 17
+      }
+     ],
+     "slot": "authored"
+    },
+    {
+     "case": "smoke-0000011",
+     "findings": [
+      {
+       "end": 33,
+       "family": "pii:global:phone",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 34,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": true,
+       "start": 18
+      },
+      {
+       "end": 34,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 15
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000012",
+     "findings": [
+      {
+       "end": 28,
+       "family": "pii:kr:national-id",
+       "jurisdiction": "KR",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 29,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 18
+      },
+      {
+       "end": 29,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 17
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000013",
+     "findings": [
+      {
+       "end": 43,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 44,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 20
+      },
+      {
+       "end": 44,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "documentation"
+    },
+    {
+     "case": "smoke-0000014",
+     "findings": [
+      {
+       "end": 31,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 22
+      },
+      {
+       "end": 32,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 32,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "collision"
+    },
+    {
+     "case": "smoke-0000015",
+     "findings": [
+      {
+       "end": 35,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 21
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 20
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "mutated"
+    },
+    {
+     "case": "smoke-0000016",
+     "findings": [
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": true,
+       "start": 20
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "reference"
+    },
+    {
+     "case": "smoke-0000017",
+     "findings": [
+      {
+       "end": 38,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 20
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000018",
+     "findings": [
+      {
+       "end": 40,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 21
+      },
+      {
+       "end": 44,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 20
+      },
+      {
+       "end": 44,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "authored"
+    },
+    {
+     "case": "smoke-0000019",
+     "findings": [
+      {
+       "end": 33,
+       "family": "pii:global:phone",
+       "sensitive": true,
+       "start": 22
+      },
+      {
+       "end": 34,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 34,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "authored"
+    },
+    {
+     "case": "smoke-0000020",
+     "findings": [
+      {
+       "end": 35,
+       "family": "pii:kr:national-id",
+       "jurisdiction": "KR",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": true,
+       "start": 20
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000021",
+     "findings": [
+      {
+       "end": 28,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 29,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 18
+      },
+      {
+       "end": 29,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 17
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000022",
+     "findings": [
+      {
+       "end": 33,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 34,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 18
+      },
+      {
+       "end": 34,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 15
+      }
+     ],
+     "slot": "placeholder"
+    },
+    {
+     "case": "smoke-0000023",
+     "findings": [
+      {
+       "end": 28,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 29,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 18
+      },
+      {
+       "end": 29,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 17
+      }
+     ],
+     "slot": "collision"
+    }
+   ],
+   "status": "complete"
+  },
+  {
+   "id": "perf-scanner-01",
+   "metricCounts": {
+    "metrics": {
+     "benign-suppression-rate": {
+      "counts": {
+       "eligible": 3,
+       "measured": 3,
+       "notApplicable": 21,
+       "notMeasured": 0,
+       "numerator": 2,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 3,
+      "status": "measured"
+     },
+     "context-discrimination-rate": {
+      "counts": {
+       "eligible": 2,
+       "measured": 2,
+       "notApplicable": 0,
+       "notMeasured": 0,
+       "numerator": 0,
+       "total": 2,
+       "unresolved": 0
+      },
+      "effectiveN": 2,
+      "status": "measured"
+     },
+     "jurisdiction-collision-rate": {
+      "counts": {
+       "eligible": 3,
+       "measured": 3,
+       "notApplicable": 21,
+       "notMeasured": 0,
+       "numerator": 2,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 3,
+      "status": "measured"
+     },
+     "measurable-share": {
+      "counts": {
+       "eligible": 48,
+       "measured": 44,
+       "notApplicable": 0,
+       "notMeasured": 0,
+       "numerator": 44,
+       "total": 48,
+       "unresolved": 4
+      },
+      "effectiveN": 48,
+      "status": "partial"
+     },
+     "non-sensitive-flag-rate": {
+      "counts": {
+       "eligible": 11,
+       "measured": 11,
+       "notApplicable": 13,
+       "notMeasured": 0,
+       "numerator": 5,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 11,
+      "status": "measured"
+     },
+     "range-collateral-rate": {
+      "counts": {
+       "eligible": 15,
+       "measured": 15,
+       "notApplicable": 9,
+       "notMeasured": 0,
+       "numerator": 6,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 15,
+      "status": "measured"
+     },
+     "sensitive-miss-rate": {
+      "counts": {
+       "eligible": 13,
+       "measured": 13,
+       "notApplicable": 11,
+       "notMeasured": 0,
+       "numerator": 4,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 13,
+      "status": "measured"
+     },
+     "type-miss-rate": {
+      "counts": {
+       "eligible": 15,
+       "measured": 15,
+       "notApplicable": 9,
+       "notMeasured": 0,
+       "numerator": 0,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 15,
+      "status": "measured"
+     },
+     "wrong-family-rate": {
+      "counts": {
+       "eligible": 15,
+       "measured": 15,
+       "notApplicable": 9,
+       "notMeasured": 0,
+       "numerator": 8,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 15,
+      "status": "measured"
+     },
+     "wrong-jurisdiction-rate": {
+      "counts": {
+       "eligible": 5,
+       "measured": 5,
+       "notApplicable": 19,
+       "notMeasured": 0,
+       "numerator": 1,
+       "total": 24,
+       "unresolved": 0
+      },
+      "effectiveN": 5,
+      "status": "measured"
+     }
+    },
+    "rowCount": 41,
+    "scanner": "perf-scanner-01"
+   },
+   "returned": [
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 32,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 7
+      },
+      {
+       "end": 32,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 6
+      }
+     ],
+     "slot": "en-ambiguous"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 64,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 39
+      },
+      {
+       "end": 64,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 39
+      },
+      {
+       "end": 64,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 38
+      }
+     ],
+     "slot": "en-benign-prose"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 30,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 10
+      },
+      {
+       "end": 33,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 8
+      },
+      {
+       "end": 33,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 7
+      }
+     ],
+     "slot": "en-case-equals"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 40,
+       "family": "pii:global:phone",
+       "sensitive": true,
+       "start": 17
+      },
+      {
+       "end": 40,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 15
+      },
+      {
+       "end": 40,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 14
+      }
+     ],
+     "slot": "en-hyphen-colon"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 39,
+       "family": "pii:kr:national-id",
+       "jurisdiction": "KR",
+       "sensitive": true,
+       "start": 16
+      },
+      {
+       "end": 39,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 14
+      },
+      {
+       "end": 39,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 13
+      }
+     ],
+     "slot": "en-natural-label"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 45,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 22
+      },
+      {
+       "end": 45,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 20
+      },
+      {
+       "end": 45,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 19
+      }
+     ],
+     "slot": "en-negative"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 31,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 8
+      },
+      {
+       "end": 31,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 6
+      },
+      {
+       "end": 31,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 5
+      }
+     ],
+     "slot": "en-neutral"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [
+      {
+       "end": 38,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 15
+      },
+      {
+       "end": 38,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 13
+      },
+      {
+       "end": 38,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 12
+      }
+     ],
+     "slot": "en-underscore"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 24,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 0
+      },
+      {
+       "end": 24,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 0
+      }
+     ],
+     "slot": "ko-ambiguous"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 73,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 46
+      },
+      {
+       "end": 73,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 46
+      },
+      {
+       "end": 73,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 46
+      }
+     ],
+     "slot": "ko-benign-prose"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 31,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 11
+      },
+      {
+       "end": 34,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 9
+      },
+      {
+       "end": 34,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 6
+      }
+     ],
+     "slot": "ko-colon"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 33,
+       "family": "pii:global:phone",
+       "sensitive": true,
+       "start": 10
+      },
+      {
+       "end": 33,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 6
+      },
+      {
+       "end": 33,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 6
+      }
+     ],
+     "slot": "ko-equals"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 39,
+       "family": "pii:kr:national-id",
+       "jurisdiction": "KR",
+       "sensitive": true,
+       "start": 16
+      },
+      {
+       "end": 39,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 12
+      },
+      {
+       "end": 39,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 12
+      }
+     ],
+     "slot": "ko-governed-invisible"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 40,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 17
+      },
+      {
+       "end": 40,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 13
+      },
+      {
+       "end": 40,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 13
+      }
+     ],
+     "slot": "ko-hyphen"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 42,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 42,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 15
+      },
+      {
+       "end": 42,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 15
+      }
+     ],
+     "slot": "ko-mixed-underscore"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 30,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 7
+      },
+      {
+       "end": 30,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 3
+      },
+      {
+       "end": 30,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 3
+      }
+     ],
+     "slot": "ko-negative"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 29,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 4
+      },
+      {
+       "end": 29,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 3
+      }
+     ],
+     "slot": "ko-neutral"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 46,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 46,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 21
+      },
+      {
+       "end": 46,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "ko-nfd"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [
+      {
+       "end": 37,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 17
+      },
+      {
+       "end": 40,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 13
+      },
+      {
+       "end": 40,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 13
+      }
+     ],
+     "slot": "ko-space"
+    },
+    {
+     "case": "smoke-0000002",
+     "findings": [
+      {
+       "end": 35,
+       "family": "pii:global:phone",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000003",
+     "findings": [
+      {
+       "end": 31,
+       "family": "pii:kr:national-id",
+       "jurisdiction": "KR",
+       "sensitive": true,
+       "start": 22
+      },
+      {
+       "end": 32,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 18
+      },
+      {
+       "end": 32,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000004",
+     "findings": [
+      {
+       "end": 35,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "placeholder"
+    },
+    {
+     "case": "smoke-0000005",
+     "findings": [
+      {
+       "end": 28,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 29,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 17
+      },
+      {
+       "end": 29,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 16
+      }
+     ],
+     "slot": "collision"
+    },
+    {
+     "case": "smoke-0000006",
+     "findings": [
+      {
+       "end": 33,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 34,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 15
+      },
+      {
+       "end": 34,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 15
+      }
+     ],
+     "slot": "mutated"
+    },
+    {
+     "case": "smoke-0000007",
+     "findings": [
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "reference"
+    },
+    {
+     "case": "smoke-0000008",
+     "findings": [
+      {
+       "end": 38,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000009",
+     "findings": [
+      {
+       "end": 40,
+       "family": "pii:global:email",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 44,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 44,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "authored"
+    },
+    {
+     "case": "smoke-0000010",
+     "findings": [
+      {
+       "end": 30,
+       "family": "pii:global:phone",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 31,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 17
+      },
+      {
+       "end": 31,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 16
+      }
+     ],
+     "slot": "authored"
+    },
+    {
+     "case": "smoke-0000011",
+     "findings": [
+      {
+       "end": 33,
+       "family": "pii:kr:national-id",
+       "jurisdiction": "KR",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 34,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 15
+      },
+      {
+       "end": 34,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 15
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000012",
+     "findings": [
+      {
+       "end": 28,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 29,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 17
+      },
+      {
+       "end": 29,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 16
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000013",
+     "findings": [
+      {
+       "end": 43,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 21
+      },
+      {
+       "end": 44,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 44,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "documentation"
+    },
+    {
+     "case": "smoke-0000014",
+     "findings": [
+      {
+       "end": 31,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 22
+      },
+      {
+       "end": 32,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 18
+      },
+      {
+       "end": 32,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "collision"
+    },
+    {
+     "case": "smoke-0000015",
+     "findings": [
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "mutated"
+    },
+    {
+     "case": "smoke-0000016",
+     "findings": [
+      {
+       "end": 38,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": true,
+       "start": 19
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "reference"
+    },
+    {
+     "case": "smoke-0000017",
+     "findings": [
+      {
+       "end": 32,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 21
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000018",
+     "findings": [
+      {
+       "end": 43,
+       "family": "pii:global:phone",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 44,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 44,
+       "family": "pii:global:email",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "authored"
+    },
+    {
+     "case": "smoke-0000019",
+     "findings": [
+      {
+       "end": 33,
+       "family": "pii:kr:national-id",
+       "jurisdiction": "KR",
+       "sensitive": true,
+       "start": 22
+      },
+      {
+       "end": 34,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 18
+      },
+      {
+       "end": 34,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "authored"
+    },
+    {
+     "case": "smoke-0000020",
+     "findings": [
+      {
+       "end": 35,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": true,
+       "start": 21
+      },
+      {
+       "end": 36,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 36,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 18
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000021",
+     "findings": [
+      {
+       "end": 28,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 29,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 17
+      },
+      {
+       "end": 29,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 16
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "smoke-0000022",
+     "findings": [
+      {
+       "end": 33,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 19
+      },
+      {
+       "end": 34,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 15
+      },
+      {
+       "end": 34,
+       "family": "pii:global:synthetic-reference",
+       "sensitive": false,
+       "start": 15
+      }
+     ],
+     "slot": "placeholder"
+    },
+    {
+     "case": "smoke-0000023",
+     "findings": [
+      {
+       "end": 29,
+       "family": "pii:global:phone",
+       "sensitive": false,
+       "start": 17
+      },
+      {
+       "end": 29,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": false,
+       "start": 16
+      }
+     ],
+     "slot": "collision"
+    }
+   ],
+   "status": "complete"
+  }
+ ],
+ "schema": "pii-eval-perf-observations/1",
+ "workloadSha256": "ed0e34e281c10d6ee6049427880ec4c73aa38a81a6c8869b78f847323212ae21"
+}

@@ -255,3 +255,13 @@ was considered and rejected to avoid maintaining cryptographic code.
 MSRV re-verified after these additions on 2026-10-02:
 `cargo +1.85.0 test --workspace --locked` passes; the floor stays 1.85
 (`sha2` 0.11, `serde_json` 1.0.151, `schemars` 1.2.2 declare 1.85, 1.71, 1.74).
+
+## Performance measurement (P10)
+
+P10 adds no crate, no third-party dependency, no `unsafe` and no change to the
+toolchain, the MSRV or `Cargo.lock`. The harness is test support plus an example
+of `pii-eval-cli` (`tests/perf/`, `examples/perf.rs`) built from the existing
+dependency set; `tools/perf/` uses only Node built-ins and runs nothing in CI
+beyond its own unit tests and a syntax check. Allocation counting (a global
+allocator) was not collected because it needs `unsafe` (ADR 0013 M1); process
+peak RSS and instruction counts come from `/usr/bin/time`.

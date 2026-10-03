@@ -1,0 +1,973 @@
+{
+ "accountingVectors": [],
+ "cases": [
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "neutral",
+   "contextGroup": "en-email-core",
+   "family": "pii:global:email",
+   "id": "en-email-core",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "context-discrimination",
+   "obligation": "required-for-sensitive-classification",
+   "operator": null,
+   "prefix": "en-email-core: value=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/en-email-core",
+   "sensitivity": "not-established",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": null,
+   "value": "subject@example.invalid"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "neutral",
+   "contextGroup": "ko-email-core",
+   "family": "pii:global:email",
+   "id": "ko-email-core",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "ko",
+   "method": "context-discrimination",
+   "obligation": "required-for-sensitive-classification",
+   "operator": null,
+   "prefix": "ko-email-core: \uac12=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/ko-email-core",
+   "sensitivity": "not-established",
+   "suffix": " \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c",
+   "type": "valid",
+   "validator": null,
+   "value": "subject@example.invalid"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "smoke-0000002",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000002: value=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000002",
+   "sensitivity": "sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-5555"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "smoke-0000003",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "ko",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000003: \ubc88\ud638=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "perf-seed/smoke-0000003",
+   "sensitivity": "non-sensitive",
+   "suffix": " \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c",
+   "type": "invalid",
+   "validator": "us-ssn-allocation",
+   "value": "123450000"
+  },
+  {
+   "accountingClass": "placeholder",
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "smoke-0000004",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "pii-benign",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000004: value=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000004",
+   "sensitivity": "non-sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "invalid",
+   "validator": null,
+   "value": "SYNTHETIC-0001"
+  },
+  {
+   "accountingClass": null,
+   "competing": [
+    "pii:kr:national-id",
+    "pii:global:synthetic-reference"
+   ],
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "smoke-0000005",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000005: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "perf-seed/smoke-0000005",
+   "sensitivity": "sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": "us-ssn-allocation",
+   "value": "333333333"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "neutral",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "smoke-0000006",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "ko",
+   "method": "mutation",
+   "obligation": "none",
+   "operator": "invalidate-final-digit",
+   "prefix": "smoke-0000006: \uac12=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000006",
+   "sensitivity": "not-established",
+   "suffix": " \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c",
+   "type": "valid",
+   "validator": null,
+   "value": "SYNTHETIC-1236"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "smoke-0000007",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "reference-differential",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000007: value=",
+   "reference": {
+    "id": "synthetic-mod10",
+    "version": 1
+   },
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000007",
+   "sensitivity": "sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": null,
+   "value": "SYNTHETIC-1237"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "smoke-0000008",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000008: value=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000008",
+   "sensitivity": "non-sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "invalid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-1237"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:email",
+   "id": "smoke-0000009",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "schema-only",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000009: value=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000009",
+   "sensitivity": "sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": null,
+   "value": "person@example.invalid"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "smoke-0000010",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "schema-only",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000010: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "perf-seed/smoke-0000010",
+   "sensitivity": "sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": null,
+   "value": "123-45-6789"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "smoke-0000011",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "ko",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000011: \uac12=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000011",
+   "sensitivity": "sensitive",
+   "suffix": " \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c",
+   "type": "valid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-5555"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "smoke-0000012",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000012: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "perf-seed/smoke-0000012",
+   "sensitivity": "non-sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "invalid",
+   "validator": "us-ssn-allocation",
+   "value": "666123456"
+  },
+  {
+   "accountingClass": "documentation",
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:email",
+   "id": "smoke-0000013",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "pii-benign",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000013: value=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000013",
+   "sensitivity": "non-sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": null,
+   "value": "person@example.invalid"
+  },
+  {
+   "accountingClass": null,
+   "competing": [
+    "pii:kr:national-id",
+    "pii:global:synthetic-reference"
+   ],
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "smoke-0000014",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "ko",
+   "method": "jurisdiction-collision",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000014: \ubc88\ud638=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "perf-seed/smoke-0000014",
+   "sensitivity": "sensitive",
+   "suffix": " \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c",
+   "type": "valid",
+   "validator": "us-ssn-allocation",
+   "value": "333333333"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "neutral",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "smoke-0000015",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "mutation",
+   "obligation": "none",
+   "operator": "invalidate-final-digit",
+   "prefix": "smoke-0000015: value=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000015",
+   "sensitivity": "not-established",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": null,
+   "value": "SYNTHETIC-1236"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "smoke-0000016",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "reference-differential",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000016: value=",
+   "reference": {
+    "id": "synthetic-mod10",
+    "version": 1
+   },
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000016",
+   "sensitivity": "sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": null,
+   "value": "SYNTHETIC-1236"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "smoke-0000017",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000017: value=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000017",
+   "sensitivity": "non-sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "invalid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-9999"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:email",
+   "id": "smoke-0000018",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "schema-only",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000018: value=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000018",
+   "sensitivity": "non-sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": null,
+   "value": "person@example.invalid"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "smoke-0000019",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "ko",
+   "method": "schema-only",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000019: \ubc88\ud638=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "perf-seed/smoke-0000019",
+   "sensitivity": "sensitive",
+   "suffix": " \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c",
+   "type": "valid",
+   "validator": null,
+   "value": "123-45-6789"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "smoke-0000020",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000020: value=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000020",
+   "sensitivity": "sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-5555"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "smoke-0000021",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000021: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "perf-seed/smoke-0000021",
+   "sensitivity": "non-sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "invalid",
+   "validator": "us-ssn-allocation",
+   "value": "123450000"
+  },
+  {
+   "accountingClass": "placeholder",
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "smoke-0000022",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "ko",
+   "method": "pii-benign",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000022: \uac12=",
+   "reference": null,
+   "scope": "global",
+   "seed": "perf-seed/smoke-0000022",
+   "sensitivity": "non-sensitive",
+   "suffix": " \ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c\ud55c",
+   "type": "invalid",
+   "validator": null,
+   "value": "SYNTHETIC-0001"
+  },
+  {
+   "accountingClass": null,
+   "competing": [
+    "pii:kr:national-id",
+    "pii:global:synthetic-reference"
+   ],
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "smoke-0000023",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "smoke-0000023: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "perf-seed/smoke-0000023",
+   "sensitivity": "sensitive",
+   "suffix": " xxxxxxxxxxxxxxxxxxxxxxxx",
+   "type": "valid",
+   "validator": "us-ssn-allocation",
+   "value": "333333333"
+  }
+ ],
+ "population": {
+  "id": "perf-smoke",
+  "version": 1,
+  "visibility": "public-synthetic"
+ },
+ "scanners": [
+  {
+   "id": "perf-scanner-00",
+   "recipe": {
+    "all": {
+     "cycle": [
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 1,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 3,
+        "ds": -2,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": -3,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": true
+       },
+       {
+        "de": 1,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "pii:kr:national-id",
+        "jurisdiction": "KR",
+        "sensitive": true
+       },
+       {
+        "de": 1,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": true
+       },
+       {
+        "de": 1,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       },
+       {
+        "de": 1,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       }
+      ]
+     ]
+    }
+   },
+   "status": "complete"
+  },
+  {
+   "id": "perf-scanner-01",
+   "recipe": {
+    "all": {
+     "cycle": [
+      [
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       },
+       {
+        "de": 1,
+        "ds": -3,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 3,
+        "ds": -2,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       },
+       {
+        "de": 1,
+        "ds": -3,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": -3,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       },
+       {
+        "de": 1,
+        "ds": -3,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": true
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       },
+       {
+        "de": 1,
+        "ds": -3,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "pii:kr:national-id",
+        "jurisdiction": "KR",
+        "sensitive": true
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       },
+       {
+        "de": 1,
+        "ds": -3,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": true
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       },
+       {
+        "de": 1,
+        "ds": -3,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       },
+       {
+        "de": 1,
+        "ds": -3,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 1,
+        "ds": -2,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       },
+       {
+        "de": 1,
+        "ds": -3,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       }
+      ]
+     ]
+    }
+   },
+   "status": "complete"
+  }
+ ],
+ "schema": "pii-eval-parity-input/1",
+ "statistics": {
+  "grid": {
+   "maxDenominator": 0,
+   "mechanics": {
+    "intervalPrecision": 6,
+    "intervalZ": "1.96"
+   }
+  },
+  "single": []
+ },
+ "workload": {
+  "cases": 24,
+  "findings": 3,
+  "id": "smoke",
+  "koShare": 25,
+  "padBytes": 24,
+  "scanners": 2,
+  "schema": "pii-eval-perf-workload/1"
+ }
+}
