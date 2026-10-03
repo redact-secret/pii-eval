@@ -24,10 +24,11 @@ pii-eval replay   --snapshot FILE --manifest FILE --observation FILE [--observat
 pii-eval validate FILE [--kind KIND] [--snapshot FILE] [--manifest FILE]
                   [--job-context FILE]
 pii-eval compare  --base FILE --other FILE [--snapshot FILE] [--job-context FILE]
+pii-eval worker-job --job FILE       # also: pii-eval --job FILE (see below)
 pii-eval --version | --help
 ```
 
-These four commands are the only ones. Options are long-form with one value
+These five commands are the only ones. Options are long-form with one value
 (`--name value` or `--name=value`), and each may appear once except
 `--observation`. An unknown option, a missing value, a repeated option or an
 extra argument is a usage error (exit 2) that names the option, never the value.
@@ -38,6 +39,32 @@ extra argument is a usage error (exit 2) that names the option, never the value.
 | `replay` | Re-derives the artifact from fixed observation sets. **No scanner is launched.** Any changed input, setting or identity is rejected; the same observations give the same semantic digests as the original run. |
 | `validate` | Strict contract validation of one snapshot, manifest, observation set, run artifact or public artifact, optional bindings, and the accounting verifier for revision-2 artifacts. |
 | `compare` | A deterministic, descriptive diff of two artifacts: identities and metric states per scanner and per metric, withheld states included. Not a ranking. |
+
+### `worker-job`
+
+The engine side of the private-custodian worker protocol, started by the
+custodian as `/stage/engine --job /job/job.json`. `pii-eval --job FILE` is the
+only alias, in exactly that shape. It reads the custodian's job document and the
+staged files, runs the same pipeline as `run` and prints exactly one
+`private-custodian.worker-result/1` document on stdout (and **nothing** on
+stdout when it refuses). It takes no other option and no environment variable.
+
+**In a production build it always refuses**: the custodian has not decided the
+stage layout, the bundle and entry formats, the aggregates channel or the labels,
+so the command exits 6 with `contract-not-final` (detail: the first undecided
+slot) before it reads anything. Everything else (format, layout, order of work,
+adapters and their statuses, bounds, reason codes) is in
+[worker-job.md](worker-job.md) and [ADR 0015](adr/0015-worker-job-launcher-and-contract-adapters.md).
+
+Exit codes reuse the frozen table below; no code is added. `worker-job` uses 0
+(a result was printed, complete or a scanner failure documented as `failed`; the
+custodian maps the latter to `Partial`), 3 (invalid job, configuration, entry or
+bundle), 4 (an identity, digest, binding, population or run-class mismatch), 6
+(`contract-not-final`, refused limits), 7 (the output could not be produced or
+delivered), 8 (cancelled) and 1. It never uses 5: a scanner that did not complete
+is a result with `failed` counted, not an exit status, because the custodian never
+parses the stdout of a non-zero exit. Its reason codes are listed in
+[worker-job.md](worker-job.md) and are not part of the list below.
 
 ### `run`
 

@@ -48,8 +48,8 @@ artifact travels (section 6, questions Q1 to Q3), and any transport.
 | Layer | Document | Owner | Version | State |
 | --- | --- | --- | --- | --- |
 | L1 job context | `pii-eval-job-context/1` ([docs/cli.md](cli.md)) | pii-eval | 1 (unchanged by P12) | Implemented in the CLI |
-| L2 worker job and result | `private-custodian.worker-job/1`, `private-custodian.worker-result/1` | custodian | 1 | Implemented custodian-side; **the engine does not speak it** |
-| L3 aggregates | `private-custodian.aggregates/1` | custodian | 1 | Implemented custodian-side; **the engine does not emit it** |
+| L2 worker job and result | `private-custodian.worker-job/1`, `private-custodian.worker-result/1` | custodian | 1 | Implemented custodian-side; the engine speaks it in `pii-eval worker-job` ([worker-job.md](worker-job.md)), **which refuses in every production build** until the custodian decides the items of [custodian-contract-status.md](custodian-contract-status.md) |
+| L3 aggregates | `private-custodian.aggregates/1` | custodian | 1 | Implemented custodian-side; the engine builds it behind a channel adapter that has no production implementation (Q2) |
 | L4 internal artifact | `RunArtifact`, schema `pii-eval.run-artifact` 1.1, plus manifest and observation sets | pii-eval | schema 1.1, protocol `pii-v1` revision 2 | Implemented |
 | L4 public artifact | `PublicSyntheticArtifact`, schema `pii-eval.public-synthetic-artifact` 1.1 | pii-eval | schema 1.1 | Implemented; **public synthetic runs only** |
 | L5 released projection and revocation | `PublicProjectionEnvelope`, `SignedRevocationEnvelope` | custodian | 1 | Implemented custodian-side; consumed by benchmarks, never by the engine |
@@ -126,11 +126,10 @@ just as a refusal after exposure does.
 
 **Reason names.** The custodian's own rejection names for the engine's refusals,
 `population-binding-mismatch` and `run-class-mismatch` (its
-`docs/benchmarks-integration.md`, section 4), are **not** used by the engine or by the
-test stub, which use the engine's frozen vocabulary (`protected-context-mismatch`,
-exit 9; the stub's `Mismatch` variants). Adopting the custodian's names in the
-launcher's or the stub's mapping is an **open deliverable** (open question Q10 below),
-not done here.
+`docs/benchmarks-integration.md`, section 4), are used by `pii-eval worker-job`
+([worker-job.md](worker-job.md)). The standalone `run` and the test stub of
+`custodian_round_trip.rs` keep the engine's frozen vocabulary
+(`protected-context-mismatch`, exit 9; the stub's `Mismatch` variants).
 
 Every refusal is a closed reason code; no text carries a value, a path or scanner
 output (docs/cli.md).
@@ -143,22 +142,28 @@ state again before releasing (a prior success is evidence, never permission:
 `docs/contracts.md`, section 5). A leftover context file is still structurally
 valid; deleting it after the run is the custodian's job (open question Q8).
 
-## 6. Proposed joint contract (not implemented by either side)
+## 6. Joint contract: what is decided, what is proposed
 
-The custodian's worker protocol and the engine's CLI do not meet yet. A launcher
-is needed that turns `worker-job/1` into a run configuration plus a job context,
-runs `pii-eval run`, and prints `worker-result/1`. The proposal, labelled as such
-(ADR 0014 D4):
+**Current state (2026-10-03).** The launcher exists: `pii-eval worker-job`
+([worker-job.md](worker-job.md), [ADR 0015](adr/0015-worker-job-launcher-and-contract-adapters.md)).
+What the custodian has decided is implemented as stated; every item it has not
+decided is an adapter with a status, and a production build refuses with
+`contract-not-final` until each is decided. The evidence for every decided and
+undecided item, with the custodian's source locations, is in
+[custodian-contract-status.md](custodian-contract-status.md), which supersedes the
+text below where they differ. The text below is the original proposal (ADR 0014
+D4), kept for its reasoning:
 
 - **P1. Owner and shape.** The launcher is engine-owned (it needs the engine's
-  identity checks), a new subcommand `pii-eval worker --job FILE` that prints exactly
-  one `worker-result/1` document on stdout, and nothing else. Not built; a
-  follow-up issue is the next step.
+  identity checks), a subcommand that prints exactly one `worker-result/1` document
+  on stdout, and nothing else. Built as `pii-eval worker-job --job FILE` (the name
+  differs from the one first proposed).
 - **P2. Mapping.** `domain` is `pii`. `protocol` is `{name: "pii-v1", version: "2"}`
-  (the protocol id and revision). `roster` is the number of outcome rows of the
-  scanner (the artifact's `outcomes`), so every metric denominator fits within
-  `observed`; `failed` is 0 for a complete scanner. `status` is `complete` only when
-  the artifact and the scanner are complete.
+  (the protocol id and revision). *Superseded:* `roster` is the number of entries of
+  the job (A4), and one entry is one authored case (a proposed adapter, Q1); the
+  outcome-row count proposed here does not fit the custodian's job document, whose
+  roster is the number of entries. `failed` is 0 for a complete scanner and
+  `expected` otherwise; `status` follows coverage only (worker-job.md).
 - **P3. Aggregates.** Cells are `{stratum: "overall", metric: <pii-v1 metric id>,
   numerator, denominator}` where the denominator is the metric's `measured` count.
   Ten metric ids and one stratum satisfy the custodian's label pattern. Further
@@ -166,17 +171,18 @@ runs `pii-eval run`, and prints `worker-result/1`. The proposal, labelled as suc
   allowlist them first. The engine emits integers only; suppression of small cells
   is the custodian's.
 - **P4. Delivery.** Stdout carries `worker-result/1`; the aggregates artifact needs a
-  second channel. The synthetic test (`crates/pii-eval-cli/tests/custodian_round_trip.rs`)
-  builds both documents from the internal artifact and checks the documented
-  bounds, to show the mapping is feasible. That code is a test stub, not engine
-  behavior.
+  second channel, an adapter with no production implementation (Q2). The synthetic
+  test (`crates/pii-eval-cli/tests/custodian_round_trip.rs`) builds both documents
+  from the internal artifact as a stub; the engine's own documents come from
+  `worker-job` (`worker_custodian.rs` validates them with a replica of the
+  custodian's checks).
 
 Open questions for the joint design (nothing below is decided):
 
 | # | Question | Why it matters |
 | --- | --- | --- |
 | Q1 | What does a PII roster count (inputs, variants, outcome rows)? | The custodian checks `denominator <= observed` and ties counters to the receipt |
-| Q2 | How is the aggregates artifact delivered? `validate_result` hashes the `worker-result/1` stdout as the private artifact reference and `PrivateAggregates::decode` requires those same bytes to be an `aggregates/1` document | One document cannot be both. Either a combined schema major or a second channel (for example a file in `/scratch` that the dispatcher collects) is needed. The custodian's assembly of a receipt from a dispatch report is itself not implemented (its `docs/release-readiness.md` D2), so the link is currently undefined on both sides |
+| Q2 | How is the aggregates artifact delivered? Established: the custodian's production assembly of an `ExecutionRecord` or `InternalReceipt` from a dispatch report does not exist (its `docs/release-readiness.md` D2 and R-3: "the aggregates artifact has no producer"); its test-only assembly (`crates/custodian-cli/tests/c12/mod.rs` `assemble`) takes the roster from the validated worker result and makes the receipt's `result` reference the digest of a **separate** aggregates document. The channel by which that document reaches the custodian is unspecified | An earlier version of this row said that one document cannot be both; that was read from the types and overstated ([custodian-contract-status.md](custodian-contract-status.md), section D). The engine's adapter for the channel has no production implementation, so a release binary refuses (`contract-not-final: aggregates-channel`); the production pipeline is the custodian's S5 ([#32](https://github.com/redact-secret/private-custodian/issues/32)) |
 | Q3 | Which strata and metric labels does the pii disclosure policy allow? | An unlisted label is refused (`stratum_not_allowed`, `metric_not_allowed`) |
 | Q4 | Candidate identity: the custodian's candidate id is the SHA-256 of the exact candidate bytes; the engine's candidate digest is the tree digest of a scanner package directory | A package is a tree, not one file; the mapping (or a packaged single artifact) must be agreed |
 | Q5 | Digest syntax: custodian `sha256:` plus hex with domain tags; engine bare hex with its own construction | Bridge code must not conflate them; never compare across syntaxes |
@@ -184,7 +190,7 @@ Open questions for the joint design (nothing below is decided):
 | Q7 | Does the isolation self-check cover pii-eval with Node? The engine needs Node and `ps`, and samples memory with `ps`; the custodian applies `RLIMIT_AS`, which a Node runtime may not tolerate | **Untested**; this repository ran no sandbox and makes no claim |
 | Q8 | Defence in depth for a stale context file: an optional `notAfter` in a future `pii-eval-job-context/2`, or the custodian removing the file | Not needed for correctness while the custodian owns freshness |
 | Q9 | Where the staged scanner package, shim and Node live under `/stage` | The allowlist hashes artifacts by file; the engine pins a package tree |
-| Q10 | Adopt the custodian's rejection names (`population-binding-mismatch`, `run-class-mismatch`) in the launcher and the stub | Today the stub and the engine use their own vocabulary; the custodian's benchmarks-integration document lists these names as a pii-eval deliverable |
+| Q10 | Adopt the custodian's rejection names (`population-binding-mismatch`, `run-class-mismatch`) in the launcher and the stub | Decided by the custodian; implemented in `worker-job`. The stub of `custodian_round_trip.rs` keeps the engine's vocabulary |
 
 ## 7. Raw and internal versus public artifacts
 
@@ -239,8 +245,8 @@ not a replacement for it, and it does not verify custodian envelopes.
 | The consumer accepts only exact, current, complete public artifacts and never the internal one | `examples/consumer/test/consume.test.mjs`; `consumer_fixtures.rs` (fixtures generated by the real engine) |
 | No protected population or ledger field in committed documents; the public schema cannot represent either | `public_release_hygiene.rs` |
 
-Limits: the custodian in these tests is a **stub** written here from the custodian's
-documents; it proves our side of the contract, not the custodian's code, and no
+Limits: the custodian in `custodian_round_trip.rs` is a **stub** written here from the custodian's
+documents (the worker-job tests use a replica written from its source, not its code); it proves our side of the contract, not the custodian's code, and no
 private-custodian code or test ran. The projection mapping is a proposal. No
 sandbox, signature, transport or deployment was exercised. The checks over
 committed documents are a tripwire and do not replace a history scan before

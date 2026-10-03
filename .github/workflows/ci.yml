@@ -113,6 +113,20 @@ jobs:
         env:
           PII_EVAL_REQUIRE_NODE: "1"
         run: cargo test -p pii-eval-cli --locked --test consumer_fixtures --test custodian_round_trip --test public_release_hygiene --test consumer_handoff_docs
+      # Worker job (ADR 0015, docs/worker-job.md). The default build has no adapter for
+      # the contract's undecided items and refuses (`worker_default`); the end-to-end
+      # tests need the cargo feature `worker-test-adapters` (never in the engine
+      # artifact) and run against a replica of the custodian's checks. Needs Node and `ps`.
+      - name: Worker job, production wiring (refuses with contract-not-final, no test adapters in the binary)
+        env:
+          PII_EVAL_REQUIRE_NODE: "1"
+        run: cargo test -p pii-eval-cli --locked --test worker_default
+      - name: Worker job with the test adapters (launcher, bundle, digests, refusals, partial results, cancellation, custodian replica)
+        env:
+          PII_EVAL_REQUIRE_NODE: "1"
+        run: cargo test -p pii-eval-cli --locked --features worker-test-adapters --lib --test worker_default --test worker_job --test worker_custodian
+      - name: Clippy with the worker test adapters
+        run: cargo clippy -p pii-eval-cli --all-targets --locked --features worker-test-adapters -- -D warnings
       # Also part of the run above; separate so a performance-harness failure is named (P10, ADR 0013):
       # the harness at tiny sizes, work-counter guards (scan calls, sessions, concurrency bounds, rows),
       # semantic equality of the executor, replay and every host worker cap, and CLI replay equality.
@@ -159,6 +173,10 @@ jobs:
         env:
           PII_EVAL_REQUIRE_NODE: "1"
         run: cargo +1.85.0 test --workspace --locked
+      - name: Test the worker test adapters on MSRV
+        env:
+          PII_EVAL_REQUIRE_NODE: "1"
+        run: cargo +1.85.0 test -p pii-eval-cli --locked --features worker-test-adapters --test worker_job --test worker_custodian
 
   # The engine artifact (docs/ci-artifacts.md): the documented release build,
   # published once as an internal workflow artifact that evaluate.yml and any
