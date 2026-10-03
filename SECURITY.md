@@ -2,7 +2,7 @@
 
 ## Status and supported versions
 
-The repository currently contains a design baseline, not a released security product. No supported production version is declared. Releases must publish their supported-version policy and known limitations before adoption.
+The repository currently contains a design baseline and a bootstrap workspace (no measurement code), not a released security product. No supported production version is declared. Releases must publish their supported-version policy and known limitations before adoption.
 
 ## Reporting
 
@@ -27,6 +27,15 @@ Protected execution also faces leakage through case identities, rare strata, raw
 - Use restricted scratch permissions and deterministic cleanup. Persistent artifacts require an explicit output classification and owner.
 
 Rust memory safety does not provide OS isolation. The runner must enforce network, filesystem, process, and credential boundaries. A `network=off` manifest field is not enforcement evidence by itself.
+
+## Delivery-surface boundaries
+
+State as of bootstrap: only the CI and dependency controls in the next list are implemented; the rest is proposed.
+
+- Implemented: CI uses `permissions: contents: read`, no secrets, no benchmark or scanner checkout, third-party actions pinned by full commit SHA, and `--locked` builds. A test guards `pii-eval-contracts` and `pii-eval-kernel` against unreviewed, process, and network dependencies. First-party crates forbid `unsafe`. These are repository hygiene controls, not an assurance that the future engine is secure.
+- Proposed: a thin internal GitHub App must hold only the minimum repository permissions for requests and Checks, hold no corpus, protected input, custody state, or measurement logic, accept only validated request fields, and post sanitized reason codes and aggregates that the custodian or public policy allows. App credentials are not available to the scanner execution environment.
+- Proposed: protected runs execute only inside a custodian-controlled environment; the engine's output is internal until the custodian projects it. The App never reads the private audit ledger.
+- Public review records and private audit records are separate classes; neither is a substitute for the other, and a GitHub status is not an authorization decision.
 
 ## Data policy
 

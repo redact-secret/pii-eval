@@ -2,7 +2,7 @@
 
 ## Design status
 
-This is the initial design baseline. Requirements below describe intended behavior and must be demonstrated by implementation evidence. Engine implementation, measurement protocol, artifact schema, accounting, methods, and adapters have separate version identities.
+This is the initial design baseline plus a bootstrap workspace. Requirements below describe intended behavior and must be demonstrated by implementation evidence. Implemented today: the five-crate workspace skeleton, CI, a version-only CLI, and the dependency-isolation guard. Everything else is proposed. Engine implementation, measurement protocol, artifact schema, accounting, methods, and adapters have separate version identities.
 
 ## Ownership and dependencies
 
@@ -12,7 +12,9 @@ Protected operation uses the same measurement kernel inside a custodian-controll
 
 Do not make `pii-eval` depend on credential family semantics. Reuse a shared crate only after its neutral contract and both consumers are proven; pin any extracted dependency. A common framework is not a migration prerequisite.
 
-## Planned workspace
+## Workspace
+
+The crates exist as identity-only placeholders. They are internal: names, APIs, and layout are not consumer contracts and may change without notice; consumers depend on versioned artifacts and the CLI. Dependency rules and the verified MSRV are in [docs/dependency-policy.md](docs/dependency-policy.md).
 
 | Crate | Responsibility |
 | --- | --- |
@@ -22,7 +24,18 @@ Do not make `pii-eval` depend on credential family semantics. Reuse a shared cra
 | `pii-eval-cli` | Configuration, resource limits, run/replay/validate/compare orchestration |
 | `pii-eval-compat` | Isolated, removable legacy projection and parity support |
 
-The kernel has no process spawning, network, publication, or product support policy. Adapters never score expected outcomes. Compatibility code may reproduce legacy quirks without redefining the canonical model.
+The kernel has no process spawning, network, publication, or product support policy; `crates/pii-eval-cli/tests/dependency_policy.rs` enforces the dependency side (implemented). `pii-eval-compat` is reachable only from CLI tests and can be deleted without touching other crates. Adapters never score expected outcomes. Compatibility code may reproduce legacy quirks without redefining the canonical model.
+
+## Delivery surfaces and boundaries
+
+| Surface | State | Boundary |
+| --- | --- | --- |
+| CLI | `--version` implemented; workflows proposed | Local public/synthetic runs work without GitHub or custodian. Resource limits are explicit. |
+| Internal GitHub App | Proposed (a later phase, after the CLI is stable) | Thin adapter: accepts an evaluation request, invokes the pinned CLI/engine, and posts sanitized status. It holds no corpus, makes no measurement or support decision, and is not an authorization authority. |
+| private-custodian | Separate repository | Verifies plan/candidate, reserves budget, enforces isolation, invokes the pinned engine, validates private output, authorizes the allowlisted aggregate. |
+| redact-secret-benchmarks | Separate repository | Retains product policy, populations, thresholds, support status, publication, and the pinned TypeScript oracle (commit recorded in [ADR 0001](docs/adr/0001-rust-first-and-oracle-pin.md)). |
+
+Public review records (what a maintainer or reviewer may see and discuss) and private audit records (custody ledger, protected inputs, budget state) are distinct data classes with separate storage. The engine produces neither authorization decisions nor ledger entries. No Rust crate depends on `credential-eval`, the benchmarks checkout, or custodian code; no shared crate is created until a neutral contract is proven by both consumers. The file-level split of legacy code is in the [migration ownership map](docs/migration/ownership-map.md).
 
 ## Contracts and identities
 

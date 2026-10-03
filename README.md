@@ -6,7 +6,18 @@ A Rust-based, scanner-neutral engine for reproducible PII measurement.
 
 ## Status
 
-**Design baseline — implementation not yet shipped.** This repository starts privately and may be published after its contracts, migration evidence, and security boundaries are ready. The architecture and commands described here are targets, not claims of completed functionality. No throughput, accuracy, or production-readiness claim is established by these documents.
+**Bootstrap — measurement not yet implemented.** This repository starts privately and may be published after its contracts, migration evidence, and security boundaries are ready. A Rust workspace, CI, and the migration ownership map exist; contracts, kernel, adapters, and CLI workflows do not. The architecture and commands described here are targets unless the table below says implemented. No throughput, accuracy, or production-readiness claim is established by these documents.
+
+| Item | State |
+| --- | --- |
+| Cargo workspace (five crates), pinned toolchain 1.98.1, MSRV 1.85, committed lockfile | Implemented (identity-only placeholders) |
+| CI: fmt, Clippy `-D warnings`, locked tests, MSRV test, dependency-policy guard | Implemented |
+| CLI | Implemented: `--version` only; every other input is a usage error |
+| Legacy ownership map and oracle pin ([ownership map](docs/migration/ownership-map.md), [ADR 0001](docs/adr/0001-rust-first-and-oracle-pin.md)) | Implemented (inventory, no code moved) |
+| Contracts, kernel semantics, methods, accounting, scanner adapters | Proposed |
+| `run`, `replay`, `validate`, `compare` | Proposed |
+| Internal GitHub App | Proposed |
+| Protected execution via private-custodian | Proposed (owned by that repository) |
 
 ## What the engine measures
 
@@ -38,16 +49,17 @@ The engine does not own canonical truth, product thresholds, support status, rel
 | Corpus author | Reviewed expectations, provenance, generation rules, and population identity |
 | `pii-eval` | Scanner-neutral execution and measurement |
 | [private-custodian](https://github.com/redact-secret/private-custodian) | Protected execution authorization, custody, budgets, and release of approved projections |
-| [redact-secret-benchmarks](https://github.com/redact-secret/redact-secret-benchmarks) | Redact Secret qualification policy and public presentation |
+| Internal GitHub App (proposed) | A thin request and sanitized-status adapter over the CLI/artifacts; not a measurement, custody, or authorization authority |
+| [redact-secret-benchmarks](https://github.com/redact-secret/redact-secret-benchmarks) | Redact Secret qualification policy and public presentation; retains the pinned TypeScript oracle until its recorded exit |
 | [credential-eval](https://github.com/redact-secret/credential-eval) | Credential measurement with its own protocol |
 
 One run measures one identified population. Consumers may compose several artifacts through explicit policy, retaining each population's identity and denominator.
 
 ## Planned implementation
 
-A Rust workspace separates contracts, kernel, adapters, CLI, and temporary compatibility tooling. Node/Python shims support scanners in those runtimes; scoring is implemented in Rust. Public synthetic runs can execute locally. Protected runs execute only within a separately authorized custodian environment.
+A Rust workspace (present, see [dependency policy](docs/dependency-policy.md)) separates contracts, kernel, adapters, CLI, and temporary compatibility tooling. The crates are internal; consumers integrate through versioned artifacts and the CLI, not through Rust APIs. Node/Python shims support scanners in those runtimes; scoring is implemented in Rust. Public synthetic runs can execute locally. Protected runs execute only within a separately authorized custodian environment.
 
-No CLI command is promised until implemented and tested. The intended capabilities are `run`, `replay`, `validate`, and `compare`; their final syntax is established by the CLI contract.
+The only implemented CLI behavior is `pii-eval --version`. No other CLI command is promised until implemented and tested. The intended capabilities are `run`, `replay`, `validate`, and `compare`; their final syntax is established by the CLI contract.
 
 ## Migration acceptance
 
@@ -60,7 +72,7 @@ No CLI command is promised until implemented and tested. The intended capabiliti
 
 ## Reading and contribution
 
-Read [ARCHITECTURE.md](ARCHITECTURE.md), [CONVENTIONS.md](CONVENTIONS.md), [SECURITY.md](SECURITY.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Contributions must use synthetic/public-test material and preserve scanner-neutral expectations. Scanner agreement does not establish ground truth.
+Read [ARCHITECTURE.md](ARCHITECTURE.md), the [migration ownership map](docs/migration/ownership-map.md), [CONVENTIONS.md](CONVENTIONS.md), [SECURITY.md](SECURITY.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Contributions must use synthetic/public-test material and preserve scanner-neutral expectations. Scanner agreement does not establish ground truth.
 
 ## Publication and licensing
 
