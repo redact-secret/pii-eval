@@ -20,8 +20,10 @@ pii-eval run      --config FILE [--out DIR] [--node PATH] [--job-context FILE]
 pii-eval replay   --snapshot FILE --manifest FILE --observation FILE [--observation FILE]...
                   --out DIR [--original FILE] [--expect-snapshot-digest SHA256]
                   [--expect-manifest-digest SHA256] [--overwrite refuse|replace]
+                  [--job-context FILE]
 pii-eval validate FILE [--kind KIND] [--snapshot FILE] [--manifest FILE]
-pii-eval compare  --base FILE --other FILE
+                  [--job-context FILE]
+pii-eval compare  --base FILE --other FILE [--snapshot FILE] [--job-context FILE]
 pii-eval --version | --help
 ```
 
@@ -55,6 +57,9 @@ every identity pin and binding; build the pinned adapters and require that each
 derived scanner plan equals the manifest's; hash every pinned artifact; prepare
 the output directory; check the execution limits; only then start scanners.
 Failures before that point launch nothing and leave no output directory behind.
+Writer temporaries (`.pii-eval-tmp.*`) that a crashed earlier run left in the
+output directory are removed first (the directory is the CLI's own: never point
+two concurrent runs at one directory).
 
 Every outcome row passes the snapshot's review gate before accounting: a
 variant the snapshot holds for review (`review-required`) has an unmeasured type
@@ -95,11 +100,23 @@ exactly these observation sets by digest, and the replayed artifact must equal i
 observation sets needs `--original` today; a replay that needs no original is a
 contract change deferred in ADR 0010.
 
+**What a replay verifies independently, and what it carries over.** The summary
+lists both under `semantic.verification`. *Recomputed on this run from the
+observation sets:* matching, accounting, the metrics, the review gate, the
+artifact digest (`recomputed`). *Carried over from the original artifact*
+(`carriedFromOriginal`): the `output-verdicts` (when a scanner returned sanitized
+output) and the `failure-codes` of scanners that did not complete. `parity:
+identical` is therefore an independent check of everything except those carried
+parts: the original passed the accounting verifier and binds to these
+observation sets, but its verdicts and failure codes are not re-derived by the
+replay.
+
 `--expect-snapshot-digest` and `--expect-manifest-digest` pin the semantic
 digests. Only revision-2 (canonical) manifests can be replayed; a legacy
 revision-1 plan is not re-measured. Diagnostics are never attached, so a
 replay's files are byte-identical to the original run's when the original also
-had none.
+had none. Replay of a protected population needs `--job-context` (below); its
+inputs and output directory are confined to the context's roots.
 
 ### `validate`
 
@@ -109,7 +126,14 @@ the document's `schema`. `--snapshot` and `--manifest` add binding checks
 (a manifest against a snapshot; an observation set against both; a run artifact
 against both, with the accounting verifier needing the snapshot; a public
 artifact against the snapshot). An option that does not apply to the kind is a
-usage error.
+usage error. A protected document (a snapshot of protected visibility, a
+protected-class manifest or artifact) is validated only inside a job context
+(`--job-context` or `PII_EVAL_JOB_CONTEXT`; exit 9 otherwise, and the file must
+lie inside the input root), and its summary withholds the case and variant counts.
+Whether a document is protected is known only after it is parsed, so the file is
+read (not reported) before the refusal; an observation set carries no visibility
+and is treated as protected only when a protected `--snapshot` or `--manifest`
+accompanies it.
 
 Legacy revision 1 documents are **readable**: they validate structurally and
 keep their digests. A legacy run or public artifact is **not verifiable** (its
@@ -140,6 +164,14 @@ reason), a `relation` (`identical`, `changed`, `withheld-in-both`,
 and `identical` (the whole result is equal). A withheld metric is shown as
 withheld; the diff never turns it into a number. No field ranks, scores or
 prefers either artifact (`interpretation: descriptive-only`).
+
+`compare` does not verify the artifacts unless asked: `semantic.verification`
+reports `{base, other}` as `not-run` by default, so a resealed artifact with
+fabricated metrics compares as itself. `--snapshot FILE` validates both artifacts
+against the snapshot and runs the accounting verifier (`verified`; a failure is
+exit 3 `verification-failed`; legacy artifacts are refused anyway). Protected
+artifacts need a job context and their metric `counts` and `effectiveN` are
+withheld from the output (`identical` is still decided on the full results).
 
 ## Run configuration (`pii-eval-run-config/1`)
 
@@ -264,7 +296,7 @@ Reason codes (`error.reason`), by exit: 2 `missing-command`, `unknown-command`,
 `replay-incomplete-observations`, `verification-failed`,
 `measurement-assembly-failed`; 4 `provenance-mismatch`, `replay-diverged`;
 5 `scanner-failure`; 6 `execution-refused`, `platform-unsupported`,
-`adapter-invalid`; 7 `output-unusable`, `output-exists`, `output-write-failed`,
+`adapter-invalid`, `signal-handler-unavailable`; 7 `output-unusable`, `output-exists`, `output-write-failed`,
 `output-committed-not-durable`, `output-partial`; 8 `cancelled`; 9
 `protected-context-required`, `protected-context-invalid`,
 `protected-context-mismatch`, `protected-path-outside-context`; 10
@@ -298,6 +330,11 @@ files by name, size and SHA-256 (deterministic when diagnostics are off). The
 `completeness` field of a run summary is the artifact's outcome-matrix coverage
 (a scanner that failed still has explicit not-measured rows); read `state` and
 the scanner statuses for whether the measurement is complete.
+
+An argument that is not UTF-8 is a usage error (exit 2, `invalid-option-value`)
+with the usual summary, never a panic. A failure to write the summary to stdout
+is exit 7 with a line on stderr, except a closed pipe (the reader went away),
+which is not a failure of the command.
 
 **Stderr** carries one human diagnostic line on failure
 (`pii-eval: <reason> (<exit name>, exit <code>)[: detail][ [codes]]`), plus the
@@ -385,13 +422,17 @@ protected isolation is the custodian's (SECURITY.md).
 ## Signals
 
 Scanners lead their own process groups, so a terminal Ctrl-C does not reach
-them. `run` installs handlers for SIGINT and SIGTERM: the first cancels the
+them. `run` installs handlers for SIGINT, SIGTERM and SIGHUP (a closed
+terminal must not leave a run attached to scanners): the first cancels the
 run, the executor kills every scanner process tree and removes its scratch
 directories, nothing is committed and the exit status is 8. A second signal
 while that happens ends the process at once with status 8 and cleans nothing:
-the scanner trees may be left running and an empty output directory may remain;
-the custodian must contain the run. If the CLI is killed (`SIGKILL`) the same
-applies. Other commands keep the default signal behavior.
+the scanner trees may be left running, scratch directories and writer
+temporaries (`.pii-eval-tmp.*`) may remain, an empty output directory may remain,
+and files already renamed into place may exist without `run-artifact.json` (an
+incomplete run by definition); the custodian must contain the run. If the CLI is
+killed (`SIGKILL`) the same applies. If a handler cannot be registered the run is
+not started (exit 6 `signal-handler-unavailable`). Other commands keep the default signal behavior.
 
 ## Known limits
 
@@ -402,5 +443,14 @@ applies. Other commands keep the default signal behavior.
   committed example manifest shows the shape and is regenerated by a test.
 - Replay without `--original` is impossible for scanners that return sanitized
   output (ADR 0010).
+- Output failures that no ordinary input reaches (`output-write-failed`,
+  `output-partial`, `output-committed-not-durable`) are exercised through a
+  debug-build-only fault hook (ADR 0010 C13); `platform-unsupported`,
+  `replay-incomplete-observations`, `measurement-assembly-failed` and
+  `artifact-verification-failed` cannot be triggered through the binary on a
+  supported platform and have unit-level tests only.
+- `run` with a configuration that claims `public-synthetic` over a snapshot that
+  turns out to be protected reads the file before refusing (visibility is only
+  known from the content); nothing is reported or written.
 - Documents up to 32 MiB are parsed; a document at the cap can need about 1 GiB
   of memory to parse (ADR 0008, section 6).

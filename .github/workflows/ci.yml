@@ -74,7 +74,10 @@ jobs:
       - name: CLI (run, replay, validate, compare, signals, exit codes, documented quickstart)
         env:
           PII_EVAL_REQUIRE_NODE: "1"
-        run: cargo test -p pii-eval-cli --locked --test smoke --test cli_commands --test cli_replay --test cli_gate --test cli_run --test cli_cancel --test cli_docs --test cli_example
+        run: cargo test -p pii-eval-cli --locked --test smoke --test cli_commands --test cli_replay --test cli_gate --test cli_review --test cli_run --test cli_cancel --test cli_docs --test cli_example
+      # Execution is refused on Windows, but the crate must keep compiling there.
+      - name: Windows compile check
+        run: rustup target add x86_64-pc-windows-msvc && cargo check --workspace --locked --target x86_64-pc-windows-msvc
       # The release build command documented in docs/cli.md, and the binary's identity.
       - name: Release build (documented command)
         run: cargo build --release --locked && target/release/pii-eval --version

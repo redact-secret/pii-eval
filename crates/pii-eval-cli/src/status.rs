@@ -129,6 +129,7 @@ pub mod reason {
     pub const EXECUTION_REFUSED: &str = "execution-refused";
     pub const PLATFORM_UNSUPPORTED: &str = "platform-unsupported";
     pub const ADAPTER_INVALID: &str = "adapter-invalid";
+    pub const SIGNAL_HANDLER_UNAVAILABLE: &str = "signal-handler-unavailable";
     // Output (exit 7).
     pub const OUTPUT_UNUSABLE: &str = "output-unusable";
     pub const OUTPUT_EXISTS: &str = "output-exists";
@@ -176,6 +177,7 @@ pub mod reason {
         EXECUTION_REFUSED,
         PLATFORM_UNSUPPORTED,
         ADAPTER_INVALID,
+        SIGNAL_HANDLER_UNAVAILABLE,
         OUTPUT_UNUSABLE,
         OUTPUT_EXISTS,
         OUTPUT_WRITE_FAILED,

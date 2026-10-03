@@ -183,6 +183,10 @@ fn replay_launches_no_scanner_and_needs_no_node() {
         .unwrap();
     assert_eq!(code(&result), 5, "{}", stderr(&result));
     assert!(!marker.exists(), "no process named node was started");
+    // Positive control: the decoy does record an execution, so the assertion
+    // above can fail.
+    assert!(Command::new(&decoy).status().unwrap().success());
+    assert!(marker.exists(), "the decoy records its own execution");
     assert_eq!(summary(&result)["semantic"]["parity"], "identical");
 }
 
@@ -190,7 +194,23 @@ fn replay_launches_no_scanner_and_needs_no_node() {
 fn replay_modules_use_no_process_or_adapter_api() {
     // The source guard behind the behavioural test above: the modules that
     // implement replay do not even name the process or adapter APIs.
-    for file in ["src/cmd_replay.rs", "src/replay.rs"] {
+    // Every module the replay path reaches (the command, its rebuild step, the
+    // shared assembler and writer, the file helpers, the summary and status
+    // vocabulary). Limit: this is a text check, not a proof (a process API
+    // reached through an alias or a macro would not be named); the behavioural
+    // test above is the other half, and the scanner adapters are not imported by
+    // any of these files.
+    for file in [
+        "src/cmd_replay.rs",
+        "src/replay.rs",
+        "src/assemble.rs",
+        "src/write.rs",
+        "src/files.rs",
+        "src/summary.rs",
+        "src/status.rs",
+        "src/cmd_validate.rs",
+        "src/cmd_compare.rs",
+    ] {
         let text =
             std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(file)).unwrap();
         // Strip comments: documentation may state what is not done.
@@ -200,7 +220,8 @@ fn replay_modules_use_no_process_or_adapter_api() {
             .collect::<Vec<_>>()
             .join("\n");
         for banned in [
-            "std::process",
+            // (`std::process::id()` names temporaries; spawning is what is banned.)
+            "process::Command",
             "Command::new",
             "pii_eval_adapters",
             "ScannerAdapter",

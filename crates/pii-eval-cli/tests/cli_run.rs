@@ -695,6 +695,27 @@ fn node_must_be_given_explicitly_and_absolutely() {
 // ---------------------------------------------------------------------------
 
 #[test]
+fn writer_temporaries_of_a_crashed_earlier_run_are_removed_from_the_output_directory() {
+    let node = node_or_return!();
+    let ws = Workspace::new("run-stale", &node);
+    let out = ws.out("out");
+    std::fs::create_dir(&out).unwrap();
+    std::fs::write(out.join(".pii-eval-tmp.4242.0.run-artifact.json"), b"half").unwrap();
+    std::fs::write(out.join("notes.txt"), b"mine").unwrap();
+    let result = ws.run(&out);
+    assert_eq!(code(&result), 0, "{}", stderr(&result));
+    let names = list_dir(&out);
+    assert!(
+        !names.iter().any(|n| n.starts_with(".pii-eval-tmp.")),
+        "{names:?}"
+    );
+    assert!(
+        names.contains(&"notes.txt".to_owned()),
+        "other files are left alone"
+    );
+}
+
+#[test]
 fn an_existing_result_is_never_overwritten_and_replace_is_explicit() {
     let node = node_or_return!();
     let ws = Workspace::new("run-existing", &node);
@@ -1216,11 +1237,13 @@ fn a_valid_job_context_binds_the_run_and_grants_nothing() {
     {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&p.snapshot, std::fs::Permissions::from_mode(0o000)).unwrap();
-        if std::fs::read(&p.snapshot).is_err() {
-            let result = run_protected(&p, Some(&job), &p.output_root.join("out3"));
-            assert_eq!(code(&result), 3);
-            assert_eq!(reason(&summary(&result)), "input-unreadable");
-        }
+        assert!(
+            std::fs::read(&p.snapshot).is_err(),
+            "this test needs a user that mode 000 binds: do not run the suite as root"
+        );
+        let result = run_protected(&p, Some(&job), &p.output_root.join("out3"));
+        assert_eq!(code(&result), 3);
+        assert_eq!(reason(&summary(&result)), "input-unreadable");
         std::fs::set_permissions(&p.snapshot, std::fs::Permissions::from_mode(0o600)).unwrap();
     }
 }

@@ -33,7 +33,9 @@
 //!
 //! Errors carry fixed text only: no path, document content or finding.
 
-use std::fs::{File, OpenOptions};
+#[cfg_attr(not(unix), allow(unused_imports))]
+use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -404,6 +406,7 @@ impl ArtifactWriter {
             Ok(m) if m.is_dir() && !m.file_type().is_symlink() => Ok(()),
             Ok(_) => Err(WriteError::Destination),
             Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                #[cfg_attr(not(unix), allow(unused_mut))]
                 let mut builder = std::fs::DirBuilder::new();
                 #[cfg(unix)]
                 std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);

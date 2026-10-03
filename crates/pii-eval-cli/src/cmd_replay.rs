@@ -18,7 +18,7 @@ use serde_json::json;
 use crate::args::ReplayArgs;
 use crate::assemble::{AssembleOptions, assemble, variant_tasks};
 use crate::cmd_run::{read_document, wire, write_failure};
-use crate::files::{prepare_output, read_input};
+use crate::files::{confine, prepare_output, read_input};
 use crate::replay::{needs_original, runs_from_observations};
 use crate::status::{Exit, Failure, from_binding, from_violations, reason};
 use crate::summary::{Report, files_value};
@@ -60,6 +60,19 @@ pub fn replay(args: &ReplayArgs) -> Result<Report, Failure> {
         return Err(Failure::provenance("manifest-digest"));
     }
     let m = &manifest.semantic;
+    // Protected inputs are handled only inside a custodian job context.
+    let protected = snapshot.semantic.population.visibility
+        == pii_eval_contracts::Visibility::Protected
+        || m.run_class == RunClass::Protected;
+    let mut inputs: Vec<&Path> = vec![Path::new(&args.snapshot), Path::new(&args.manifest)];
+    inputs.extend(args.observations.iter().map(|o| Path::new(o.as_str())));
+    inputs.extend(args.original.as_deref().map(Path::new));
+    confine(
+        protected,
+        args.job_context.as_deref(),
+        &inputs,
+        Some(Path::new(&args.out)),
+    )?;
     if !m.protocol.is_canonical() {
         return Err(
             Failure::new(Exit::Invalid, reason::PROTOCOL_UNSUPPORTED).with_detail("manifest")
@@ -178,7 +191,13 @@ pub fn replay(args: &ReplayArgs) -> Result<Report, Failure> {
     }
     names.push(RUN_ARTIFACT_FILE.to_owned());
     let output = prepare_output(Path::new(&args.out), &names, overwrite)?;
-    let writer = ArtifactWriter::new(output.path(), overwrite).with_manifest();
+    // The directory is the CLI's own: temporaries a crashed earlier run left in
+    // it are removed (never while another writer uses the directory).
+    let _ = crate::write::cleanup_stale_temps(output.path());
+    let writer = crate::files::with_test_faults(
+        ArtifactWriter::new(output.path(), overwrite).with_manifest(),
+        output.path(),
+    );
     let written = match writer.write_run(&snapshot, &manifest, &mut assembled, started) {
         Ok(w) => w,
         Err(WriteError::CommitNotDurable { files }) => {
@@ -190,8 +209,36 @@ pub fn replay(args: &ReplayArgs) -> Result<Report, Failure> {
     output.commit();
 
     let artifact = &assembled.artifact;
+    let mut carried: Vec<&str> = Vec::new();
+    if original.is_some() {
+        if sets.iter().any(|s| {
+            s.semantic.status == pii_eval_contracts::ScannerStatus::Complete
+                && s.semantic.capabilities.action
+                    == pii_eval_contracts::ActionCapability::SanitizedOutput
+                && s.semantic
+                    .inputs
+                    .iter()
+                    .any(|i| i.sanitized_output_digest.is_some())
+        }) {
+            carried.push("output-verdicts");
+        }
+        if sets
+            .iter()
+            .any(|s| s.semantic.status != pii_eval_contracts::ScannerStatus::Complete)
+        {
+            carried.push("failure-codes");
+        }
+    }
     let semantic = json!({
         "parity": parity,
+        "verification": {
+            // Re-derived from the observation sets by the kernel on this run.
+            "recomputed": ["accounting", "artifact-digest", "matching", "metrics", "review-gate"],
+            // Taken from the original run artifact (which passed the accounting
+            // verifier): not re-derived, so `parity` is not an independent check
+            // of these parts.
+            "carriedFromOriginal": carried,
+        },
         "scannersLaunched": 0,
         "runClass": wire(&m.run_class),
         "populationDigest": snapshot.semantic_digest.as_str(),

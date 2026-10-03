@@ -12,10 +12,10 @@ use std::path::Path;
 
 use pii_eval_contracts::{
     CorpusSnapshot, Document, DocumentKind, ObservationSet, ParseLimits, PublicSyntheticArtifact,
-    ReasonCode, RunArtifact, RunManifest, parse, parse_strict, validate_artifact_against_manifest,
-    validate_artifact_against_snapshot, validate_manifest_against_snapshot,
-    validate_observation_against_manifest, validate_observation_against_snapshot,
-    validate_public_artifact_against_snapshot,
+    ReasonCode, RunArtifact, RunClass, RunManifest, Visibility, parse, parse_strict,
+    validate_artifact_against_manifest, validate_artifact_against_snapshot,
+    validate_manifest_against_snapshot, validate_observation_against_manifest,
+    validate_observation_against_snapshot, validate_public_artifact_against_snapshot,
 };
 use pii_eval_kernel::{
     VerifyFailure, verify_public_artifact_accounting, verify_run_artifact_accounting,
@@ -24,7 +24,7 @@ use serde_json::{Value, json};
 
 use crate::args::ValidateArgs;
 use crate::cmd_run::{read_document, wire};
-use crate::files::read_input;
+use crate::files::{confine, read_input};
 use crate::status::{Exit, Failure, from_binding, from_contract_error, from_violations, reason};
 use crate::summary::Report;
 
@@ -35,7 +35,7 @@ fn kind_from_option(text: &str) -> Result<DocumentKind, Failure> {
         .ok_or_else(|| Failure::usage(reason::INVALID_OPTION_VALUE, "kind"))
 }
 
-fn verify_failure(e: VerifyFailure) -> Failure {
+pub(crate) fn verify_failure(e: VerifyFailure) -> Failure {
     match e {
         VerifyFailure::Mismatch(v) => Failure::new(Exit::Invalid, reason::VERIFICATION_FAILED)
             .with_codes(v.errors.iter().map(|e| e.code)),
@@ -118,6 +118,16 @@ pub fn validate(args: &ValidateArgs) -> Result<Report, Failure> {
         },
     };
     let limits = ParseLimits::default();
+    // Protected documents are handled only inside a custodian job context, and
+    // their counts are withheld (ADR 0010 C6).
+    let mut protected = ctx
+        .snapshot
+        .as_ref()
+        .is_some_and(|s| s.semantic.population.visibility == Visibility::Protected)
+        || ctx
+            .manifest
+            .as_ref()
+            .is_some_and(|m| m.semantic.run_class == RunClass::Protected);
     let mut bindings: Vec<&'static str> = Vec::new();
     let (mut semantic, legacy, verification) = match kind {
         DocumentKind::CorpusSnapshot => {
@@ -129,6 +139,7 @@ pub fn validate(args: &ValidateArgs) -> Result<Report, Failure> {
             }
             let d: CorpusSnapshot =
                 parse(&bytes, &limits).map_err(|v| from_violations(stem, &v))?;
+            protected |= d.semantic.population.visibility == Visibility::Protected;
             let mut s = base(kind, &d);
             let body = &d.semantic;
             s["visibility"] = json!(wire(&body.population.visibility));
@@ -147,6 +158,7 @@ pub fn validate(args: &ValidateArgs) -> Result<Report, Failure> {
                 bindings.push("snapshot");
             }
             let mut s = base(kind, &d);
+            protected |= d.semantic.run_class == RunClass::Protected;
             s["runClass"] = json!(wire(&d.semantic.run_class));
             s["protocol"] = protocol_value(&d.semantic.protocol);
             s["scanners"] = json!(d.semantic.scanners.len());
@@ -192,6 +204,7 @@ pub fn validate(args: &ValidateArgs) -> Result<Report, Failure> {
             if legacy {
                 verification = "not-verifiable-legacy";
             }
+            protected |= d.semantic.run_class == RunClass::Protected;
             let mut s = base(kind, &d);
             s["protocol"] = protocol_value(&d.semantic.protocol);
             s["runClass"] = json!(wire(&d.semantic.run_class));
@@ -236,6 +249,16 @@ pub fn validate(args: &ValidateArgs) -> Result<Report, Failure> {
             (s, legacy, verification)
         }
     };
+    let mut paths: Vec<&Path> = vec![Path::new(&args.file)];
+    paths.extend(args.snapshot.as_deref().map(Path::new));
+    paths.extend(args.manifest.as_deref().map(Path::new));
+    confine(protected, args.job_context.as_deref(), &paths, None)?;
+    if protected {
+        if let Some(o) = semantic.as_object_mut() {
+            o.remove("cases");
+            o.remove("variants");
+        }
+    }
     semantic["bindingsChecked"] = json!(bindings);
     semantic["verification"] = json!(verification);
     let not_verifiable = legacy && verification == "not-verifiable-legacy";

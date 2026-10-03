@@ -287,6 +287,9 @@ pub fn run(args: &RunArgs, cancel: &CancelToken) -> Result<Report, Failure> {
     }
     names.push(RUN_ARTIFACT_FILE.to_owned());
     let output: OutputDir = prepare_output(&out_dir, &names, config.output.overwrite)?;
+    // The directory is the CLI's own: writer temporaries a crashed earlier run
+    // left in it are removed (never while another writer uses the directory).
+    let _ = crate::write::cleanup_stale_temps(output.path());
 
     // 8. Execution limits, refused before any scanner starts.
     let mut executor = ExecutorConfig {
@@ -301,7 +304,10 @@ pub fn run(args: &RunArgs, cancel: &CancelToken) -> Result<Report, Failure> {
     crate::exec::effective_limits(&m.limits, &executor).map_err(|e| exec_failure(&e))?;
 
     // 9. Run, assemble, verify, write.
-    let writer = ArtifactWriter::new(output.path(), config.output.overwrite).with_manifest();
+    let writer = crate::files::with_test_faults(
+        ArtifactWriter::new(output.path(), config.output.overwrite).with_manifest(),
+        output.path(),
+    );
     let result = run_and_write(
         &RunRequest {
             snapshot: &snapshot,
@@ -407,4 +413,80 @@ pub fn run(args: &RunArgs, cancel: &CancelToken) -> Result<Report, Failure> {
         semantic,
         outputs: Some(files_value(&written.files)),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pii_eval_kernel::VerifyFailure;
+
+    #[test]
+    fn execution_failures_map_to_their_reasons() {
+        // `platform-unsupported` cannot be reached through the binary on Linux
+        // or macOS (tree cleanup is available there): ADR 0010 C13.
+        let f = exec_failure(&ExecError::TreeCleanupUnsupported);
+        assert_eq!(
+            (f.exit, f.reason),
+            (Exit::Execution, reason::PLATFORM_UNSUPPORTED)
+        );
+        for e in [
+            ExecError::InvalidLimits,
+            ExecError::BudgetTooSmall,
+            ExecError::Scratch,
+            ExecError::AdapterCountMismatch,
+            ExecError::ThreadSpawn,
+            ExecError::AdapterExceedsManifestBounds { scanner: 0 },
+        ] {
+            assert_eq!(exec_failure(&e).reason, reason::EXECUTION_REFUSED);
+        }
+    }
+
+    #[test]
+    fn write_failures_map_to_output_statuses_and_failed_self_checks_are_internal() {
+        use std::io::ErrorKind;
+        let cases = [
+            (WriteError::Exists, Exit::Output, reason::OUTPUT_EXISTS),
+            (
+                WriteError::Destination,
+                Exit::Output,
+                reason::OUTPUT_UNUSABLE,
+            ),
+            (
+                WriteError::Io(ErrorKind::Other),
+                Exit::Output,
+                reason::OUTPUT_WRITE_FAILED,
+            ),
+            (
+                WriteError::PartiallyCommitted { committed: vec![] },
+                Exit::Output,
+                reason::OUTPUT_PARTIAL,
+            ),
+            (
+                WriteError::CommitNotDurable { files: vec![] },
+                Exit::Output,
+                reason::OUTPUT_NOT_DURABLE,
+            ),
+            // Defects of the engine that validated inputs cannot trigger
+            // (ADR 0010 C13).
+            (
+                WriteError::Invalid,
+                Exit::Internal,
+                reason::ARTIFACT_VERIFICATION_FAILED,
+            ),
+            (
+                WriteError::RoundTrip,
+                Exit::Internal,
+                reason::ARTIFACT_VERIFICATION_FAILED,
+            ),
+            (
+                WriteError::Verification(VerifyFailure::UnsupportedRevision { version: 1 }),
+                Exit::Internal,
+                reason::ARTIFACT_VERIFICATION_FAILED,
+            ),
+        ];
+        for (error, exit, expected) in cases {
+            let f = write_failure(&error);
+            assert_eq!((f.exit, f.reason), (exit, expected), "{error:?}");
+        }
+    }
 }

@@ -57,6 +57,8 @@ pub struct ReplayArgs {
     pub out: String,
     /// Overwrite policy (`refuse` or `replace`).
     pub overwrite: Option<String>,
+    /// Custodian job context (required when the population is protected).
+    pub job_context: Option<String>,
 }
 
 /// `pii-eval validate FILE [--kind KIND] [--snapshot FILE] [--manifest FILE]`
@@ -70,6 +72,8 @@ pub struct ValidateArgs {
     pub snapshot: Option<String>,
     /// Manifest to bind to.
     pub manifest: Option<String>,
+    /// Custodian job context (required for protected documents).
+    pub job_context: Option<String>,
 }
 
 /// `pii-eval compare --base FILE --other FILE`
@@ -79,6 +83,10 @@ pub struct CompareArgs {
     pub base: String,
     /// The other artifact.
     pub other: String,
+    /// Snapshot both artifacts are verified against (optional).
+    pub snapshot: Option<String>,
+    /// Custodian job context (required for protected artifacts).
+    pub job_context: Option<String>,
 }
 
 struct Opts {
@@ -187,6 +195,7 @@ pub fn parse(args: &[String]) -> Result<Command, Failure> {
                     ("expect-manifest-digest", false),
                     ("out", false),
                     ("overwrite", false),
+                    ("job-context", false),
                 ],
                 0,
             )?;
@@ -206,12 +215,18 @@ pub fn parse(args: &[String]) -> Result<Command, Failure> {
                 expect_manifest_digest: o.one("expect-manifest-digest"),
                 out: o.required("out")?,
                 overwrite: o.one("overwrite"),
+                job_context: o.one("job-context"),
             }))
         }
         "validate" => {
             let mut o = parse_opts(
                 rest,
-                &[("kind", false), ("snapshot", false), ("manifest", false)],
+                &[
+                    ("kind", false),
+                    ("snapshot", false),
+                    ("manifest", false),
+                    ("job-context", false),
+                ],
                 1,
             )?;
             let file = o
@@ -223,13 +238,25 @@ pub fn parse(args: &[String]) -> Result<Command, Failure> {
                 kind: o.one("kind"),
                 snapshot: o.one("snapshot"),
                 manifest: o.one("manifest"),
+                job_context: o.one("job-context"),
             }))
         }
         "compare" => {
-            let mut o = parse_opts(rest, &[("base", false), ("other", false)], 0)?;
+            let mut o = parse_opts(
+                rest,
+                &[
+                    ("base", false),
+                    ("other", false),
+                    ("snapshot", false),
+                    ("job-context", false),
+                ],
+                0,
+            )?;
             Ok(Command::Compare(CompareArgs {
                 base: o.required("base")?,
                 other: o.required("other")?,
+                snapshot: o.one("snapshot"),
+                job_context: o.one("job-context"),
             }))
         }
         _ => Err(Failure::usage(reason::UNKNOWN_COMMAND, "command")),
@@ -243,8 +270,10 @@ usage:
   pii-eval replay   --snapshot FILE --manifest FILE --observation FILE [--observation FILE]...
                     --out DIR [--original FILE] [--expect-snapshot-digest SHA256]
                     [--expect-manifest-digest SHA256] [--overwrite refuse|replace]
+                    [--job-context FILE]
   pii-eval validate FILE [--kind KIND] [--snapshot FILE] [--manifest FILE]
-  pii-eval compare  --base FILE --other FILE
+                    [--job-context FILE]
+  pii-eval compare  --base FILE --other FILE [--snapshot FILE] [--job-context FILE]
   pii-eval --version | --help
 stdout: one JSON summary line (pii-eval-summary/1); stderr: diagnostics.
 exit codes and syntax: docs/cli.md";

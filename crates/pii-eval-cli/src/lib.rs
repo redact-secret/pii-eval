@@ -45,7 +45,7 @@ pub fn version_line() -> String {
 /// Run one invocation. `cancel` is called only for `run`, so the signal
 /// handlers are installed only when scanners can be launched (a Ctrl-C during
 /// `validate` keeps its default behavior).
-pub fn execute(args: &[String], cancel: impl FnOnce() -> CancelToken) -> Rendered {
+pub fn execute(args: &[String], cancel: impl FnOnce() -> Result<CancelToken, Failure>) -> Rendered {
     let command = match args::parse(args) {
         Ok(c) => c,
         Err(failure) => {
@@ -66,11 +66,41 @@ pub fn execute(args: &[String], cancel: impl FnOnce() -> CancelToken) -> Rendere
             stdout: format!("{USAGE}\n"),
             stderr: String::new(),
         },
-        Command::Run(a) => render(Some("run"), cmd_run::run(&a, &cancel())),
+        Command::Run(a) => render(
+            Some("run"),
+            cancel().and_then(|token| cmd_run::run(&a, &token)),
+        ),
         Command::Replay(a) => render(Some("replay"), cmd_replay::replay(&a)),
         Command::Validate(a) => render(Some("validate"), cmd_validate::validate(&a)),
         Command::Compare(a) => render(Some("compare"), cmd_compare::compare(&a)),
     }
+}
+
+/// [`execute`] for raw operating-system arguments: an argument that is not UTF-8
+/// is a usage error (exit 2) with the usual summary, never a panic.
+pub fn execute_os(
+    args: Vec<std::ffi::OsString>,
+    cancel: impl FnOnce() -> Result<CancelToken, Failure>,
+) -> Rendered {
+    let mut text = Vec::with_capacity(args.len());
+    for arg in args {
+        match arg.into_string() {
+            Ok(a) => text.push(a),
+            Err(_) => {
+                let mut rendered = render(
+                    None,
+                    Err(Failure::usage(
+                        status::reason::INVALID_OPTION_VALUE,
+                        "argument (not UTF-8)",
+                    )),
+                );
+                rendered.stderr.push_str(USAGE);
+                rendered.stderr.push('\n');
+                return rendered;
+            }
+        }
+    }
+    execute(&text, cancel)
 }
 
 /// The rendering of a panic: a fixed internal-error summary. The panic message
@@ -97,9 +127,9 @@ mod tests {
 
     #[test]
     fn version_is_plain_text_and_failures_are_summaries() {
-        let v = execute(&["--version".to_owned()], CancelToken::new);
+        let v = execute(&["--version".to_owned()], || Ok(CancelToken::new()));
         assert_eq!(v.stdout, format!("{}\n", version_line()));
-        let bad = execute(&["bogus".to_owned()], CancelToken::new);
+        let bad = execute(&["bogus".to_owned()], || Ok(CancelToken::new()));
         assert_eq!(bad.exit, Exit::Usage);
         assert!(bad.stdout.starts_with('{'));
     }

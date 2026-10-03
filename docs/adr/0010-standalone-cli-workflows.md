@@ -110,7 +110,10 @@ custodian ids, run class `protected`, the snapshot and manifest semantic digests
 Checks: a regular file that group and others cannot write; strict closed JSON;
 digests match; the snapshot and manifest are read only from inside the input
 root and the output directory is inside the output root (symlinks and `..`
-resolved). Without a context the run is refused with a distinct exit code (9)
+resolved). The same confinement applies to `validate`, `compare` and `replay` of
+protected documents (`--job-context`; protectedness is read from the parsed
+visibility or run class, so the file is read before the refusal, which reports
+nothing), and their summaries withhold case, variant and sample counts. Without a context the run is refused with a distinct exit code (9)
 **before any input path is touched** (tested by pointing the configuration at a
 missing snapshot). Stated limits: no signature or owner verification, no
 isolation, and a protected run writes only the internal artifact. The reason
@@ -127,9 +130,14 @@ only; no channel or iterator machinery; it depends on `signal-hook-registry` and
 `libc`, which is already in the graph). Chosen: `signal-hook`, in the CLI crate
 only, Unix only, exact pin. `register_conditional_shutdown` and `register` set
 the flag backing the run's `CancelToken` (new `CancelToken::from_flag`): the
-first SIGINT or SIGTERM cancels, the executor kills every scanner tree, removes
+first SIGINT, SIGTERM or SIGHUP cancels (a closed terminal must not leave
+scanners attached), the executor kills every scanner tree, removes
 scratch directories, nothing is committed, exit 8; a second signal exits at once
-with status 8 and cleans nothing (documented). Handlers are installed only for
+with status 8 and cleans nothing: scratch, `.pii-eval-tmp.*` temporaries, renamed
+files without `run-artifact.json` and scanner trees may remain (documented).
+A handler that cannot be registered fails closed (exit 6
+`signal-handler-unavailable`). Writer temporaries in the output directory are
+removed at the start of `run` and `replay` (the directory is the CLI's own). Handlers are installed only for
 `run`. Tested with a real scanner that blocks forever and spawns a descendant:
 the CLI exits 8, both processes are gone, scratch is empty, no output directory
 remains.
@@ -154,7 +162,11 @@ verifier, bind to these very observation sets by digest, and equal the replayed
 artifact (otherwise exit 4 `replay-diverged`, nothing written). Without an
 original, replay is refused (`replay-original-required`) whenever a scanner is
 incomplete or returned sanitized output. `@redact-secret/core` always returns
-sanitized output, so replaying its sets needs the original today. Replay writes
+sanitized output, so replaying its sets needs the original today.
+`semantic.verification` states which parts were re-derived (matching, accounting,
+metrics, review gate, artifact digest) and which were carried from the original
+(output verdicts, failure codes), so `parity: identical` is not read as a fully
+independent check. Replay writes
 the same files as `run` and, when the original had no diagnostics, they are
 byte-identical to it. A replay that needs no original would require the
 verdicts in the observation contract (an optional field in schema 1.2): deferred,
@@ -168,7 +180,11 @@ run and replay paths as the callers. `assemble` (shared by `run` and `replay`)
 now applies `ReviewGate::from_body(snapshot)` to every row it emits, so the
 artifact rows, the metrics and the verifier's recomputation all see gated rows,
 and a replay of a stored snapshot gates exactly as the run did (tests:
-`cli_gate`). Fixtures without held variants are unchanged byte for byte.
+`cli_gate`). The kernel verifier re-applies the gate: a stored row that scores a
+held variant's type axis as anything but not-measured is
+`outcome-contradiction`, so `validate --snapshot` cannot call such an artifact
+verified (`cli_review`). Fixtures without held variants are unchanged byte for
+byte.
 
 ### C9. Compare: descriptive only
 
@@ -181,7 +197,9 @@ version, manifest, scanner identities, measured states): the artifact kind,
 protocol, run class, population binding and mechanics must be equal, otherwise
 exit 10 with a closed list of refusals and the diff of what can be stated. A
 legacy artifact is refused (its metrics are one unkeyed list from the legacy
-accounting). Scanners are paired by id, or the single scanner of each side.
+accounting). It does not verify unless given `--snapshot`; the summary
+says `not-run` otherwise. Scanners are paired by id, or the single scanner of
+each side.
 
 ### C10. Validate
 
@@ -212,6 +230,24 @@ only. `validate`, `compare` and `replay` use no process API. Release guidance is
 documentation only (`cargo build --release --locked`, `--version`, digest
 recording); there is no publishing workflow and no claim about reproducible
 binaries.
+
+### C13. Stdout, arguments and testing of unreachable paths
+
+Arguments are collected as OS strings inside the panic guard; a non-UTF-8
+argument is a usage error (exit 2) with the normal summary. A stdout write error
+other than a closed pipe is exit 7. Output failures that no input reaches
+(`output-write-failed`, `output-partial`, `output-committed-not-durable`) are
+driven end to end through `PII_EVAL_TEST_FAULT`, a writer fault hook compiled
+**only with debug assertions** (every `cargo test` build; a release build
+compiles it out and the variable does nothing). Not triggerable through the
+binary on a supported platform, so covered at unit level only:
+`platform-unsupported` (tree cleanup exists on Linux and macOS),
+`replay-incomplete-observations` (validation rejects the input first; the
+library function is tested directly), `measurement-assembly-failed` and
+`artifact-verification-failed` (engine defects that validated inputs cannot
+produce; the mappings are unit-tested). CI also runs `cargo check` for
+`x86_64-pc-windows-msvc` (installed by `rustup` in the job) to keep the crate
+compiling there; execution stays refused.
 
 ## Alternatives considered
 

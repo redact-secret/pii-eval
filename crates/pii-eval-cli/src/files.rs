@@ -6,7 +6,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use crate::status::{Exit, Failure, reason};
-use crate::write::OverwritePolicy;
+use crate::write::{ArtifactWriter, OverwritePolicy};
 
 /// Read a regular file of at most `max` bytes. A symlink to a regular file is
 /// followed (an explicit input path is the operator's choice); a directory,
@@ -96,6 +96,7 @@ pub fn prepare_output(
             if !std::fs::metadata(parent).is_ok_and(|m| m.is_dir()) {
                 return Err(unusable("parent-missing"));
             }
+            #[cfg_attr(not(unix), allow(unused_mut))]
             let mut builder = std::fs::DirBuilder::new();
             #[cfg(unix)]
             std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
@@ -136,4 +137,84 @@ pub fn canonical_or_parent(path: &Path) -> Option<PathBuf> {
 /// Whether `path` (after resolving symlinks and `..`) lies inside `root`.
 pub fn is_inside(root: &Path, path: &Path) -> bool {
     canonical_or_parent(path).is_some_and(|p| p.starts_with(root))
+}
+
+/// Confine the paths of a command that touches a **protected** document to the
+/// custodian job context (ADR 0010 C6). Not protected: nothing to check. Protected
+/// without a context (`--job-context` or `PII_EVAL_JOB_CONTEXT`): exit 9. Every
+/// input must lie inside the context's input root and the output directory
+/// inside its output root, after resolving symlinks and `..`. The context grants
+/// no access; this only refuses.
+pub fn confine(
+    protected: bool,
+    job_option: Option<&str>,
+    inputs: &[&Path],
+    output: Option<&Path>,
+) -> Result<(), Failure> {
+    if !protected {
+        return Ok(());
+    }
+    let path = job_option
+        .map(str::to_owned)
+        .or_else(|| {
+            std::env::var(crate::cmd_run::JOB_CONTEXT_ENV)
+                .ok()
+                .filter(|v| !v.is_empty())
+        })
+        .ok_or_else(|| Failure::new(Exit::ProtectedContext, reason::PROTECTED_CONTEXT_REQUIRED))?;
+    let job = crate::config::JobContext::load(Path::new(&path))?;
+    let outside = |detail: &str| {
+        Failure::new(Exit::ProtectedContext, reason::PROTECTED_PATH_OUTSIDE).with_detail(detail)
+    };
+    if inputs.iter().any(|p| !is_inside(&job.input_root, p)) {
+        return Err(outside("input"));
+    }
+    if output.is_some_and(|p| !is_inside(&job.output_root, p)) {
+        return Err(outside("output"));
+    }
+    Ok(())
+}
+
+/// Test-only fault injection into the artifact writer, selected by the
+/// environment variable `PII_EVAL_TEST_FAULT` (`write-io`, `partial`,
+/// `not-durable`). It exists **only in builds with debug assertions** (every
+/// `cargo test` build); a release build compiles it out, so the variable has no
+/// effect there (ADR 0010 C13). It lets the end-to-end tests drive the output
+/// failure exits that no ordinary input can reach.
+#[cfg(debug_assertions)]
+pub fn with_test_faults(writer: ArtifactWriter, dir: &Path) -> ArtifactWriter {
+    use crate::write::WriteStage;
+    let fault = std::env::var("PII_EVAL_TEST_FAULT").unwrap_or_default();
+    let dir = dir.to_path_buf();
+    match fault.as_str() {
+        "write-io" => writer.with_fault_hook(|stage| match stage {
+            WriteStage::TempWritten(_) => Err(std::io::Error::other("injected")),
+            _ => Ok(()),
+        }),
+        "not-durable" => writer.with_fault_hook(|stage| match stage {
+            WriteStage::AfterCommit => Err(std::io::Error::other("injected")),
+            _ => Ok(()),
+        }),
+        // Fail the last rename after the others succeeded, with the directory
+        // made unwritable so the rollback cannot remove them.
+        "partial" => writer.with_fault_hook(move |stage| match stage {
+            WriteStage::BeforeRename(name) if name == crate::write::RUN_ARTIFACT_FILE => {
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o500));
+                }
+                let _ = &dir;
+                Err(std::io::Error::other("injected"))
+            }
+            _ => Ok(()),
+        }),
+        _ => writer,
+    }
+}
+
+/// Release builds: no fault injection.
+#[cfg(not(debug_assertions))]
+pub fn with_test_faults(writer: ArtifactWriter, _dir: &Path) -> ArtifactWriter {
+    writer
 }

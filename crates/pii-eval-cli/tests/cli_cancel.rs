@@ -212,6 +212,18 @@ fn sigint_cancels_the_run_the_same_way() {
 }
 
 #[test]
+fn sighup_cancels_the_run_like_sigterm() {
+    let node = node_or_return!();
+    let h = hanging("cancel-hup", &node);
+    let out = h.ws.out("out");
+    let child = spawn_run(&h, &out);
+    let pids = blocked_pids(&h);
+    signal(child.id(), "HUP");
+    let output = finish(child);
+    assert_cancelled_cleanly(&h, &out, &output, pids);
+}
+
+#[test]
 fn a_second_signal_still_ends_the_process_with_the_cancelled_status() {
     let node = node_or_return!();
     let h = hanging("cancel-twice", &node);

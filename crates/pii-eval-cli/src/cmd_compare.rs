@@ -16,15 +16,18 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use pii_eval_contracts::{
-    MetricResult, ParseLimits, PublicSyntheticArtifact, RunArtifact, ScannerMetrics, parse,
-    parse_strict,
+    CorpusSnapshot, MetricResult, ParseLimits, PublicSyntheticArtifact, RunArtifact, RunClass,
+    ScannerMetrics, Visibility, parse, parse_strict, validate_artifact_against_snapshot,
+    validate_public_artifact_against_snapshot,
 };
+use pii_eval_kernel::{verify_public_artifact_accounting, verify_run_artifact_accounting};
 use serde_json::{Map, Value, json};
 
 use crate::args::CompareArgs;
-use crate::cmd_run::wire;
-use crate::files::read_input;
-use crate::status::{Exit, Failure, from_contract_error, from_violations, reason};
+use crate::cmd_run::{read_document, wire};
+use crate::cmd_validate::verify_failure;
+use crate::files::{confine, read_input};
+use crate::status::{Exit, Failure, from_binding, from_contract_error, from_violations, reason};
 use crate::summary::Report;
 
 struct Scanner {
@@ -37,6 +40,8 @@ struct Scanner {
 struct View {
     kind: &'static str,
     legacy: bool,
+    protected: bool,
+    verification: &'static str,
     engine: Value,
     protocol: Value,
     run_class: String,
@@ -71,7 +76,7 @@ fn scanner_metrics(all: &[ScannerMetrics], id: &str) -> BTreeMap<String, Value> 
         .unwrap_or_default()
 }
 
-fn load(path: &str) -> Result<View, Failure> {
+fn load(path: &str, snapshot: Option<&CorpusSnapshot>) -> Result<View, Failure> {
     let bytes = read_input(
         Path::new(path),
         ParseLimits::default().max_bytes,
@@ -89,6 +94,16 @@ fn load(path: &str) -> Result<View, Failure> {
             let a: RunArtifact =
                 parse(&bytes, &limits).map_err(|e| from_violations("artifact", &e))?;
             let s = &a.semantic;
+            let verification = match snapshot {
+                None => "not-run",
+                Some(_) if s.protocol.is_legacy() => "not-verifiable-legacy",
+                Some(snap) => {
+                    validate_artifact_against_snapshot(&a, snap)
+                        .map_err(|e| from_binding("artifact", &e))?;
+                    verify_run_artifact_accounting(&a, snap).map_err(verify_failure)?;
+                    "verified"
+                }
+            };
             let scanners = s
                 .scanners
                 .iter()
@@ -113,6 +128,8 @@ fn load(path: &str) -> Result<View, Failure> {
             Ok(View {
                 kind: "run-artifact",
                 legacy: s.protocol.is_legacy(),
+                protected: s.run_class == RunClass::Protected,
+                verification,
                 engine: v(&s.engine),
                 protocol: v(&s.protocol),
                 run_class: wire(&s.run_class),
@@ -127,6 +144,16 @@ fn load(path: &str) -> Result<View, Failure> {
             let a: PublicSyntheticArtifact =
                 parse(&bytes, &limits).map_err(|e| from_violations("artifact", &e))?;
             let s = &a.semantic;
+            let verification = match snapshot {
+                None => "not-run",
+                Some(_) if s.protocol.is_legacy() => "not-verifiable-legacy",
+                Some(snap) => {
+                    validate_public_artifact_against_snapshot(&a, snap)
+                        .map_err(|e| from_binding("artifact", &e))?;
+                    verify_public_artifact_accounting(&a, snap).map_err(verify_failure)?;
+                    "verified"
+                }
+            };
             let scanners = s
                 .scanners
                 .iter()
@@ -151,6 +178,8 @@ fn load(path: &str) -> Result<View, Failure> {
             Ok(View {
                 kind: "public-synthetic-artifact",
                 legacy: s.protocol.is_legacy(),
+                protected: false,
+                verification,
                 engine: v(&s.engine),
                 protocol: v(&s.protocol),
                 run_class: wire(&s.run_class),
@@ -214,7 +243,7 @@ fn relation(base: Option<&Value>, other: Option<&Value>) -> &'static str {
     }
 }
 
-fn pair_diff(base: &Scanner, other: &Scanner) -> Value {
+fn pair_diff(base: &Scanner, other: &Scanner, protected: bool) -> Value {
     let mut ids: Vec<&String> = base.metrics.keys().chain(other.metrics.keys()).collect();
     ids.sort();
     ids.dedup();
@@ -222,16 +251,28 @@ fn pair_diff(base: &Scanner, other: &Scanner) -> Value {
         .into_iter()
         .map(|id| {
             let (b, o) = (base.metrics.get(id), other.metrics.get(id));
+            // Withheld counts for protected populations; `identical` was decided
+            // on the full results.
+            let strip = |v: &Value| {
+                let mut v = v.clone();
+                if protected {
+                    if let Some(o) = v.as_object_mut() {
+                        o.remove("counts");
+                        o.remove("effectiveN");
+                    }
+                }
+                v
+            };
             let mut entry = json!({
                 "metric": id,
                 "relation": relation(b, o),
                 "identical": b == o,
             });
             if let Some(b) = b {
-                entry["base"] = b.clone();
+                entry["base"] = strip(b);
             }
             if let Some(o) = o {
-                entry["other"] = o.clone();
+                entry["other"] = strip(o);
             }
             entry
         })
@@ -246,8 +287,22 @@ fn pair_diff(base: &Scanner, other: &Scanner) -> Value {
 
 /// Execute `pii-eval compare`.
 pub fn compare(args: &CompareArgs) -> Result<Report, Failure> {
-    let base = load(&args.base)?;
-    let other = load(&args.other)?;
+    let snapshot = match &args.snapshot {
+        Some(p) => Some(read_document::<CorpusSnapshot>(Path::new(p), "snapshot")?.0),
+        None => None,
+    };
+    let base = load(&args.base, snapshot.as_ref())?;
+    let other = load(&args.other, snapshot.as_ref())?;
+    // Protected artifacts are compared only inside a custodian job context, and
+    // their sample counts are withheld.
+    let protected = base.protected
+        || other.protected
+        || snapshot
+            .as_ref()
+            .is_some_and(|s| s.semantic.population.visibility == Visibility::Protected);
+    let mut inputs: Vec<&Path> = vec![Path::new(&args.base), Path::new(&args.other)];
+    inputs.extend(args.snapshot.as_deref().map(Path::new));
+    confine(protected, args.job_context.as_deref(), &inputs, None)?;
 
     let mut refusals: Vec<&'static str> = Vec::new();
     if base.kind != other.kind {
@@ -310,6 +365,7 @@ pub fn compare(args: &CompareArgs) -> Result<Report, Failure> {
 
     let semantic = json!({
         "interpretation": "descriptive-only",
+        "verification": {"base": base.verification, "other": other.verification},
         "kind": base.kind,
         "refusals": refusals,
         "subject": {
@@ -323,7 +379,7 @@ pub fn compare(args: &CompareArgs) -> Result<Report, Failure> {
         },
         "population": base.population,
         "pairing": pairing,
-        "scanners": pairs.iter().map(|(b, o)| pair_diff(b, o)).collect::<Vec<_>>(),
+        "scanners": pairs.iter().map(|(b, o)| pair_diff(b, o, protected)).collect::<Vec<_>>(),
         "unpaired": {
             "base": unpaired(&base, base_paired),
             "other": unpaired(&other, other_paired),

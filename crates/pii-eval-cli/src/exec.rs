@@ -365,6 +365,7 @@ pub fn effective_limits(
 static SCRATCH_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 fn create_private_dir(path: &Path) -> std::io::Result<()> {
+    #[cfg_attr(not(unix), allow(unused_mut))]
     let mut builder = std::fs::DirBuilder::new();
     #[cfg(unix)]
     std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
