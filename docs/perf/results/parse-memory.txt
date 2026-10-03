@@ -1,0 +1,8 @@
+Output of: cargo test --release --locked -p pii-eval-cli --test parse_memory -- --ignored --nocapture
+Run on the host of docs/perf/results/*.json (Apple M4, macOS 26.5.2, rustc 1.98.1), 2026-10-03, base commit 6bb0e75 plus the P10 working tree.
+Method: crates/pii-eval-cli/tests/parse_memory.rs (ADR 0008 section 6): one fresh process per parse under /usr/bin/time -l, max of 3 runs, baseline process subtracted.
+
+parse peak memory (host macos, release, max of 3 runs, baseline subtracted):
+  baseline process             2.1 MiB
+  text   28.63 MiB doc  peak    122.4 MiB  (+120.3 MiB, 4.2x the document)
+  nodes  28.63 MiB doc  peak    908.9 MiB  (+906.8 MiB, 31.7x the document)

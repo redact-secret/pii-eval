@@ -1,0 +1,273 @@
+{
+ "schema": "pii-eval-perf-budgets/1",
+ "rule": "budget = observed upper envelope at the reference cell (largest trial); no multiplier, no target; see docs/performance.md",
+ "derivedFrom": [
+  {
+   "file": "results/scaling.json",
+   "suite": "scaling",
+   "sha256": "f95b9e26482b88aa6d13546cc54f7cf6e753bb4e85be115f655e28b55afd9981"
+  },
+  {
+   "file": "results/pipeline.json",
+   "suite": "pipeline",
+   "sha256": "b53651997aac80cfe1506e8de6c1174270b489f855d0f82628b7ecec8887734c"
+  },
+  {
+   "file": "results/memory.json",
+   "suite": "memory",
+   "sha256": "d6dacee1fe755d98644e88340df958cdce2a407ae5c0911a5e9f582bbf51a2f1"
+  }
+ ],
+ "budgets": [
+  {
+   "id": "rust.assembleKernel.us-per-row",
+   "cell": "cases-025600",
+   "what": "kernel assess+account",
+   "unit": "microseconds per outcome row",
+   "median": 0.966,
+   "budget": 1.015
+  },
+  {
+   "id": "rust.assemble.us-per-row",
+   "cell": "cases-025600",
+   "what": "assemble (kernel, rows, observation sets, artifact, public projection, seals)",
+   "unit": "microseconds per outcome row",
+   "median": 9.216,
+   "budget": 9.703
+  },
+  {
+   "id": "rust.verify.us-per-row",
+   "cell": "cases-025600",
+   "what": "verify accounting",
+   "unit": "microseconds per outcome row",
+   "median": 0.715,
+   "budget": 0.757
+  },
+  {
+   "id": "rust.validate.us-per-row",
+   "cell": "cases-025600",
+   "what": "validate artifact",
+   "unit": "microseconds per outcome row",
+   "median": 2.463,
+   "budget": 2.557
+  },
+  {
+   "id": "rust.serialize.us-per-row",
+   "cell": "cases-025600",
+   "what": "serialize artifact (pretty JSON)",
+   "unit": "microseconds per outcome row",
+   "median": 1.751,
+   "budget": 1.868
+  },
+  {
+   "id": "rust.parse.us-per-row",
+   "cell": "cases-025600",
+   "what": "parse artifact (strict tree, typed, validate)",
+   "unit": "microseconds per outcome row",
+   "median": 5.69,
+   "budget": 6.238
+  },
+  {
+   "id": "rust.digest.us-per-row",
+   "cell": "cases-025600",
+   "what": "semantic digest of the artifact",
+   "unit": "microseconds per outcome row",
+   "median": 2.407,
+   "budget": 2.558
+  },
+  {
+   "id": "rust.compat.us-per-row",
+   "cell": "cases-025600",
+   "what": "legacy rule + oracle accounting port",
+   "unit": "microseconds per outcome row",
+   "median": 0.543,
+   "budget": 0.555
+  },
+  {
+   "id": "rust.replay.peak-rss-bytes-per-row",
+   "cell": "cases-025600",
+   "what": "replay process peak RSS above the prepare baseline (all documents and their serialization alive)",
+   "unit": "bytes per outcome row",
+   "median": 18686,
+   "budget": 19316
+  },
+  {
+   "id": "rust.engine.us-per-row",
+   "cell": "cases-025600",
+   "what": "executor + assemble with a stand-in scanner (4 workers, 2 replays)",
+   "unit": "microseconds per outcome row",
+   "median": 13.039,
+   "budget": 14.328
+  },
+  {
+   "id": "rust.kernel.scaling-exponent",
+   "cell": "cases axis, sizes with phase >= 1 ms",
+   "what": "largest log-log slope of assembleKernel against variants",
+   "unit": "exponent (1 = linear)",
+   "median": null,
+   "budget": 1.14
+  },
+  {
+   "id": "rust.assemble.scaling-exponent",
+   "cell": "cases axis, sizes with phase >= 1 ms",
+   "what": "largest log-log slope of assemble against variants",
+   "unit": "exponent (1 = linear)",
+   "median": null,
+   "budget": 1.24
+  },
+  {
+   "id": "rust.parse.scaling-exponent",
+   "cell": "cases axis, sizes with phase >= 1 ms",
+   "what": "largest log-log slope of parse against variants",
+   "unit": "exponent (1 = linear)",
+   "median": null,
+   "budget": 1.24
+  },
+  {
+   "id": "rust.serialize.scaling-exponent",
+   "cell": "cases axis, sizes with phase >= 1 ms",
+   "what": "largest log-log slope of serialize against variants",
+   "unit": "exponent (1 = linear)",
+   "median": null,
+   "budget": 1.22
+  },
+  {
+   "id": "cli.run.evaluator-instructions-per-variant",
+   "cell": "pipeline-cases-025600",
+   "what": "pii-eval run (cli-run-candidate-w4-r2): instructions retired by the evaluator process (scanner children are not counted)",
+   "unit": "instructions per variant",
+   "median": 1335581,
+   "budget": 1336025
+  },
+  {
+   "id": "cli.run.peak-rss-bytes-per-variant",
+   "cell": "pipeline-cases-025600",
+   "what": "pii-eval run: peak RSS of the largest process",
+   "unit": "bytes per variant",
+   "median": 24958,
+   "budget": 25236
+  },
+  {
+   "id": "cli.replay.evaluator-instructions-per-variant",
+   "cell": "pipeline-cases-025600",
+   "what": "pii-eval replay (cli-replay-candidate-w4-r2): instructions retired by the evaluator process (scanner children are not counted)",
+   "unit": "instructions per variant",
+   "median": 1201443,
+   "budget": 1201939
+  },
+  {
+   "id": "cli.replay.peak-rss-bytes-per-variant",
+   "cell": "pipeline-cases-025600",
+   "what": "pii-eval replay: peak RSS of the largest process",
+   "unit": "bytes per variant",
+   "median": 25706,
+   "budget": 26430
+  },
+  {
+   "id": "parse.artifact.full.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (artifact.full)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 11.7
+  },
+  {
+   "id": "parse.artifact.strict.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (artifact.strict)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 5.6
+  },
+  {
+   "id": "parse.artifact.typed.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (artifact.typed)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 1.9
+  },
+  {
+   "id": "parse.artifact.validate.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (artifact.validate)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 7.6
+  },
+  {
+   "id": "parse.observation.full.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (observation.full)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 15.8
+  },
+  {
+   "id": "parse.observation.strict.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (observation.strict)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 6.9
+  },
+  {
+   "id": "parse.observation.typed.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (observation.typed)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 2.5
+  },
+  {
+   "id": "parse.observation.validate.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (observation.validate)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 10
+  },
+  {
+   "id": "parse.snapshot.full.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (snapshot.full)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 12
+  },
+  {
+   "id": "parse.snapshot.strict.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (snapshot.strict)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 5.4
+  },
+  {
+   "id": "parse.snapshot.typed.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (snapshot.typed)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 2.4
+  },
+  {
+   "id": "parse.snapshot.validate.peak-rss-ratio",
+   "cell": "memory suite, 4 sizes",
+   "what": "peak RSS above the baseline process over document bytes (snapshot.validate)",
+   "unit": "ratio",
+   "median": null,
+   "budget": 7.9
+  }
+ ],
+ "references": [
+  {
+   "id": "ts.exec-account.scaling-exponent",
+   "cell": "cases axis",
+   "what": "largest log-log slope of the oracle execute+account against cases (reference, not a budget on this repository)",
+   "unit": "exponent",
+   "median": null,
+   "observed": 2.43
+  }
+ ]
+}

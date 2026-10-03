@@ -81,6 +81,8 @@ Bound workers, per-scanner parallelism, pending tasks, memory, timeout, and stdo
 
 Separate kernel replay cost, scanner startup/scan cost, materialization, serialization, and total wall time. Record peak RSS and allocation measurements with their collection method. Performance comparisons pin inputs, toolchain, build profile, host, scanner versions, and settings; report uncertainty and regressions. No speed target is justified without a baseline.
 
+P10 ([ADR 0013](docs/adr/0013-performance-measurement-budgets-and-optimizations.md), [docs/performance.md](docs/performance.md)) measured these phases separately on frozen synthetic workloads against the pinned TypeScript oracle, recorded scaling shapes, memory ceilings and budgets derived from the measurements, and made one bounded optimization with identical semantic output; it makes no throughput promise for any other host or workload.
+
 Parallelism must preserve canonical semantic ordering. Timestamps and host timing diagnostics are non-semantic; scheduler order must not change the semantic digest. Nondeterministic scanner output is recorded as instability, not sorted away when differences are meaningful.
 
 ## Protected integration
