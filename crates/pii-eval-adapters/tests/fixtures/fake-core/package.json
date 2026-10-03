@@ -1,0 +1,7 @@
+{
+  "name": "fake-core-for-tests",
+  "version": "0.1.0-beta.12",
+  "private": true,
+  "type": "module",
+  "description": "Inert synthetic stand-in for the @redact-secret/core API surface used by the shim. Not the real package."
+}
