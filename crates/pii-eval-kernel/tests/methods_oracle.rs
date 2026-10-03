@@ -218,15 +218,10 @@ fn compare_variants(
     let case = build(o);
     let result = g.generate_case(&case);
 
-    // D2: the oracle accepts any number of frames; the contract requires one per class.
-    if o.method == "context-discrimination" && variants.len() != 3 {
+    // D2 (ADR 0007) is resolved: the oracle's 8-frame group is generated like any other
+    // (ADR 0008 R5 and ADR 0011 N1: the generator accepts at least one frame per class).
+    if o.method == "context-discrimination" && variants.len() > 3 {
         assert_eq!(variants.len(), 8, "{}", o.name);
-        assert_eq!(
-            result.unwrap_err().reason,
-            RefusalReason::ContextFramesNotATrio
-        );
-        census.note("D2");
-        return;
     }
     // D6: the oracle slices bytes and decodes lossily; the kernel validates character boundaries.
     if o.name == "schema-only/mid-character-range" {
@@ -428,9 +423,7 @@ fn every_oracle_case_is_reproduced_or_has_a_classified_difference() {
     assert_eq!(methods.len(), 7);
     assert!(errors >= 8);
     // Each documented difference actually occurs: the list in ADR 0007 is neither stale nor padded.
-    let documented: BTreeSet<&str> = ["D1", "D2", "D3", "D4", "D5", "D6", "D7"]
-        .into_iter()
-        .collect();
+    let documented: BTreeSet<&str> = ["D1", "D3", "D4", "D5", "D6", "D7"].into_iter().collect();
     assert_eq!(census.0, documented);
 }
 
