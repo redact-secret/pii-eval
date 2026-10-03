@@ -1,0 +1,147 @@
+name: isolation
+
+# Real Linux bubblewrap measurement of the pii-eval engine and a PINNED Node runtime under
+# the custodian's worker sandbox limits (docs/custodian-isolation-node.md), on SYNTHETIC
+# data only. It answers one question the custodian's own tests do not: does a Node
+# runtime start, and does the engine run, under the plan's `RLIMIT_AS` (virtual address
+# space), and from which size on? It never loosens a limit to make a run pass; memory is
+# the variable and every other quota is the custodian's documented test profile.
+#
+# The sandbox is a replica of the custodian's launcher argument vector, written from
+# private-custodian@142db34 (tools/isolation/bwrap-argv.mjs, with a fidelity test). The
+# custodian's startup self-check on the production host remains the evidence of isolation
+# there; this job is evidence about the limits and about this engine, and its controls
+# (limits applied, no capabilities, no egress, no host files, scrubbed environment,
+# writable scratch) must pass or the job fails: a measurement without a real sandbox
+# proves nothing.
+#
+# This is not a protected evaluation and runs no protected data. The Actions runner is
+# an ephemeral hosted VM; the only privileged step is enabling unprivileged user
+# namespaces on it, exactly as the custodian's `worker-isolation` job does.
+
+on:
+  workflow_call:
+    inputs:
+      engine-run-id:
+        description: Workflow run id whose engine artifact to use (empty = build one in this run)
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      engine-run-id:
+        description: Workflow run id whose engine artifact to use (empty = build one in this run)
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build the engine (only when no run id was given)
+    if: ${{ inputs.engine-run-id == '' }}
+    uses: ./.github/workflows/build-engine.yml
+
+  node-under-rlimit-as:
+    name: node and the engine under RLIMIT_AS in bubblewrap
+    needs: build
+    if: ${{ !cancelled() && needs.build.result != 'failure' && needs.build.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The pinned Node runtime. The exact version is part of the result.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.23.3"
+      - name: Install bubblewrap and allow unprivileged user namespaces
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
+          bwrap --version
+          command -v prlimit
+          uname -sr
+      - name: Check the input
+        id: input
+        shell: bash
+        env:
+          ENGINE_RUN_ID: ${{ inputs.engine-run-id }}
+        run: |
+          set -euo pipefail
+          nl=$'\n'
+          if [[ "$ENGINE_RUN_ID" == *"$nl"* || ( -n "$ENGINE_RUN_ID" && ! "$ENGINE_RUN_ID" =~ ^[0-9]{1,20}$ ) ]]; then
+            echo "engine-run-id must be a workflow run id (digits)" >&2
+            exit 2
+          fi
+          echo "run-id=${ENGINE_RUN_ID:-$GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+      - name: Choose the engine artifact
+        id: resolve
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.input.outputs.run-id }}
+        run: |
+          set -euo pipefail
+          node tools/ci/resolve-engine.mjs \
+            --run-id "$RUN_ID" \
+            --current-run-id "$GITHUB_RUN_ID" \
+            --repository "$GITHUB_REPOSITORY" \
+            --allow-unverified-ref false \
+            --github-output "$GITHUB_OUTPUT" | tee "$RUNNER_TEMP/engine-resolved.json"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ steps.resolve.outputs.artifact-name }}
+          path: ${{ runner.temp }}/engine-download
+          run-id: ${{ steps.input.outputs.run-id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+      - name: Verify the engine artifact
+        shell: bash
+        env:
+          COMMIT: ${{ steps.resolve.outputs.commit }}
+        run: |
+          set -euo pipefail
+          node tools/ci/verify-engine.mjs \
+            --dir "$RUNNER_TEMP/engine-download" \
+            --repository "$GITHUB_REPOSITORY" \
+            --target linux-x86_64 \
+            --commit "$COMMIT" \
+            --make-executable > "$RUNNER_TEMP/engine-verified.json"
+          grep -q '"ok":true' "$RUNNER_TEMP/engine-verified.json"
+          cat "$RUNNER_TEMP/engine-verified.json"
+      - name: Stage the engine and the pinned Node runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/stage"
+          mkdir -p "$stage"
+          cp "$RUNNER_TEMP/engine-download/pii-eval" "$stage/engine"
+          cp -L "$(command -v node)" "$stage/node"
+          chmod 0755 "$stage/engine" "$stage/node"
+          "$stage/node" --version
+      - name: Measure (the controls must pass; no limit is ever loosened)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/isolation/matrix.mjs \
+            --stage "$RUNNER_TEMP/stage" \
+            --repo "$GITHUB_WORKSPACE" \
+            --out "$RUNNER_TEMP/isolation-node.json" \
+            --summary "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: isolation-node-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/isolation-node.json
+          retention-days: 30
+          if-no-files-found: ignore
