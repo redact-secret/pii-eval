@@ -372,19 +372,22 @@ impl Case {
             _ => c.push(ReasonCode::CollisionInvalid, &path.field("collision")),
         }
         if self.method == MethodId::ContextDiscrimination {
-            let mut classes: Vec<ContextClass> = self
+            let classes: Vec<ContextClass> = self
                 .variants
                 .iter()
                 .filter_map(Variant::context_class)
                 .collect();
-            classes.sort();
+            // Complete trio (ADR 0008, relaxed from "exactly one per class"):
+            // every variant has a class and every class has at least one
+            // variant. Real groups hold several frames per class.
             let complete = classes.len() == self.variants.len()
-                && classes
-                    == [
-                        ContextClass::Sensitive,
-                        ContextClass::Neutral,
-                        ContextClass::NonSensitive,
-                    ];
+                && [
+                    ContextClass::Sensitive,
+                    ContextClass::Neutral,
+                    ContextClass::NonSensitive,
+                ]
+                .iter()
+                .all(|k| classes.contains(k));
             if !complete {
                 c.push(ReasonCode::IncompleteContextTrio, &variants);
             }

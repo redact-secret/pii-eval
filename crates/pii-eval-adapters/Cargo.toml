@@ -15,3 +15,8 @@ pii-eval-kernel.workspace = true
 # Already reviewed for contracts (docs/dependency-policy.md): strict JSON-lines
 # parsing of shim output and construction of the Rust-to-shim messages.
 serde_json.workspace = true
+
+# Unix only: signal a whole process group (`killpg`) and test whether it has
+# members. Reviewed in docs/dependency-policy.md (P7).
+[target.'cfg(unix)'.dependencies]
+rustix.workspace = true

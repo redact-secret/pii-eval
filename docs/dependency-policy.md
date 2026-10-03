@@ -127,6 +127,31 @@ independent Wilson reference is a Python script (`tests/vectors/wilson_reference
 standard library `decimal` only, not run in CI); its output is committed as a
 Rust table. MSRV was re-run for this change.
 
+## Process-tree control (P7)
+
+`pii-eval-adapters` gains one third-party crate, **`rustix` =1.1.5**
+(`default-features = false`, features `std` and `process`), on Unix only
+(`[target.'cfg(unix)'.dependencies]`). Need: `killpg(2)` to signal a scanner's
+whole process group and `kill(pgid, 0)` to test whether it has members. `std`
+exposes neither, and first-party crates forbid `unsafe`, so a safe wrapper is the
+only way to clean up descendants. `libc` (needs `unsafe` in our code), `nix`
+(forbidden fragment, large) and shelling out to `kill` (fragile, can silently
+stop cleaning) were rejected (ADR 0009 E1). Reviewed: Bytecode Alliance project,
+the API used is safe, no network or filesystem-walking code is used, license
+Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT. Its closure, allowed for the
+adapters only in `ADAPTER_EXTRA_THIRD_PARTY` of the guard and never for
+contracts or kernel: `bitflags`, `errno`, `linux-raw-sys`, `windows-sys`,
+`windows-link` (the last two are listed because the guard inspects
+`--target all`; they are not compiled on Unix), plus `libc`, which the guard
+now allows only through `cpufeatures`, `errno` or `rustix`
+(`ADAPTER_FRAGMENT_EXCEPTIONS`). The contracts and kernel exception for `libc`
+is unchanged. Resource sampling runs `ps` at a fixed absolute path; no crate.
+
+The cli crate has `serde_json` as a dev-dependency (already reviewed above) to
+inspect serialized documents in tests. MSRV re-verified on 2026-10-03:
+`cargo +1.85.0 test --workspace --locked` passes; the floor stays 1.85
+(`rustix` declares 1.65).
+
 ## Optional checks
 
 `deny.toml` configures `cargo-deny` bans (process/network crates), sources and
@@ -143,6 +168,7 @@ and is outside the current network allowance. Both are proposed follow-ups.
 | `serde` (with `derive`) | contracts | Typed (de)serialization of every contract; the derive gives closed, exhaustive types. No std alternative. | =1.0.229 | P2; no I/O, no process or network code |
 | `serde_json` | contracts, adapters | JSON parsing and value model for strict parsing, canonical form and schema output. Pinned exactly: parsing and number handling are semantic. `arbitrary_precision` and `preserve_order` are not enabled; the canonical writer sorts keys itself. | =1.0.151 | P2 |
 | `schemars` | contracts | Deterministic JSON Schema generation from the same types, so schemas cannot drift from code (drift test). Pinned exactly: output is committed. Derive and std features only. | =1.2.2 | P2 |
+| `rustix` | adapters (Unix) | `killpg` and group-liveness probe for process-tree cleanup; safe wrapper, no `unsafe` in our code. Process-tree control section above. | =1.1.5 | P7 |
 | `sha2` | contracts | SHA-256 for the semantic digest and input identities; a reviewed RustCrypto implementation is preferred over hand-rolled hashing. Pinned exactly. `alloc` feature only. | =0.11.0 | P2 |
 
 Transitive crates (all in `ALLOWED_THIRD_PARTY` in the guard): `serde_core`,

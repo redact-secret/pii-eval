@@ -19,6 +19,7 @@ pub mod accounting;
 mod bigint;
 pub mod matching;
 pub mod methods;
+pub mod output;
 pub mod range;
 pub mod stats;
 pub mod verify;
@@ -34,6 +35,7 @@ pub use matching::{
     ScannerView, SpanMatch, Subject, VariantAssessment, VariantInput, assess_variant, closeness,
     overlaps, range_state, relation,
 };
+pub use output::{MAX_SANITIZED_BYTES, OutputAssessment, OutputError, verify_output};
 pub use range::{
     OffsetUnit, RangeError, RangeTranslator, byte_to_unit_offset, translate_offset,
     translate_range, unit_length, validate_range, validate_range_bytes,

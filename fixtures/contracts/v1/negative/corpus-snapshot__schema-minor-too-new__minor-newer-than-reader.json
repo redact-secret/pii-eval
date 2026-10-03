@@ -1,6 +1,6 @@
 {
   "schema": "pii-eval.corpus-snapshot",
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "semantic": {
     "cases": [
       {

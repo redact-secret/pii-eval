@@ -45,6 +45,10 @@ pub trait Document: Serialize + DeserializeOwned + Sized {
 
     /// Validation of the non-semantic diagnostics, when the kind has any.
     fn validate_diagnostics(&self, _path: &Path<'_>, _c: &mut Collector) {}
+
+    /// Checks that need the declared schema version together with the body
+    /// (protocol revision 2 requires schema 1.1; see ADR 0008).
+    fn validate_gates(&self, _c: &mut Collector) {}
 }
 
 /// Digest domain for a document kind and the full schema version
@@ -76,6 +80,7 @@ pub fn validate<D: Document>(doc: &D) -> Result<(), Violations> {
     if let Err(code) = doc.schema_version().readable() {
         c.push(code, &Path::ROOT.field("schemaVersion"));
     }
+    doc.validate_gates(&mut c);
     doc.validate_body(&Path::ROOT.field("semantic"), &mut c);
     doc.validate_diagnostics(&Path::ROOT.field("diagnostics"), &mut c);
     match compute_digest(doc) {
@@ -136,6 +141,39 @@ pub(crate) use schema_tag;
 /// Implements [`Document`] for a struct with `schema_version`, `semantic_digest`
 /// and `semantic` fields.
 macro_rules! impl_document {
+    // Documents with a protocol identity: the revision gate is checked against
+    // the declared schema version.
+    ($doc:ident, $body:ident, $kind:expr, protocol) => {
+        impl_document!(@impl $doc, $body, $kind, {
+            fn validate_gates(&self, c: &mut $crate::reason::Collector) {
+                $crate::protocol::check_revision_gate(
+                    self.schema_version,
+                    &self.semantic.protocol,
+                    c,
+                );
+            }
+        });
+    };
+    ($doc:ident, $body:ident, $kind:expr, diagnostics, protocol) => {
+        impl_document!(@impl $doc, $body, $kind, {
+            fn validate_diagnostics(
+                &self,
+                path: &$crate::reason::Path<'_>,
+                c: &mut $crate::reason::Collector,
+            ) {
+                if let Some(d) = &self.diagnostics {
+                    d.validate(path, c);
+                }
+            }
+            fn validate_gates(&self, c: &mut $crate::reason::Collector) {
+                $crate::protocol::check_revision_gate(
+                    self.schema_version,
+                    &self.semantic.protocol,
+                    c,
+                );
+            }
+        });
+    };
     ($doc:ident, $body:ident, $kind:expr, diagnostics) => {
         impl_document!(@impl $doc, $body, $kind, {
             fn validate_diagnostics(

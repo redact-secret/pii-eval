@@ -1,17 +1,20 @@
-//! The metric verifier (the P2 item deferred to P4): published values against
-//! counts, and counts against the outcome rows.
+//! The metric verifier (the P2 item deferred to P4), for protocol revision 2:
+//! published values against counts, counts against the outcome rows, one
+//! scanner at a time.
 //!
-//! The artifact is the committed contract fixture reduced to its complete
-//! scanner (`alpha-scan`); its metrics are replaced by the accounting of its own
-//! rows. Expected counts and values were derived by hand from the fixture's rows
-//! (three authored cases: a US collision case, a Korean context trio and a
+//! The artifacts are the committed legacy contract fixture (protocol revision
+//! 1, schema 1.0) converted to revision 2: protocol identity and schema version
+//! changed, and its metrics replaced by the accounting of its own rows, keyed by
+//! scanner. Expected counts and values were derived by hand from the fixture's
+//! rows (three authored cases: a US collision case, a Korean context trio and a
 //! two-variant type-validation case) and the independent decimal reference.
 
 use std::path::Path;
 
 use pii_eval_contracts::{
-    CorpusSnapshot, MetricId, MetricResult, MetricValue, ReasonCode, RunArtifact, ScaledDecimal,
-    WithheldReason, parse_default, seal, validate,
+    CorpusSnapshot, MetricId, MetricResult, MetricValue, ProtocolIdentity, ReasonCode, RunArtifact,
+    ScaledDecimal, ScannerId, ScannerMetrics, ScannerStatus, SchemaVersion, WithheldReason,
+    parse_default, seal, validate,
 };
 use pii_eval_kernel::{
     AccountError, AuthoredIndex, ScannerInput, VerifyFailure, account_outcomes,
@@ -32,31 +35,52 @@ fn fixtures() -> (CorpusSnapshot, RunArtifact) {
     )
 }
 
-/// The complete scanner only, with a minimum denominator of 1 so every metric
-/// that has a sample publishes a value, and metrics recomputed from the rows.
-fn single_scanner(snapshot: &CorpusSnapshot, mut artifact: RunArtifact) -> RunArtifact {
-    let body = &mut artifact.semantic;
-    body.scanners
-        .retain(|s| s.identity.scanner_id.as_str() == "alpha-scan");
-    body.outcomes
-        .retain(|o| o.scanner_id.as_str() == "alpha-scan");
-    body.failures.clear();
-    body.mechanics.min_denominator = 1;
-    let index = AuthoredIndex::new(&snapshot.semantic).unwrap();
-    let id = body.scanners[0].identity.scanner_id.clone();
-    let accounting = account_outcomes(
-        &index,
-        &[ScannerInput {
-            id: &id,
-            status: body.scanners[0].status,
-        }],
-        &body.outcomes,
-        &body.mechanics,
-    )
-    .unwrap();
-    body.metrics = accounting.scanners[0].overall.results();
+/// Convert the legacy fixture to revision 2 with a minimum denominator of 1 (so
+/// every metric that has a sample publishes a value) and per-scanner metrics
+/// recomputed from the rows. `only` keeps one scanner.
+fn canonical(
+    snapshot: &CorpusSnapshot,
+    mut artifact: RunArtifact,
+    only: Option<&str>,
+) -> RunArtifact {
+    {
+        let body = &mut artifact.semantic;
+        if let Some(name) = only {
+            body.scanners
+                .retain(|s| s.identity.scanner_id.as_str() == name);
+            body.outcomes.retain(|o| o.scanner_id.as_str() == name);
+            body.failures.retain(|f| f.scanner_id.as_str() == name);
+        }
+        body.protocol = ProtocolIdentity::CANONICAL_V2;
+        body.mechanics.min_denominator = 1;
+        body.metrics.clear();
+        let index = AuthoredIndex::new(&snapshot.semantic).unwrap();
+        let inputs: Vec<ScannerInput<'_>> = body
+            .scanners
+            .iter()
+            .map(|s| ScannerInput {
+                id: &s.identity.scanner_id,
+                status: s.status,
+            })
+            .collect();
+        let accounting =
+            account_outcomes(&index, &inputs, &body.outcomes, &body.mechanics).unwrap();
+        body.scanner_metrics = accounting
+            .scanners
+            .iter()
+            .map(|s| ScannerMetrics {
+                scanner_id: s.scanner_id.clone(),
+                metrics: s.overall.results(),
+            })
+            .collect();
+    }
+    artifact.schema_version = SchemaVersion::V1_1;
     seal(&mut artifact).unwrap();
     artifact
+}
+
+fn single_scanner(snapshot: &CorpusSnapshot, artifact: RunArtifact) -> RunArtifact {
+    canonical(snapshot, artifact, Some("alpha-scan"))
 }
 
 fn resealed(mut artifact: RunArtifact, edit: impl FnOnce(&mut RunArtifact)) -> RunArtifact {
@@ -65,12 +89,17 @@ fn resealed(mut artifact: RunArtifact, edit: impl FnOnce(&mut RunArtifact)) -> R
     artifact
 }
 
-fn metric_mut(a: &mut RunArtifact, id: MetricId) -> &mut MetricResult {
-    a.semantic
+/// The metric `id` of the scanner at `scanner` in the list.
+fn metric_mut(a: &mut RunArtifact, scanner: usize, id: MetricId) -> &mut MetricResult {
+    a.semantic.scanner_metrics[scanner]
         .metrics
         .iter_mut()
         .find(|m| m.metric.id == id)
         .unwrap()
+}
+
+fn metrics_of(a: &RunArtifact, scanner: usize) -> &[MetricResult] {
+    &a.semantic.scanner_metrics[scanner].metrics
 }
 
 fn dec(mantissa: u64) -> ScaledDecimal {
@@ -116,9 +145,7 @@ fn the_reduced_fixture_verifies_and_matches_the_hand_derived_values() {
         (MetricId::MeasurableShare, 5, 6, 833_333, 436_491),
     ];
     for (id, numerator, n, point, bound) in hand {
-        let m = artifact
-            .semantic
-            .metrics
+        let m = metrics_of(&artifact, 0)
             .iter()
             .find(|m| m.metric.id == id)
             .unwrap();
@@ -131,9 +158,7 @@ fn the_reduced_fixture_verifies_and_matches_the_hand_derived_values() {
         assert_eq!(m.value, expected, "{id:?}");
     }
     // No benign case exists: not applicable, zero denominator.
-    let benign = artifact
-        .semantic
-        .metrics
+    let benign = metrics_of(&artifact, 0)
         .iter()
         .find(|m| m.metric.id == MetricId::BenignSuppressionRate)
         .unwrap();
@@ -155,7 +180,7 @@ fn a_point_or_bound_off_by_one_digit_is_caught_though_contracts_accept_it() {
     let base = single_scanner(&snapshot, artifact);
     for (field_point, delta) in [(true, 1i64), (false, 1), (true, -1), (false, -1)] {
         let tampered = resealed(base.clone(), |a| {
-            let m = metric_mut(a, MetricId::MeasurableShare);
+            let m = metric_mut(a, 0, MetricId::MeasurableShare);
             if let MetricValue::Measured { point, bound } = &mut m.value {
                 let d = if field_point { point } else { bound };
                 *d = dec((d.mantissa as i64 + delta) as u64);
@@ -171,7 +196,7 @@ fn a_point_or_bound_off_by_one_digit_is_caught_though_contracts_accept_it() {
     }
     // A published value where the count says withheld, and vice versa.
     let tampered = resealed(base.clone(), |a| {
-        metric_mut(a, MetricId::BenignSuppressionRate).value = MetricValue::Measured {
+        metric_mut(a, 0, MetricId::BenignSuppressionRate).value = MetricValue::Measured {
             point: dec(0),
             bound: dec(0),
         };
@@ -181,7 +206,7 @@ fn a_point_or_bound_off_by_one_digit_is_caught_though_contracts_accept_it() {
             .is_empty()
     );
     let tampered = resealed(base, |a| {
-        metric_mut(a, MetricId::TypeMissRate).value = MetricValue::Withheld {
+        metric_mut(a, 0, MetricId::TypeMissRate).value = MetricValue::Withheld {
             reason: WithheldReason::InsufficientEvidence,
         };
     });
@@ -199,7 +224,7 @@ fn counts_that_do_not_conserve_against_the_rows_are_caught() {
     // and the value is recomputed to match, so only the rows can expose it.
     let tampered = resealed(base.clone(), |a| {
         let mechanics = a.semantic.mechanics;
-        let m = metric_mut(a, MetricId::TypeMissRate);
+        let m = metric_mut(a, 0, MetricId::TypeMissRate);
         m.counts.numerator += 1;
         m.value = pii_eval_kernel::published_value(
             m.counts.numerator,
@@ -216,7 +241,7 @@ fn counts_that_do_not_conserve_against_the_rows_are_caught() {
     );
     // Shift one eligible sample to not-applicable (identities still hold).
     let tampered = resealed(base, |a| {
-        let m = metric_mut(a, MetricId::SensitiveMissRate);
+        let m = metric_mut(a, 0, MetricId::SensitiveMissRate);
         m.counts.eligible -= 1;
         m.counts.measured -= 1;
         m.counts.not_applicable += 1;
@@ -234,15 +259,14 @@ fn metric_results_are_checked_on_their_own_too() {
     let (snapshot, artifact) = fixtures();
     let base = single_scanner(&snapshot, artifact);
     let mechanics = base.semantic.mechanics;
-    for m in &base.semantic.metrics {
+    for m in metrics_of(&base, 0) {
         verify_metric_result(m, &mechanics).expect("consistent");
     }
-    let mut m = *base
-        .semantic
-        .metrics
+    let original = *metrics_of(&base, 0)
         .iter()
         .find(|m| m.metric.id == MetricId::MeasurableShare)
         .unwrap();
+    let mut m = original;
     // Value contradicts counts.
     if let MetricValue::Measured { bound, .. } = &mut m.value {
         *bound = dec(bound.mantissa + 1);
@@ -257,19 +281,13 @@ fn metric_results_are_checked_on_their_own_too() {
         interval_precision: 4,
         ..mechanics
     };
-    let original = base
-        .semantic
-        .metrics
-        .iter()
-        .find(|m| m.metric.id == MetricId::MeasurableShare)
-        .unwrap();
     assert!(
-        verify_metric_result(original, &finer)
+        verify_metric_result(&original, &finer)
             .unwrap_err()
             .contains(ReasonCode::MetricValueInconsistent)
     );
     // Numerator above the effective N is a counts error, never clamped.
-    let mut m = *original;
+    let mut m = original;
     m.counts.numerator = m.counts.measured + 1;
     assert!(
         verify_metric_result(&m, &mechanics)
@@ -277,7 +295,7 @@ fn metric_results_are_checked_on_their_own_too() {
             .contains(ReasonCode::MetricCountsInconsistent)
     );
     // Wrong definition version.
-    let mut m = *original;
+    let mut m = original;
     m.metric.version = 2;
     assert!(
         verify_metric_result(&m, &mechanics)
@@ -287,32 +305,86 @@ fn metric_results_are_checked_on_their_own_too() {
 }
 
 #[test]
-fn the_stock_two_scanner_fixture_cannot_attribute_its_single_metric_list() {
-    // Schema 1.0 has one metric list per artifact, so with two scanners the
-    // metrics belong to no scanner: not verifiable (ADR 0005, R2 requirements).
+fn a_two_scanner_artifact_is_verified_scanner_by_scanner() {
+    // Schema 1.0 had one unkeyed list, so a multi-scanner artifact could not be
+    // verified (ADR 0005 section 8). Revision 2 keys the metrics by scanner.
     let (snapshot, artifact) = fixtures();
-    assert_eq!(
-        verify_run_artifact_accounting(&artifact, &snapshot).unwrap_err(),
-        VerifyFailure::MetricScopeAmbiguous { scanners: 2 }
+    let base = canonical(&snapshot, artifact, None);
+    let ids: Vec<&str> = base
+        .semantic
+        .scanner_metrics
+        .iter()
+        .map(|m| m.scanner_id.as_str())
+        .collect();
+    assert_eq!(ids, ["alpha-scan", "beta-scan"]);
+    validate(&base).expect("contract-valid");
+    verify_run_artifact_accounting(&base, &snapshot).expect("both scanners verify");
+    // The unsupported scanner measured nothing: every metric is eligible and
+    // not-measured or not-applicable, never a success.
+    for m in metrics_of(&base, 1) {
+        assert_eq!(m.counts.measured, 0, "{:?}", m.metric.id);
+        assert_eq!(m.counts.numerator, 0, "{:?}", m.metric.id);
+    }
+    // The other scanner's numbers are not pooled into it.
+    assert!(metrics_of(&base, 0).iter().any(|m| m.counts.measured > 0));
+
+    // Tampering with one scanner's metric is reported against that scanner.
+    let tampered = resealed(base.clone(), |a| {
+        metric_mut(a, 1, MetricId::TypeMissRate).counts.numerator = 1;
+    });
+    assert!(verify_run_artifact_accounting(&tampered, &snapshot).is_err());
+
+    // Swapping the two scanners' lists is caught: each is verified against its own rows.
+    let swapped = resealed(base.clone(), |a| {
+        let (left, right) = a.semantic.scanner_metrics.split_at_mut(1);
+        std::mem::swap(&mut left[0].metrics, &mut right[0].metrics);
+    });
+    assert!(
+        mismatch_codes(verify_run_artifact_accounting(&swapped, &snapshot).unwrap_err())
+            .contains(&ReasonCode::CountMismatch)
+    );
+
+    // An omitted scanner cannot hide its metrics, and an unknown scanner is refused.
+    let omitted = resealed(base.clone(), |a| {
+        a.semantic.scanner_metrics.pop();
+    });
+    assert!(
+        mismatch_codes(verify_run_artifact_accounting(&omitted, &snapshot).unwrap_err())
+            .contains(&ReasonCode::MetricDefinitionMismatch)
+    );
+    let unknown = resealed(base.clone(), |a| {
+        a.semantic.scanner_metrics[1].scanner_id = ScannerId::new("zeta-scan").unwrap();
+    });
+    assert!(
+        mismatch_codes(verify_run_artifact_accounting(&unknown, &snapshot).unwrap_err())
+            .contains(&ReasonCode::UnknownScanner)
+    );
+    // The unkeyed legacy list is not allowed next to the keyed one.
+    let both = resealed(base, |a| {
+        a.semantic.metrics = a.semantic.scanner_metrics[0].metrics.clone();
+    });
+    assert!(
+        mismatch_codes(verify_run_artifact_accounting(&both, &snapshot).unwrap_err())
+            .contains(&ReasonCode::ProtocolBindingMismatch)
     );
 }
 
 #[test]
-fn the_stock_fixtures_hand_written_metrics_do_not_match_its_rows() {
-    // The P2 fixture's metrics are structural placeholders. Reduced to one
-    // scanner but keeping them, the verifier shows they are not the accounting
-    // of the rows.
-    let (snapshot, mut artifact) = fixtures();
-    let body = &mut artifact.semantic;
-    body.scanners
-        .retain(|s| s.identity.scanner_id.as_str() == "alpha-scan");
-    body.outcomes
-        .retain(|o| o.scanner_id.as_str() == "alpha-scan");
-    body.failures.clear();
-    seal(&mut artifact).unwrap();
-    validate(&artifact).expect("contract-valid");
-    let codes = mismatch_codes(verify_run_artifact_accounting(&artifact, &snapshot).unwrap_err());
-    assert!(codes.contains(&ReasonCode::CountMismatch));
+fn a_legacy_revision_artifact_is_readable_but_not_verifiable() {
+    // The committed P2 fixture is protocol revision 1: its accounting was the
+    // legacy one (any-row buckets, one unkeyed list), which the verifier does
+    // not implement (ADR 0008 section 1).
+    let (snapshot, artifact) = fixtures();
+    assert!(artifact.semantic.protocol.is_legacy());
+    assert_eq!(
+        verify_run_artifact_accounting(&artifact, &snapshot).unwrap_err(),
+        VerifyFailure::UnsupportedRevision { version: 1 }
+    );
+    let public = artifact.to_public_synthetic().expect("public synthetic");
+    assert_eq!(
+        verify_public_artifact_accounting(&public, &snapshot).unwrap_err(),
+        VerifyFailure::UnsupportedRevision { version: 1 }
+    );
 }
 
 #[test]
@@ -363,8 +435,9 @@ fn verification_is_deterministic_and_order_independent() {
     .unwrap();
     assert_eq!(
         reversed_accounting.scanners[0].overall.results(),
-        base.semantic.metrics
+        metrics_of(&base, 0)
     );
+    assert_eq!(base.semantic.scanners[0].status, ScannerStatus::Complete);
 }
 
 #[test]
@@ -375,8 +448,7 @@ fn the_public_projection_is_verified_and_tampering_is_caught() {
     verify_public_artifact_accounting(&public, &snapshot).expect("verifies");
     // A published bound off by one digit, resealed so the digest still matches.
     let mut tampered = public.clone();
-    let m = tampered
-        .semantic
+    let m = tampered.semantic.scanner_metrics[0]
         .metrics
         .iter_mut()
         .find(|m| m.metric.id == MetricId::TypeMissRate)
@@ -400,13 +472,13 @@ fn the_public_projection_is_verified_and_tampering_is_caught() {
 }
 
 #[test]
-fn the_artifact_must_list_exactly_the_ten_metrics() {
+fn the_artifact_must_list_exactly_the_ten_metrics_per_scanner() {
     let (snapshot, artifact) = fixtures();
     let base = single_scanner(&snapshot, artifact);
-    assert_eq!(base.semantic.metrics.len(), 10);
+    assert_eq!(metrics_of(&base, 0).len(), 10);
     // Omitting a metric (even a correct one) is refused, so a bad metric cannot be dropped.
     let omitted = resealed(base.clone(), |a| {
-        a.semantic
+        a.semantic.scanner_metrics[0]
             .metrics
             .retain(|m| m.metric.id != MetricId::TypeMissRate);
     });
@@ -417,17 +489,73 @@ fn the_artifact_must_list_exactly_the_ten_metrics() {
     );
     // A repeated metric in place of another is refused too.
     let mut doubled = base.clone();
-    doubled.semantic.metrics[1] = doubled.semantic.metrics[0];
+    doubled.semantic.scanner_metrics[0].metrics[1] = doubled.semantic.scanner_metrics[0].metrics[0];
     assert!(
         mismatch_codes(verify_run_artifact_accounting(&doubled, &snapshot).unwrap_err())
             .contains(&ReasonCode::MetricDefinitionMismatch)
     );
     // The public projection is held to the same rule.
     let mut public = base.to_public_synthetic().unwrap();
-    public.semantic.metrics.pop();
+    public.semantic.scanner_metrics[0].metrics.pop();
     seal(&mut public).unwrap();
     assert!(
         mismatch_codes(verify_public_artifact_accounting(&public, &snapshot).unwrap_err())
             .contains(&ReasonCode::MetricDefinitionMismatch)
     );
+}
+
+#[test]
+fn the_public_projection_is_bound_to_the_snapshot_as_strongly_as_the_internal_artifact() {
+    let (snapshot, artifact) = fixtures();
+    let internal = canonical(&snapshot, artifact, None);
+    let public = internal.to_public_synthetic().expect("public synthetic");
+    verify_public_artifact_accounting(&public, &snapshot).expect("verifies");
+    let reseal =
+        |mut p: pii_eval_contracts::PublicSyntheticArtifact,
+         edit: &dyn Fn(&mut pii_eval_contracts::PublicSyntheticArtifactBody)| {
+            edit(&mut p.semantic);
+            seal(&mut p).unwrap();
+            p
+        };
+    // The reviewer's probe: swap the case and variant counts of two methods.
+    let swapped = reseal(public.clone(), &|b| {
+        let (x, y) = (b.method_coverage[0], b.method_coverage[1]);
+        b.method_coverage[0].cases = y.cases;
+        b.method_coverage[0].variants = y.variants;
+        b.method_coverage[1].cases = x.cases;
+        b.method_coverage[1].variants = x.variants;
+    });
+    validate(&swapped).expect("contract-valid: the sums still match");
+    assert!(
+        mismatch_codes(verify_public_artifact_accounting(&swapped, &snapshot).unwrap_err())
+            .contains(&ReasonCode::CountMismatch)
+    );
+    // Authored counts.
+    let counts = reseal(public.clone(), &|b| b.population_counts.occurrences += 1);
+    assert!(verify_public_artifact_accounting(&counts, &snapshot).is_err());
+    // A row whose state is unreachable for its authored expectation.
+    let lattice = reseal(public.clone(), &|b| {
+        let row = b
+            .outcomes
+            .iter_mut()
+            .find(|o| o.scanner_id.as_str() == "alpha-scan")
+            .unwrap();
+        row.type_identity = pii_eval_contracts::TypeState::InvalidAccepted;
+    });
+    assert!(
+        mismatch_codes(verify_public_artifact_accounting(&lattice, &snapshot).unwrap_err())
+            .contains(&ReasonCode::OutcomeContradiction)
+    );
+    // An action that contradicts the scanner's capability.
+    let action = reseal(public, &|b| {
+        let row = b
+            .outcomes
+            .iter_mut()
+            .find(|o| o.scanner_id.as_str() == "beta-scan")
+            .unwrap();
+        row.action = pii_eval_contracts::ActionOutcome::Reported {
+            action: pii_eval_contracts::ActionKind::Redact,
+        };
+    });
+    assert!(verify_public_artifact_accounting(&action, &snapshot).is_err());
 }

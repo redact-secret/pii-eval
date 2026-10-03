@@ -447,8 +447,44 @@ fn alpha_observation(snapshot: &CorpusSnapshot) -> Vec<InputObservation> {
 }
 
 impl Fixtures {
+    /// The legacy set: protocol revision 1, schema 1.0. Byte-identical to the
+    /// committed P2 fixtures.
     pub fn build(visibility: Visibility, alpha_product: ProductIdentity) -> Fixtures {
-        let snapshot = sealed(CorpusSnapshot::unsealed(snapshot_body(visibility)));
+        Fixtures::build_revision(visibility, alpha_product, false)
+    }
+
+    /// The same scenario under protocol revision 2 (schema 1.1): rule
+    /// identities, per-scanner metrics and runtime provenance. The metric
+    /// values are structural placeholders, as in the legacy set; real values
+    /// come from the kernel (`pii-eval-cli` golden revision-2 fixtures).
+    pub fn canonical(visibility: Visibility, alpha_product: ProductIdentity) -> Fixtures {
+        Fixtures::build_revision(visibility, alpha_product, true)
+    }
+
+    pub fn default_canonical() -> Fixtures {
+        Fixtures::canonical(Visibility::PublicSynthetic, ProductIdentity::Released)
+    }
+
+    fn build_revision(
+        visibility: Visibility,
+        alpha_product: ProductIdentity,
+        canonical: bool,
+    ) -> Fixtures {
+        let protocol = if canonical {
+            ProtocolIdentity::CANONICAL_V2
+        } else {
+            ProtocolIdentity::LEGACY_V1
+        };
+        let version = if canonical {
+            SchemaVersion::V1_1
+        } else {
+            SchemaVersion::V1_0
+        };
+        // The snapshot has no protocol identity: it stays at schema 1.0 in both
+        // sets, so a revision-2 run binds the same population digest.
+        let mut snapshot = CorpusSnapshot::unsealed(snapshot_body(visibility));
+        snapshot.schema_version = SchemaVersion::V1_0;
+        let snapshot = sealed(snapshot);
         let alpha_cfg = config(5);
         let beta_cfg = config(3);
         let alpha_version = match alpha_product {
@@ -477,9 +513,9 @@ impl Fixtures {
         let mut metric_refs: Vec<MetricRef> =
             METRICS.iter().map(|m| MetricRef::frozen(m.id)).collect();
         metric_refs.sort_by_key(|m| m.id.as_str());
-        let manifest = sealed(RunManifest::unsealed(RunManifestBody {
+        let mut manifest = RunManifest::unsealed(RunManifestBody {
             engine: engine(),
-            protocol: ProtocolIdentity::CURRENT,
+            protocol,
             run_class: run_class_of(visibility),
             population: PopulationBinding {
                 population_id: snapshot.semantic.population.population_id.clone(),
@@ -506,14 +542,16 @@ impl Fixtures {
                     configuration: beta_cfg,
                 },
             ],
-        }));
+        });
+        manifest.schema_version = version;
+        let manifest = sealed(manifest);
         let replays = ReplayRecord {
             count: 2,
             agreed: true,
         };
         let mut alpha_body = ObservationSetBody {
             engine: engine(),
-            protocol: ProtocolIdentity::CURRENT,
+            protocol,
             population_digest: snapshot.semantic_digest.clone(),
             scanner: alpha_id.clone(),
             status: ScannerStatus::Complete,
@@ -523,22 +561,35 @@ impl Fixtures {
         };
         alpha_body.inputs = alpha_observation(&snapshot);
         let mut obs_alpha = ObservationSet::unsealed(alpha_body);
+        obs_alpha.schema_version = version;
         obs_alpha.diagnostics = Some(ObservationDiagnostics {
             started_at: TimestampUtc::new("2026-10-02T09:00:00.000Z").unwrap(),
             finished_at: TimestampUtc::new("2026-10-02T09:00:01.250Z").unwrap(),
             duration_ms: 1250,
+            runtime: canonical.then(|| RuntimeProvenance {
+                runtime_name: sid("node"),
+                runtime_version: Some(ver("22.16.0")),
+                scanner_version: ver("1.0.0"),
+                offset_unit: OffsetUnitName::Utf16CodeUnits,
+                adapter_protocol: 1,
+                shim_digest: digest_of("shim-alpha"),
+                artifact_digest: digest_of("artifact-alpha-scan"),
+                activation_identity_digest: digest_of("activation-alpha"),
+            }),
         });
         let obs_alpha = sealed(obs_alpha);
-        let obs_beta = sealed(ObservationSet::unsealed(ObservationSetBody {
+        let mut obs_beta = ObservationSet::unsealed(ObservationSetBody {
             engine: engine(),
-            protocol: ProtocolIdentity::CURRENT,
+            protocol,
             population_digest: snapshot.semantic_digest.clone(),
             scanner: beta_id.clone(),
             status: ScannerStatus::Unsupported,
             capabilities: beta_capabilities(),
             replays,
             inputs: vec![],
-        }));
+        });
+        obs_beta.schema_version = version;
+        let obs_beta = sealed(obs_beta);
 
         // Outcomes: alpha measured, beta not measured (unsupported).
         let mut outcomes = Vec::new();
@@ -623,7 +674,7 @@ impl Fixtures {
         coverage.sort_by_key(|c| c.method.id.as_str());
         let mut artifact = RunArtifact::unsealed(RunArtifactBody {
             engine: engine(),
-            protocol: ProtocolIdentity::CURRENT,
+            protocol,
             run_class: run_class_of(visibility),
             manifest_digest: manifest.semantic_digest.clone(),
             population: manifest.semantic.population.clone(),
@@ -651,7 +702,18 @@ impl Fixtures {
             ],
             method_coverage: coverage,
             outcomes,
-            metrics: metrics(),
+            metrics: if canonical { vec![] } else { metrics() },
+            scanner_metrics: if canonical {
+                ["alpha-scan", "beta-scan"]
+                    .into_iter()
+                    .map(|name| ScannerMetrics {
+                        scanner_id: sid(name),
+                        metrics: metrics(),
+                    })
+                    .collect()
+            } else {
+                vec![]
+            },
             failures: vec![MeasurementFailure {
                 scanner_id: sid("beta-scan"),
                 code: FailureCode::Unsupported,
@@ -659,6 +721,7 @@ impl Fixtures {
             }],
             completeness: Completeness::Complete,
         });
+        artifact.schema_version = version;
         artifact.diagnostics = Some(RunDiagnostics {
             started_at: TimestampUtc::new("2026-10-02T09:00:00.000Z").unwrap(),
             finished_at: TimestampUtc::new("2026-10-02T09:00:02.000Z").unwrap(),

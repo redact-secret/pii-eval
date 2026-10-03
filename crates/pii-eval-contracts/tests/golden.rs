@@ -90,6 +90,95 @@ fn goldens_parse_validate_and_bind_to_each_other() {
     assert_eq!(public, artifact.to_public_synthetic().unwrap());
 }
 
+/// The structural revision-2 set (placeholder metric values) validates and
+/// binds exactly like the legacy set, and the legacy set is still valid.
+#[test]
+fn revision_2_documents_validate_and_bind_and_revision_1_stays_valid() {
+    let legacy = Fixtures::default_public();
+    let canonical = Fixtures::default_canonical();
+    assert!(legacy.artifact.semantic.protocol.is_legacy());
+    assert_eq!(legacy.artifact.schema_version, SchemaVersion::V1_0);
+    assert!(canonical.artifact.semantic.protocol.is_canonical());
+    assert_eq!(canonical.artifact.schema_version, SchemaVersion::V1_1);
+    // Same population: the snapshot has no protocol identity and stays at 1.0.
+    assert_eq!(legacy.snapshot, canonical.snapshot);
+    for f in [&legacy, &canonical] {
+        validate(&f.snapshot).unwrap();
+        validate(&f.manifest).unwrap();
+        validate(&f.obs_alpha).unwrap();
+        validate(&f.obs_beta).unwrap();
+        validate(&f.artifact).unwrap();
+        validate_manifest_against_snapshot(&f.manifest, &f.snapshot).unwrap();
+        validate_observation_against_manifest(&f.obs_alpha, &f.manifest).unwrap();
+        validate_artifact_against_manifest(&f.artifact, &f.manifest).unwrap();
+        validate_artifact_against_snapshot(&f.artifact, &f.snapshot).unwrap();
+        let public = f.artifact.to_public_synthetic().unwrap();
+        validate(&public).unwrap();
+        // The projection is sealed under the version of its source.
+        assert_eq!(public.schema_version, f.artifact.schema_version);
+    }
+    // Revision 2 keys metrics by scanner and omits the unkeyed list.
+    let body = &canonical.artifact.semantic;
+    assert!(body.metrics.is_empty());
+    let keyed: Vec<_> = body
+        .scanner_metrics
+        .iter()
+        .map(|m| m.scanner_id.as_str())
+        .collect();
+    assert_eq!(keyed, ["alpha-scan", "beta-scan"]);
+    let text = serialize_internal(&canonical.artifact).unwrap();
+    assert!(text.contains("\"scannerMetrics\""));
+    let value: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert!(
+        value["semantic"].get("metrics").is_none(),
+        "the unkeyed list is absent on the wire"
+    );
+    // Both revisions round-trip through the strict parser.
+    for f in [&legacy, &canonical] {
+        let text = serialize_internal(&f.artifact).unwrap();
+        let back: RunArtifact = parse_default(text.as_bytes()).unwrap();
+        assert_eq!(back, f.artifact);
+    }
+    // A revision-1 reader's world is unchanged: the committed goldens are the
+    // legacy set, equal to the builders (see `committed_goldens_equal_the_builders`).
+    let committed: RunArtifact = parse_default(&read("run-artifact.json")).unwrap();
+    assert!(committed.semantic.protocol.is_legacy());
+    assert_eq!(committed.schema_version, SchemaVersion::V1_0);
+}
+
+/// ADR 0008: a context group needs at least one frame per class, not exactly
+/// one (the oracle's real groups hold many); zero in a class stays incomplete.
+#[test]
+fn a_context_group_may_hold_several_frames_per_class() {
+    let f = Fixtures::default_public();
+    let mut many = f.snapshot.clone();
+    {
+        let case = &mut many.semantic.cases[1];
+        let sensitive = case.variants[2].clone();
+        let mut extra = sensitive.clone();
+        extra.variant_id = id("context-email-ko-demo-sensitive-2");
+        case.variants.push(extra);
+        let neutral = case.variants[0].clone();
+        let mut extra = neutral;
+        extra.variant_id = id("context-email-ko-demo-neutral-2");
+        case.variants.insert(1, extra);
+        case.variants
+            .sort_by(|a, b| a.variant_id.cmp(&b.variant_id));
+    }
+    seal(&mut many).unwrap();
+    validate(&many).expect("several frames per class are a complete group");
+    let mut missing = many.clone();
+    missing.semantic.cases[1]
+        .variants
+        .retain(|v| !v.variant_id.as_str().contains("non-sensitive"));
+    seal(&mut missing).unwrap();
+    assert!(
+        validate(&missing)
+            .unwrap_err()
+            .contains(ReasonCode::IncompleteContextTrio)
+    );
+}
+
 #[test]
 fn goldens_use_only_synthetic_reserved_values() {
     for name in ["snapshot.json", "run-artifact.json"] {

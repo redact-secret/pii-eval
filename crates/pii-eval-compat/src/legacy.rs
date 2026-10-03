@@ -178,3 +178,13 @@ pub fn interpret(expected: &LegacyExpectation<'_>, scanner: &LegacyScanner<'_>) 
         },
     }
 }
+
+/// The oracle's group rule for `benign-suppression-rate` and
+/// `jurisdiction-collision-rate` (`accounting.ts` `groupBucket`: `group.some(event)`):
+/// a case counts when ANY of its rows passes. The canonical accounting requires ALL
+/// rows to pass (ADR 0008, A8); this helper exists so the difference is
+/// executable, not only described. `passes` is one bool per row of the case,
+/// after review-required and not-measured rows have been resolved.
+pub fn legacy_any_row_passes(passes: &[bool]) -> bool {
+    passes.iter().any(|p| *p)
+}

@@ -1,6 +1,6 @@
 //! Indexed accounting of the ten `pii-v1` metrics (canonical accounting rule).
 //!
-//! Identity: [`ACCOUNTING_RULE_ID`] `pii-v1-canonical-accounting`, proposed
+//! Identity: [`ACCOUNTING_RULE_ID`] `pii-v1-canonical-accounting`,
 //! protocol revision [`ACCOUNTING_PROTOCOL_REVISION`] 2, next to the matching
 //! rule of ADR 0004 and the statistics rule of [`crate::stats`]. Specified in
 //! `docs/adr/0005-indexed-accounting-and-metric-statistics.md`.
@@ -56,9 +56,10 @@ use crate::stats::{StatsError, published_value};
 /// Identifier of the canonical accounting rule.
 pub const ACCOUNTING_RULE_ID: &str = "pii-v1-canonical-accounting";
 
-/// Protocol revision this accounting rule belongs to. The contracts still bind
-/// revision 1 (legacy semantics); revision 2 is *proposed* and not yet
-/// representable in a document (ADR 0005, "Protocol revision ownership").
+/// Protocol revision this accounting rule belongs to: revision 2, bound in
+/// every revision-2 document by `ProtocolIdentity::CANONICAL_V2` (ADR 0008).
+/// Since ADR 0008 the benign and collision buckets require ALL rows to pass
+/// (A8); a test pins that these constants equal the contracts' identities.
 pub const ACCOUNTING_PROTOCOL_REVISION: u32 = 2;
 
 /// Most distinct values of one stratum dimension (languages, jurisdictions).
@@ -82,7 +83,7 @@ pub enum SnapshotDefect {
     DuplicateVariant,
     /// Occurrence ids of a variant are not strictly ascending.
     OccurrenceOrder,
-    /// A context-discrimination case does not hold exactly one frame per context class.
+    /// A context-discrimination case does not hold at least one frame in every context class (ADR 0008).
     IncompleteContextTrio,
     /// A variant's expectations disagree on the context class.
     ContextClassConflict,
@@ -331,13 +332,15 @@ impl<'a> AuthoredIndex<'a> {
                 }
             }
             if case.method == MethodId::ContextDiscrimination {
-                classes.sort();
-                if classes
-                    != [
-                        ContextClass::Sensitive,
-                        ContextClass::Neutral,
-                        ContextClass::NonSensitive,
-                    ]
+                // At least one frame per class (ADR 0008); zero in any class
+                // is still an incomplete trio.
+                if ![
+                    ContextClass::Sensitive,
+                    ContextClass::Neutral,
+                    ContextClass::NonSensitive,
+                ]
+                .iter()
+                .all(|k| classes.contains(k))
                 {
                     return Err(AccountError::InvalidSnapshot(
                         SnapshotDefect::IncompleteContextTrio,
@@ -632,9 +635,9 @@ const N_NM: u32 = 1 << 14;
 const N_FP: u32 = 1 << 15; // false-positive
 const A_SREV: u32 = 1 << 16; // any row: sensitivity review-required
 const A_SNM: u32 = 1 << 17; // any row: sensitivity not-measured
-const A_SPASS: u32 = 1 << 18; // any row: sensitivity pass
+const A_SFAIL: u32 = 1 << 18; // any row: sensitivity fail (A8: "all rows pass" = no fail)
 const A_TNM: u32 = 1 << 19; // any row: type not-measured
-const A_TPASS: u32 = 1 << 20; // any row: type pass
+const A_TFAIL: u32 = 1 << 20; // any row: type fail (A8)
 const E_REV: u32 = 1 << 21; // context endpoint: sensitivity review-required
 const E_NM: u32 = 1 << 22; // context endpoint: not-measured
 const E_FAIL: u32 = 1 << 23; // context endpoint: fail
@@ -687,13 +690,13 @@ fn row_flags(occ: &OccInfo, row: &OutcomeRow) -> u32 {
     match sens_status {
         AxisStatus::ReviewRequired => f |= A_SREV,
         AxisStatus::NotMeasured => f |= A_SNM,
-        AxisStatus::Pass => f |= A_SPASS,
-        AxisStatus::Fail => {}
+        AxisStatus::Fail => f |= A_SFAIL,
+        AxisStatus::Pass => {}
     }
     match type_status {
         AxisStatus::NotMeasured => f |= A_TNM,
-        AxisStatus::Pass => f |= A_TPASS,
-        AxisStatus::Fail | AxisStatus::ReviewRequired => {}
+        AxisStatus::Fail => f |= A_TFAIL,
+        AxisStatus::Pass | AxisStatus::ReviewRequired => {}
     }
     if occ.endpoint {
         match sens_status {
@@ -791,14 +794,19 @@ fn group_buckets(metric: MetricId, f: u32, case: &CaseInfo<'_>) -> Buckets {
                 Buckets::NONE
             }
         }
+        // A8 (ADR 0008): a case is suppressed (or its collision resolved) only
+        // when ALL of its rows pass. After review-required and not-measured
+        // have been handled by `resolve`, every remaining row is a pass or a
+        // fail, so "all pass" is "no fail". The oracle counted a case when ANY
+        // row passed; that rule stays in the compatibility tests only.
         MetricId::BenignSuppressionRate => Buckets::one(if case.method == MethodId::PiiBenign {
-            resolve(has(A_SREV), has(A_SNM), has(A_SPASS))
+            resolve(has(A_SREV), has(A_SNM), !has(A_SFAIL))
         } else {
             Bucket::NotApplicable
         }),
         MetricId::JurisdictionCollisionRate => {
             Buckets::one(if case.method == MethodId::JurisdictionCollision {
-                resolve(false, has(A_TNM), has(A_TPASS))
+                resolve(false, has(A_TNM), !has(A_TFAIL))
             } else {
                 Bucket::NotApplicable
             })

@@ -231,6 +231,37 @@
   "protocol": {
     "accounting": "pii-v1",
     "id": "pii-v1",
-    "version": 1
-  }
+    "readableRevisions": [
+      1,
+      2
+    ],
+    "version": 2
+  },
+  "revisions": [
+    {
+      "minimumSchemaVersion": "1.0",
+      "rules": "legacy-first-overlap matching and legacy accounting (pii-eval-compat); a revision-1 document carries no rule identities",
+      "state": "legacy",
+      "version": 1
+    },
+    {
+      "minimumSchemaVersion": "1.1",
+      "rules": {
+        "accounting": {
+          "id": "pii-v1-canonical-accounting",
+          "revision": 2
+        },
+        "matching": {
+          "id": "pii-v1-canonical",
+          "revision": 2
+        },
+        "statistics": {
+          "id": "pii-v1-wilson-exact",
+          "revision": 1
+        }
+      },
+      "state": "canonical",
+      "version": 2
+    }
+  ]
 }

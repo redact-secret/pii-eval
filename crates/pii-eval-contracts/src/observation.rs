@@ -10,11 +10,13 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::axes::ActionKind;
+use crate::axes::{ActionKind, kebab_enum};
 use crate::check::{sorted_unique, within_limit};
 use crate::decimal::ByteRange;
 use crate::document::{impl_document, schema_tag};
-use crate::ident::{FamilyId, Id, JurisdictionCode, Sha256Digest, TimestampUtc};
+use crate::ident::{
+    FamilyId, Id, JurisdictionCode, ScannerId, Sha256Digest, TimestampUtc, VersionString,
+};
 use crate::limits::{MAX_FINDINGS_PER_INPUT, MAX_INPUTS_PER_OBSERVATION_SET};
 use crate::protocol::ProtocolIdentity;
 use crate::reason::{Collector, Path, ReasonCode};
@@ -144,6 +146,39 @@ pub struct ObservationSetBody {
     pub inputs: Vec<InputObservation>,
 }
 
+kebab_enum!(
+    /// Unit the scanner reported offsets in, before the single translation to
+    /// UTF-8 bytes (ADR 0004).
+    OffsetUnitName { Utf8Bytes, Utf16CodeUnits, UnicodeCodePoints }
+);
+
+/// What actually ran, as observed at startup and verified against the pins
+/// (ADR 0006 D5, ADR 0008). It describes the host's runtime, so it lives in the
+/// non-semantic diagnostics: it is evidence for reproduction, not part of the
+/// digested result. The scanner's own activation identity string is never
+/// copied here, only its digest.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RuntimeProvenance {
+    /// Runtime name, for example `node`.
+    pub runtime_name: ScannerId,
+    /// Runtime version without a leading `v`, when it has the `x.y.z` shape.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime_version: Option<VersionString>,
+    /// Scanner version the process reported (equal to the pin).
+    pub scanner_version: VersionString,
+    /// Offset unit the scanner reported.
+    pub offset_unit: OffsetUnitName,
+    /// Version of the adapter shim protocol (`pii-eval-adapter/<n>`).
+    pub adapter_protocol: u32,
+    /// Verified digest of the shim file.
+    pub shim_digest: Sha256Digest,
+    /// Verified digest of the scanner artifact.
+    pub artifact_digest: Sha256Digest,
+    /// SHA-256 of the scanner's activation identity string.
+    pub activation_identity_digest: Sha256Digest,
+}
+
 /// Non-semantic timing of an observation run. Excluded from the digest.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -154,6 +189,9 @@ pub struct ObservationDiagnostics {
     pub finished_at: TimestampUtc,
     /// Wall-clock duration in milliseconds.
     pub duration_ms: u64,
+    /// Runtime provenance (protocol revision 2 documents only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime: Option<RuntimeProvenance>,
 }
 
 /// An observation set document.
@@ -173,11 +211,28 @@ pub struct ObservationSet {
     pub diagnostics: Option<ObservationDiagnostics>,
 }
 
-impl_document!(
+impl_document!(@impl
     ObservationSet,
     ObservationSetBody,
     crate::version::DocumentKind::ObservationSet,
-    diagnostics
+    {
+        fn validate_diagnostics(&self, path: &Path<'_>, c: &mut Collector) {
+            if let Some(d) = &self.diagnostics {
+                d.validate(path, c);
+            }
+        }
+        fn validate_gates(&self, c: &mut Collector) {
+            crate::protocol::check_revision_gate(self.schema_version, &self.semantic.protocol, c);
+            // Runtime provenance exists only in revision-2 documents.
+            let runtime = self.diagnostics.as_ref().is_some_and(|d| d.runtime.is_some());
+            if runtime && !self.semantic.protocol.is_canonical() {
+                c.push(
+                    ReasonCode::DiagnosticsInvalid,
+                    &Path::ROOT.field("diagnostics").field("runtime"),
+                );
+            }
+        }
+    }
 );
 
 impl ObservationDiagnostics {
@@ -221,9 +276,7 @@ impl Finding {
 
 impl ObservationSetBody {
     pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {
-        if self.protocol != ProtocolIdentity::CURRENT {
-            c.push(ReasonCode::ProtocolBindingMismatch, &path.field("protocol"));
-        }
+        self.protocol.validate(&path.field("protocol"), c);
         self.scanner.validate(&path.field("scanner"), c);
         self.capabilities.validate(&path.field("capabilities"), c);
 

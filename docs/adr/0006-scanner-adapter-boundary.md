@@ -364,3 +364,7 @@ ownership map with its disposition, and a test checks it against the map.
   (`PII_EVAL_REDACT_SECRET_CORE_DIR`), skipped with a reason otherwise.
 - No contract changed; schemas, fixtures and digests are untouched.
 - Behavior that is planned and not implemented is listed in D4 and D12.
+
+## Update (P7)
+
+D12 is implemented by [ADR 0009](0009-bounded-execution-and-artifact-writing.md) (pool, process-group cleanup, limits, replay scheduling, assembly, writer) and [ADR 0008](0008-protocol-revision-2-and-schema-1-1.md) (sanitized-output verification, runtime provenance). The statement "What this does not do" in D4 now applies only to network and filesystem isolation, read-only installs, the interpreter pin, evaluator-crash cleanup and Windows.

@@ -182,3 +182,9 @@ Independent review found defects; the fixes are part of the 1.0 freeze.
   128 MiB to 32 MiB. The peak is not measured on this host (the sandbox refused
   the timing wrapper); streaming parse and resource limits are deferred to P7,
   which must measure peak RSS with its execution limits.
+
+## Update (P7)
+
+The parse peak-memory measurement deferred above was made in [ADR 0008](0008-protocol-revision-2-and-schema-1-1.md) section 6 (about 4x the document for string-heavy and about 32x for node-dense documents at the cap). Schema 1.1 and protocol revision 2 follow the change rules above.
+
+Accepted deviation (P7, ADR 0008 section 11): the relaxed `incomplete-context-trio` rule (at least one frame per class) applies to schema 1.0 snapshots as well. It is a loosening (nothing valid before becomes invalid, no digest changes), recorded as a deliberate exception to "a minor change must not alter what 1.0 means".

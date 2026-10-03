@@ -1,0 +1,226 @@
+# ADR 0008: Protocol revision 2, schema 1.1, per-scanner metrics and the canonical accounting decisions
+
+- Status: accepted for P7 (issue #8); subject to review.
+- Date: 2026-10-03
+- Related: [ADR 0002](0002-freeze-pii-contracts-v1.md),
+  [ADR 0003](0003-canonical-serialization-and-semantic-digest.md),
+  [ADR 0004](0004-order-invariant-pii-matching.md),
+  [ADR 0005](0005-indexed-accounting-and-metric-statistics.md),
+  [ADR 0009](0009-bounded-execution-and-artifact-writing.md), epic #1.
+  Implementation: `crates/pii-eval-contracts/src/{protocol,artifact,observation,version,document,binding}.rs`,
+  `crates/pii-eval-kernel/src/{verify,output,accounting}.rs`.
+
+## Context
+
+ADR 0004 (section 5) and ADR 0005 (section 9) deferred one change to the first
+phase that writes documents: bind the canonical matching, accounting and
+statistics rules into a protocol revision, make multi-scanner artifacts
+verifiable, resolve the benign/collision `any -> all` question (A8), call the
+verifier on every artifact, and measure parse memory (ADR 0002). P5 also asked
+for a relaxed context-trio rule. This ADR records all of it. No legacy
+(revision 1) document changes meaning, bytes or digest.
+
+## 1. Protocol revision 2 and compatibility
+
+**Representation.** `ProtocolIdentity` keeps `id`, `version`, `accounting` and
+gains an optional `rules`:
+
+| Revision | `version` | `accounting` | `rules` | Minimum schema |
+| --- | --- | --- | --- | --- |
+| 1 (legacy) | 1 | `pii-v1` | absent | 1.0 |
+| 2 (canonical) | 2 | `pii-v1` | `{matching: pii-v1-canonical@2, accounting: pii-v1-canonical-accounting@2, statistics: pii-v1-wilson-exact@1}` | 1.1 |
+
+`ProtocolIdentity::LEGACY_V1` and `CANONICAL_V2` are the only two accepted
+values; anything else (a rules object on revision 1, a missing or altered rule,
+a different revision number) is `protocol-binding-mismatch`. `CURRENT` no longer
+exists. `RuleId` is a closed enum whose values are valid in exactly one slot.
+The kernel constants (`MATCHING_RULE_ID`, `ACCOUNTING_RULE_ID`, `STATS_RULE_ID`
+and their revisions) repeat these values and `crates/pii-eval-kernel/tests/rule_identity.rs`
+pins the equality (contracts cannot depend on the kernel).
+
+**What validators accept.** Every contract validator accepts both revisions.
+A revision-2 document must declare schema 1.1 or later (checked in
+`Document::validate_gates`, reason `protocol-binding-mismatch`). Cross-document
+bindings compare the whole protocol identity, so a revision-1 observation never
+binds to a revision-2 manifest.
+
+**Migration and compatibility story.**
+
+- Revision-1 documents (including the committed P2 fixtures, byte-identical,
+  digests unchanged) stay readable and structurally valid under schema 1.0.
+  They are never re-sealed.
+- The engine **emits** revision 2 only. `pii_eval_cli::run` refuses a
+  revision-1 manifest (`RunError::UnsupportedProtocol`): a legacy plan is not
+  re-measured.
+- The kernel verifier **cannot** verify a revision-1 artifact: its metrics came
+  from the legacy accounting (any-row benign and collision buckets, one unkeyed
+  metric list). It returns `VerifyFailure::UnsupportedRevision { version: 1 }`.
+  Legacy artifacts are only read, and compared through `pii-eval-compat` (P9).
+- Moving a measurement from revision 1 to 2 is a new run (new manifest), not a
+  conversion; the differences are classified in section 8.
+- Registry `schemas/registry/pii-v1.registry.json`: `protocol.version` is 2,
+  `protocol.readableRevisions` is `[1, 2]`, and `revisions` lists both.
+
+## 2. Schema 1.1: exactly what changed
+
+Schema version is now `1.1` (`SCHEMA_MINOR = 1`); readers accept `1.0` and
+`1.1`; `1.2` is `schema-minor-too-new`. Per ADR 0002 every change is optional or
+revision-gated, so every valid 1.0 document is still valid:
+
+| Change | Where | Rule |
+| --- | --- | --- |
+| `protocol.rules` (optional object) | every document with a protocol identity | present exactly for revision 2 |
+| `RunArtifactBody.scannerMetrics` (optional list of `{scannerId, metrics[]}`) | internal and public artifact | revision 2 only; ascending by scanner id; one entry per scanner; each entry the registry's metrics, each once |
+| `RunArtifactBody.metrics` becomes optional (omitted when empty) | internal and public artifact | revision 1: required, non-empty; revision 2: must be absent |
+| `FailureCode::resource-limit-exceeded` (new enum value) | failures | revision 2 only; allowed for scanner status `error` |
+| `ObservationDiagnostics.runtime` (optional `RuntimeProvenance`) | observation diagnostics (non-semantic) | revision 2 only |
+| Context-trio check relaxed | corpus snapshot validation | see section 7 |
+
+The 1.0 schema files are superseded in place by the 1.1 files (the 1.1 schema
+is a superset of 1.0 for valid documents; Git history is the 1.0 record). The
+legacy fixtures stay at `fixtures/contracts/v1/`; the revision-2 goldens are
+`fixtures/contracts/v1/rev2/` (generated by the real executor, assembler,
+writer and kernel; `PII_EVAL_UPDATE_FIXTURES=1 cargo test -p pii-eval-cli --test golden_rev2`).
+The negative fixture `corpus-snapshot__schema-minor-too-new__minor-newer-than-reader.json`
+moved from `1.1` to `1.2`; 19 revision-2 negative fixtures were added (112 in total, 93 before). No
+reason code was added (`reason-codes.v1.json` is unchanged). The digest domain
+includes the declared schema version (ADR 0003): a revision-2 document is sealed
+under `…/1.1`; a projection is sealed under its source's version.
+
+## 3. Per-scanner metric keying (replaces `MetricScopeAmbiguous`)
+
+Revision 2 carries `scannerMetrics`, one entry per scanner, computed from that
+scanner's own rows; scanners are never pooled. `VerifyFailure::MetricScopeAmbiguous`
+is removed. `verify_run_artifact_accounting` and `verify_public_artifact_accounting`
+recompute every scanner's ten metrics (counts, status, effective N, point and
+bound) and reject an omitted scanner or metric (`metric-definition-mismatch`),
+an entry for an unknown scanner (`unknown-scanner`), a swapped list
+(`count-mismatch`) and a leftover unkeyed list (`protocol-binding-mismatch`).
+`validate_artifact_against_manifest` requires every scanner to carry exactly
+the planned metrics. A scanner that did not complete has all-unmeasured metrics
+(the kernel already derived them); an unstable scanner's metrics read
+not-measured and its status is `unstable`.
+Not added: the per-metric `SampleBasis` counts ADR 0005 section 9 listed; they
+remain kernel-side (`MetricAccount::basis`) and can be added as an optional
+field in a later minor.
+
+## 4. Decision A8: benign and collision buckets require ALL rows to pass
+
+ADR 0005 A8 kept the oracle's `group.some(pass)` for `benign-suppression-rate`
+and `jurisdiction-collision-rate`. **Decision: the canonical accounting
+(`pii-v1-canonical-accounting@2`) counts a case only when every row passes.**
+After review-required and not-measured have been resolved (they still win), the
+remaining rows are passes or fails, so "all pass" is "no fail" (kernel flags
+`A_SFAIL`, `A_TFAIL`). Reasons: variants of one authored case are correlated
+cut-downs of one sample (ARCHITECTURE.md), so a case where any variant leaks
+(a false positive on benign text, a wrong jurisdiction) must not count as
+suppressed or resolved; the context metric already uses "all endpoints". A8 is
+a classified difference (section 8, R3), no longer a known limitation, and the
+oracle behavior is pinned only in compat tests.
+
+Hand-calculated vector (`crates/pii-eval-kernel/tests/a8_all_rows.rs`): four
+benign and four collision cases; case 1 pass/pass, case 2 pass/fail, case 3
+fail/fail, case 4 pass x3. Oracle: 3 of 4 (point 0.75, lower bound 0.300636).
+Canonical: 2 of 4 (point 0.5, lower bound 0.150036), counts
+`eligible 4, measured 4, numerator 2, not-applicable 4, total 8`. Wilson values
+from an independent Python `decimal` computation at 60 digits. The compat tests
+`a3_*` and `a8_*` now assert the canonical counts and state the oracle's.
+
+## 5. Sanitized-output verification (`output-verified`)
+
+`pii_eval_kernel::output::verify_output(text, sanitized, ranges)` verifies the
+action axis from data, without findings. Authored occurrence ranges (merged
+where they touch) split the original text into context segments and protected
+spans; the sanitized text must contain every context segment in order (leftmost
+match) with the replacement regions between them. Per occurrence, in
+precedence: `residual-present` (its exact bytes occur in its replacement region;
+searched in the whole output if the context cannot be aligned, which fails
+closed), `collateral-change` (context not preserved), `removed`. Stated limits:
+only verbatim survival is detected (a partially masked value counts as
+removed), and a replacement containing the next context segment verbatim
+misaligns and reports collateral. Bounds: text `MAX_TEXT_BYTES`, sanitized
+`MAX_SANITIZED_BYTES` (8 MiB), at most 16 ranges. The executor applies it only
+when the running scanner declares `sanitized-output` and returned output; the
+matcher still never produces `output-verified`. The observation records the
+SHA-256 of the output, never the text. No contract change (`OutputVerification`
+and `ActionOutcome::OutputVerified` already existed).
+
+## 6. Parse peak memory at the 32 MiB cap
+
+Method (`crates/pii-eval-cli/tests/parse_memory.rs`, `#[ignore]`, run by hand):
+each document is parsed by `parse_default` in a fresh child process (the test
+binary re-executed) under `/usr/bin/time -l` (macOS, bytes) or `-v` (Linux,
+KiB); maximum resident set size, maximum of three runs, baseline process
+subtracted. Result on macOS 26.5 / arm64, release build, 2026-10-03, documents
+of 28.6 MiB (the cap is 32 MiB):
+
+| Document | Peak RSS | Above baseline | Ratio |
+| --- | --- | --- | --- |
+| baseline process | 2.1 MiB | | |
+| snapshot, 30 variants of 1 MB text (string-dominated) | 120.5 MiB | +118.4 MiB | 4.1x |
+| observation set, about 300,000 tiny findings (node-dominated) | 913.2 MiB | +911.1 MiB | 31.8x |
+
+Consequence: parsing a document at the cap can need about 1 GiB, dominated by
+the strict value tree's per-node cost, not by the input. The cap is kept
+(lowering it is a breaking change). A caller that parses untrusted documents
+must budget about 32 times the document size for node-dense documents; a
+streaming strict parser that avoids the tree is the remedy and is deferred to
+P10 with its own measurement. The executor's memory limit applies to scanner
+process trees, not to the evaluator's own parse.
+
+## 7. Context groups: at least one frame per class (P5 request)
+
+`incomplete-context-trio` (contracts) and `SnapshotDefect::IncompleteContextTrio`
+(kernel `AuthoredIndex::new`) required exactly one frame per context class; the
+oracle's real groups hold 8 and 11 frames. Both now require every variant to
+have a class and **at least one** variant in each of the three classes; zero in
+any class stays incomplete (rejected / not accountable). The metric needs no
+change: it already judges "every endpoint (non-neutral frame) passes". This is a
+loosening of validation (accepts more) applying to all schema versions, a
+classified difference (R5). Probe `trio-missing-a-frame` still fails; a new
+test builds a group with extra sensitive and neutral frames.
+
+## 8. Classified differences (revision 1 to revision 2)
+
+| Id | Difference | Class |
+| --- | --- | --- |
+| R1 | Protocol identity carries rule identities; revision 2 needs schema 1.1. | Addition (versioned) |
+| R2 | Metrics keyed by scanner; the unkeyed list is revision 1 only. | Contract shape (fixes the multi-scanner gap) |
+| R3 | A8: benign and collision cases count only when all rows pass (oracle: any). | Intentional semantic change |
+| R4 | `resource-limit-exceeded` failure code. | Addition |
+| R5 | Context groups accept several frames per class. | Intentional (matches real groups) |
+| R6 | Matching, accounting and statistics differences D1-D11, S1, A2-A9 of ADR 0004/0005 now apply to emitted documents. | Intentional, already classified |
+| R7 | Runtime provenance recorded in diagnostics. | Addition (non-semantic) |
+
+## 9. Considered and deferred
+
+- Population `view` (diagnostic-balanced / benign-heavy-stress), benign class
+  and evidence class (P5): not added. They are optional fields that can arrive
+  additively in a later minor (1.2) with no reader break, but adding fields to
+  `Population` and `Case` breaks every struct literal in the workspace (P5's
+  generator included) for nothing that consumes them in P7 to P9. P9 decides
+  with a consumer in hand; the oracle fields are listed as A7 in ADR 0005.
+- Seeds containing `/` are mapped to `.` by P5's generator (its difference D7).
+  The contracts' `Seed` type is unchanged, so this ADR is unaffected; a future
+  seed-grammar change would be a schema minor.
+- Per-metric `SampleBasis` counts (section 3).
+
+## 10. What the next phases must know
+
+- P5: build `Case`/`Variant` as before (no field changes); use
+  `ProtocolIdentity::CANONICAL_V2` for manifests; a generated snapshot is sealed
+  by `CorpusSnapshot::unsealed` under schema 1.1 (`SchemaVersion::CURRENT`),
+  so its digest domain is `…/1.1`; the committed legacy snapshot stays 1.0.
+- P8: `validate` and `replay` must call `verify_run_artifact_accounting` /
+  `verify_public_artifact_accounting`; both fail with `UnsupportedRevision` on
+  revision 1, which `validate` should report as "readable, not verifiable".
+- P9: compare against legacy with `pii-eval-compat`; attribute every difference
+  to R1-R7 or ADR 0004/0005 ids.
+
+## 11. Review amendments (PR #20)
+
+- **Public verifier parity.** `verify_public_artifact_accounting` now calls the new contracts function `validate_public_artifact_against_snapshot` (population, authored counts, per-method coverage including omitted methods, every outcome row against its authored expectation and the scanner's capabilities), sharing one implementation with the internal check. Negative tests include the reviewer's probe (swapped `methodCoverage` values, resealed).
+- **Revision-2 plans list all ten metrics.** A manifest of protocol revision 2 must plan exactly the registry's ten metrics (`protocol-binding-mismatch` otherwise), and the "restricted-to-method needs that method" rule applies to revision 1 only: a metric whose method is not planned is simply not applicable. This makes the manifest binding and the verifier agree (previously a subset plan could not pass both). New negative fixture `run-manifest__protocol-binding-mismatch__rev2-plans-a-subset-of-the-metrics.json`.
+- **A8 is executable on both sides.** `pii_eval_compat::legacy::legacy_any_row_passes` is the oracle's "any row passes" rule; `crates/pii-eval-compat/tests/legacy_any.rs` reproduces the hand-derived oracle figure (3 of 4, point 0.75, lower bound 0.300636) next to the canonical 2 of 4. Earlier text saying the oracle behavior was "pinned in compat tests" referred to the revision-1 counts, which only the helper now reproduces.
+- **Trio relaxation is not version-gated (accepted deviation).** ADR 0002 says a minor change must not alter what 1.0 means. The relaxation of `incomplete-context-trio` applies to every schema version because it only makes validation accept more (no document valid before becomes invalid, none changes digest or meaning), the strict rule rejected the oracle's real groups, and gating it by schema or protocol revision would need a second snapshot digest domain for an identical population. Readers older than this change still reject multi-frame groups, which is the usual minor-version behavior. Recorded here and in ADR 0002.
+- `to_public_synthetic` seals the projection under the version of its source (1.0 for a revision-1 artifact, 1.1 for revision 2); its documentation now says so.
