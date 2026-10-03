@@ -1,0 +1,306 @@
+{
+ "schema": "pii-eval-perf-suite/1",
+ "id": "memory",
+ "description": "Peak memory of parsing documents of increasing size, by stage (strict value tree, typed parse, typed parse plus validation and digest, all three).",
+ "trials": 5,
+ "warmupTrials": 1,
+ "innerRepeat": 3,
+ "cells": [
+  {
+   "id": "parse-000400",
+   "axis": "parse",
+   "trials": 3,
+   "workload": {
+    "id": "parse-000400",
+    "cases": 400,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "a7daae18f28ffd59aa946f815419c15d9345b9856767025a9f672e6f9be1fca0",
+   "measures": [
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "validate"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "validate"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "validate"
+    }
+   ]
+  },
+  {
+   "id": "parse-001600",
+   "axis": "parse",
+   "trials": 3,
+   "workload": {
+    "id": "parse-001600",
+    "cases": 1600,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "b44cda603836a795ff7af5e819e84f3f05cb898d708ca48443cb0694061e4d33",
+   "measures": [
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "validate"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "validate"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "validate"
+    }
+   ]
+  },
+  {
+   "id": "parse-006400",
+   "axis": "parse",
+   "trials": 3,
+   "workload": {
+    "id": "parse-006400",
+    "cases": 6400,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "f264514829a39cd0e3661386bc6a8251affbcc81d94828096104de086f370ee5",
+   "measures": [
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "validate"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "validate"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "validate"
+    }
+   ]
+  },
+  {
+   "id": "parse-025600",
+   "axis": "parse",
+   "trials": 3,
+   "workload": {
+    "id": "parse-025600",
+    "cases": 25600,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "ac223e9c62fe73654cc41be19fb1a0b410dc1066de6035f59ff1b79cd28629dc",
+   "measures": [
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "snapshot",
+     "stage": "validate"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "observation",
+     "stage": "validate"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "full"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "strict"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "typed"
+    },
+    {
+     "name": "rust-parse",
+     "doc": "artifact",
+     "stage": "validate"
+    }
+   ]
+  }
+ ]
+}

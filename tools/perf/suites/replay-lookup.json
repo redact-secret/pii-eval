@@ -1,0 +1,150 @@
+{
+ "schema": "pii-eval-perf-suite/1",
+ "id": "replay-lookup",
+ "description": "A/B of the replay variant lookup (quadratic nth walk before, indexed list after): same documents, two builds, interleaved trials.",
+ "trials": 5,
+ "warmupTrials": 1,
+ "innerRepeat": 3,
+ "cells": [
+  {
+   "id": "replay-lookup-000400",
+   "axis": "replay-lookup",
+   "trials": 5,
+   "workload": {
+    "id": "replay-lookup-000400",
+    "cases": 400,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "b491f30a944f7506fe75e93cadd0826a3e705529255038549e428fb220985117",
+   "measures": [
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2,
+     "bin": "before"
+    },
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2,
+     "bin": "after"
+    }
+   ]
+  },
+  {
+   "id": "replay-lookup-001600",
+   "axis": "replay-lookup",
+   "trials": 5,
+   "workload": {
+    "id": "replay-lookup-001600",
+    "cases": 1600,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "14aa744cafe2734524f6db118588e820d34e48ec7d64463e8172d18738ec8c3e",
+   "measures": [
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2,
+     "bin": "before"
+    },
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2,
+     "bin": "after"
+    }
+   ]
+  },
+  {
+   "id": "replay-lookup-006400",
+   "axis": "replay-lookup",
+   "trials": 5,
+   "workload": {
+    "id": "replay-lookup-006400",
+    "cases": 6400,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "30e051537afae7f6440be4a5fdfa86076d48fbda4c963c5669392b23a8fe8e93",
+   "measures": [
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2,
+     "bin": "before"
+    },
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2,
+     "bin": "after"
+    }
+   ]
+  },
+  {
+   "id": "replay-lookup-012800",
+   "axis": "replay-lookup",
+   "trials": 5,
+   "workload": {
+    "id": "replay-lookup-012800",
+    "cases": 12800,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "6b8228d54822904a2979a2148a9244feff076e71b7e16a5233392a7afb66c48a",
+   "measures": [
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2,
+     "bin": "before"
+    },
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2,
+     "bin": "after"
+    }
+   ]
+  },
+  {
+   "id": "replay-lookup-025600",
+   "axis": "replay-lookup",
+   "trials": 5,
+   "workload": {
+    "id": "replay-lookup-025600",
+    "cases": 25600,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "340758e098241cf13462310276db2395ddc70730a8c3175d151e9884df84aaa0",
+   "measures": [
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2,
+     "bin": "before"
+    },
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2,
+     "bin": "after"
+    }
+   ]
+  }
+ ]
+}

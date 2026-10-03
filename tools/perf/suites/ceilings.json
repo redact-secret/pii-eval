@@ -1,0 +1,74 @@
+{
+ "schema": "pii-eval-perf-suite/1",
+ "id": "ceilings",
+ "description": "Population sizes around the point where a pretty-printed run artifact exceeds the 32 MiB document cap and the atomic writer refuses it.",
+ "trials": 1,
+ "warmupTrials": 0,
+ "innerRepeat": 1,
+ "cells": [
+  {
+   "id": "ceiling-025600",
+   "axis": "ceiling",
+   "trials": 1,
+   "warmupTrials": 0,
+   "workload": {
+    "id": "ceiling-025600",
+    "cases": 25600,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "83b42d1056da0de8ec85298d832ac87f137ca5c97470e1d5b40fd65b58ddb65e",
+   "measures": [
+    "rust-replay"
+   ]
+  },
+  {
+   "id": "ceiling-028000",
+   "axis": "ceiling",
+   "trials": 1,
+   "warmupTrials": 0,
+   "workload": {
+    "id": "ceiling-028000",
+    "cases": 28000,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "982418de1c011b0a65f2022e9fb28f60f0f23ffcd5f8a57c54e0a14ae914b81d",
+   "measures": [
+    "rust-replay"
+   ]
+  },
+  {
+   "id": "ceiling-030000",
+   "axis": "ceiling",
+   "trials": 1,
+   "warmupTrials": 0,
+   "workload": {
+    "id": "ceiling-030000",
+    "cases": 30000,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "6e665998050dec99e2ea5c0e3f62d1feef6676f6334ff1365a816f67c37323c7",
+   "measures": [
+    "rust-replay"
+   ]
+  },
+  {
+   "id": "ceiling-032000",
+   "axis": "ceiling",
+   "trials": 1,
+   "warmupTrials": 0,
+   "workload": {
+    "id": "ceiling-032000",
+    "cases": 32000,
+    "scanners": 2,
+    "findings": 1
+   },
+   "digest": "999e09d5feaadf7cb094953bc626e1152088c919ff717bec99ba3440054c1e1c",
+   "measures": [
+    "rust-replay"
+   ]
+  }
+ ]
+}

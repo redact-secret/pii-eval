@@ -1,0 +1,258 @@
+{
+ "schema": "pii-eval-perf-suite/1",
+ "id": "pipeline",
+ "description": "Full CLI pipeline, replay, worker oversubscription and scanner startup over the inert fake package.",
+ "trials": 5,
+ "warmupTrials": 1,
+ "innerRepeat": 3,
+ "cells": [
+  {
+   "id": "pipeline-cases-000400",
+   "axis": "pipeline-cases",
+   "trials": 5,
+   "workload": {
+    "id": "pipeline-cases-000400",
+    "cases": 400,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "01bb9ce3df167fa1e3f45086b4d5880414b1d156a412b1c343d690d7e41c9298",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2
+    },
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "pipeline-cases-001600",
+   "axis": "pipeline-cases",
+   "trials": 5,
+   "workload": {
+    "id": "pipeline-cases-001600",
+    "cases": 1600,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "aee16c9c72b2de5a1512c24a9b1410b3b1608eef970db184aa6df97ae1ac0b24",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2
+    },
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "pipeline-cases-006400",
+   "axis": "pipeline-cases",
+   "trials": 3,
+   "workload": {
+    "id": "pipeline-cases-006400",
+    "cases": 6400,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "63f49d6b061539773ce59d02fe54058226665a35f0c1c0d8206a339bb9a19844",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2
+    },
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "pipeline-cases-025600",
+   "axis": "pipeline-cases",
+   "trials": 3,
+   "workload": {
+    "id": "pipeline-cases-025600",
+    "cases": 25600,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "0486cccf01c284ed6e97f0d20a0622c77f0c57066c63067d10d424c37cc5cdfb",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2
+    },
+    {
+     "name": "cli-replay",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "pipeline-workers-000001",
+   "axis": "pipeline-workers",
+   "trials": 3,
+   "workload": {
+    "id": "pipeline-workers-000001",
+    "cases": 3200,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "3c50b462df604f0ba6951f9161b1a858797810ff1158077936a7d77717be2f1d",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "candidate",
+     "workers": 1,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "pipeline-workers-000002",
+   "axis": "pipeline-workers",
+   "trials": 3,
+   "workload": {
+    "id": "pipeline-workers-000002",
+    "cases": 3200,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "9a2f004d2870f2a2f747da908fc6c100cc28299bd1c359cb2bd8d3e5092ba422",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "candidate",
+     "workers": 2,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "pipeline-workers-000004",
+   "axis": "pipeline-workers",
+   "trials": 3,
+   "workload": {
+    "id": "pipeline-workers-000004",
+    "cases": 3200,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "6a0ea1746595c6ff0f0736eae932a0c2959095c8f84b17b90c8daf54dd94f339",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "candidate",
+     "workers": 4,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "pipeline-workers-000008",
+   "axis": "pipeline-workers",
+   "trials": 3,
+   "workload": {
+    "id": "pipeline-workers-000008",
+    "cases": 3200,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "4ea344e9401ff82727acb9d2b862a9a5eb2ab1e4cc1e21ac1a42f128f37d7c0a",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "candidate",
+     "workers": 8,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "pipeline-workers-000016",
+   "axis": "pipeline-workers",
+   "trials": 3,
+   "workload": {
+    "id": "pipeline-workers-000016",
+    "cases": 3200,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "9cfb7a972607e61b9e8b9035bb4bd6eee468c0a15b7d7366733417d5a264c28a",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "candidate",
+     "workers": 16,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "pipeline-workers-000032",
+   "axis": "pipeline-workers",
+   "trials": 3,
+   "workload": {
+    "id": "pipeline-workers-000032",
+    "cases": 3200,
+    "scanners": 1,
+    "findings": 1
+   },
+   "digest": "7f20ae6414a4f85cf7836dc417c414c9c3e851d2be96e130fdd1877fd6315c39",
+   "measures": [
+    {
+     "name": "cli-run",
+     "pin": "candidate",
+     "workers": 32,
+     "replays": 2
+    }
+   ]
+  },
+  {
+   "id": "scanner-candidate",
+   "axis": "scanner",
+   "trials": 3,
+   "workload": {
+    "id": "scanner-candidate",
+    "cases": 10,
+    "scanners": 1
+   },
+   "digest": "dc7a204641232c4517db6adb5507cf9052f61b4632d720174ef709a126d135f6",
+   "measures": [
+    {
+     "name": "scanner-rust",
+     "pin": "candidate",
+     "texts": 2000,
+     "sessions": 5
+    },
+    {
+     "name": "scanner-node",
+     "pin": "candidate",
+     "texts": 2000
+    }
+   ]
+  }
+ ]
+}
