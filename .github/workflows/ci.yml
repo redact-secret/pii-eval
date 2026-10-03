@@ -48,6 +48,10 @@ jobs:
       # legacy-difference failure is named.
       - name: Range, matching, accounting and statistics conformance, properties, oracle compatibility
         run: cargo test -p pii-eval-kernel -p pii-eval-compat --locked
+      # Also part of the run above; separate so a method, variant-id, seed or
+      # oracle-compatibility failure is named (ADR 0007).
+      - name: Methods (variant provenance, independent id/seed vectors, oracle compatibility, conservation)
+        run: cargo test -p pii-eval-kernel --locked --test methods --test methods_ids --test methods_oracle --test methods_accounting
       # Also part of the run above; separate so a drift failure is named.
       - name: Schema drift (generated must equal committed)
         run: cargo test -p pii-eval-contracts --locked --test schema_drift

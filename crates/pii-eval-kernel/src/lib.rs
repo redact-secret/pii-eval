@@ -5,8 +5,9 @@
 //! order-invariant matching and outcome-axis derivation ([`matching`]).
 //! Implemented in P4: indexed accounting of the ten metrics ([`accounting`]),
 //! the exact Wilson statistics ([`stats`]) and the verifier that checks metric
-//! values and counts against the outcome rows ([`verify`]). Methods do not
-//! exist yet. The kernel must
+//! values and counts against the outcome rows ([`verify`]). Implemented in P5:
+//! the seven methods, deterministic variant ids, seeds and provenance, and the
+//! two population views ([`methods`]). The kernel must
 //! never spawn processes, use the network, publish, or encode product support
 //! policy; the dependency guard in `pii-eval-cli/tests/dependency_policy.rs`
 //! enforces the dependency side of that rule.
@@ -17,6 +18,7 @@
 pub mod accounting;
 mod bigint;
 pub mod matching;
+pub mod methods;
 pub mod range;
 pub mod stats;
 pub mod verify;
