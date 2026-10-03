@@ -84,4 +84,4 @@ Read [ARCHITECTURE.md](ARCHITECTURE.md), the [migration ownership map](docs/migr
 
 ## Publication and licensing
 
-Public code is separate from permission to publish any corpus or artifact. Repository access changes do not authorize release of protected data. The maintainer must select and add a `LICENSE` before public distribution; these documents do not grant a license or promise third-party scanner redistribution rights.
+Public code is separate from permission to publish any corpus or artifact. Repository access changes do not authorize release of protected data. The code in this repository is licensed under the MIT License (see [LICENSE](LICENSE), Copyright (c) 2026 Omiologic). That license covers this repository's source and documentation only: it does not grant permission to publish any corpus, protected data or measurement artifact, and it makes no promise about redistribution rights for third-party scanners or their packages, which keep their own licenses.
