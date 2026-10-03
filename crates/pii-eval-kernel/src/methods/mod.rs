@@ -26,6 +26,7 @@
 //!   validator is a review state with an unmeasured type axis, never a clean
 //!   result ([`apply_review`]).
 
+mod gate;
 mod generate;
 pub mod ids;
 mod input;
@@ -40,16 +41,18 @@ pub const METHODS_RULE_ID: &str = "pii-v1-methods";
 /// Independent of the method versions, which are the frozen registry's.
 pub const METHODS_REVISION: u32 = 1;
 
+pub use gate::{ReviewGate, account_gated};
 pub use generate::{
     AssembleError, Batch, Batches, CaseResult, GenerateError, GeneratedCase, GenerationLimit,
     GenerationLimits, GenerationOutput, GenerationReport, GenerationRun, Generator, GeneratorError,
     MethodReport, OCCURRENCE_ID, REFERENCE_ROLE, ReferenceObservation, Refusal, RefusalReason,
-    ReviewReason, VariantProvenance, apply_review, assemble_body, assemble_cases,
+    ReviewReason, VariantProvenance, apply_review, apply_review_strategy, assemble_body,
+    assemble_cases,
 };
 pub use ids::{
     DerivationError, MAX_SLOT_BYTES, SEED_RULE_LEGACY, SEED_RULE_V1, SeedRule, Slot, SlotError,
-    VARIANT_ID_DOMAIN, VARIANT_SEED_DOMAIN, derive_seed, materialize_sha256_pattern, preimage,
-    variant_id,
+    VARIANT_ID_DOMAIN, VARIANT_SEED_DOMAIN, derive_seed, legacy_contract_seed,
+    materialize_sha256_pattern, preimage, variant_id,
 };
 pub use input::{
     AuthoredCase, BenignClass, CANDIDATE_MARKER, ContextFrame, EvidenceClass, MethodParams,

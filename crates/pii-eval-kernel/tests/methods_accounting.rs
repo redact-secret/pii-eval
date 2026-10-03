@@ -837,3 +837,84 @@ fn an_empty_run_reports_zero_and_is_conserved() {
     assert_eq!(out.report.cases_in, 0);
     assert!(out.report.is_conserved());
 }
+
+// ---------------------------------------------------------------------------
+// Gate from the sealed snapshot alone; partial batch on error
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_stored_snapshot_gates_held_variants_without_generation_provenance() {
+    use pii_eval_kernel::methods::{ReviewGate, account_gated};
+    let mut cases = one_of_each();
+    cases.push(with(
+        mod10_case(
+            "case-typeval-unavailable",
+            "SYNTHETIC-1236",
+            ExpectedType::Valid,
+        ),
+        |c| c.validator = Some(vref("no-such-validator", 1)),
+    ));
+    cases.push(reference_case(
+        "case-reference-disagrees",
+        "SYNTHETIC-1237",
+        vref("synthetic-mod10", 1),
+    ));
+    let out = generate_all(&cases, SEED_RULE_V1);
+    // Rows come from the matcher with no gating: a clean pass for the held variant.
+    let rows = perfect_rows(&out, false);
+    // Only the sealed snapshot is used from here on (provenance is dropped).
+    let sealed_body = body_of(out, SEED_RULE_V1);
+    let gate = ReviewGate::from_body(&sealed_body);
+    assert_eq!(gate.held_count(), 1);
+
+    let index = AuthoredIndex::new(&sealed_body).unwrap();
+    let scanner = ScannerId::new("scanner-a").unwrap();
+    let refs = || {
+        rows.iter().map(|r| OutcomeRef {
+            scanner_id: "scanner-a",
+            case_id: &r.case,
+            variant_id: &r.variant,
+            occurrence_id: &r.occurrence,
+            method: r.method,
+            row: r.row,
+        })
+    };
+    let inputs = [ScannerInput {
+        id: &scanner,
+        status: ScannerStatus::Complete,
+    }];
+    let gated = account_gated(&sealed_body, &index, &inputs, refs(), &Mechanics::PII_V1).unwrap();
+    // 8 valid-type cases (all but mutation); the held one is not measured; the
+    // disagreeing reference case stays measured.
+    assert_eq!(
+        counts(&gated, MetricId::TypeMissRate),
+        (8, 7, 0, 0, 1, 1, 9)
+    );
+    let plain = account(&index, &inputs, refs(), &Mechanics::PII_V1).unwrap();
+    assert_eq!(
+        counts(&plain, MetricId::TypeMissRate),
+        (8, 8, 0, 0, 0, 1, 9)
+    );
+}
+
+#[test]
+fn a_failed_run_returns_the_partial_batch_then_the_error() {
+    let cases: Vec<AuthoredCase> = (0..8)
+        .map(|i| schema_case(&format!("case-s-{i}")))
+        .collect();
+    let reg = ValidatorRegistry::builtin();
+    let limits = GenerationLimits {
+        max_variants_per_method: 5,
+        max_total_variants: 5,
+        ..GenerationLimits::DEFAULT
+    };
+    let g = Generator::new(&rules(SEED_RULE_V1), &reg, limits).unwrap();
+    let mut batches = g.run(&cases).batches();
+    let first = batches.next().unwrap().unwrap();
+    assert_eq!(first.variant_count(), 5);
+    assert!(matches!(
+        batches.next(),
+        Some(Err(GenerateError::LimitExceeded { .. }))
+    ));
+    assert!(batches.next().is_none());
+}

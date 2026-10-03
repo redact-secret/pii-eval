@@ -150,7 +150,16 @@ pub const SPECS: [MethodSpec; 7] = [
 
 /// The definition of `method`.
 pub fn spec(method: MethodId) -> &'static MethodSpec {
-    SPECS.iter().find(|s| s.id == method).unwrap_or(&SPECS[0])
+    // Exhaustive: no fallback. A test pins each entry to its method id.
+    match method {
+        MethodId::TypeValidation => &SPECS[0],
+        MethodId::ContextDiscrimination => &SPECS[1],
+        MethodId::PiiBenign => &SPECS[2],
+        MethodId::JurisdictionCollision => &SPECS[3],
+        MethodId::Mutation => &SPECS[4],
+        MethodId::ReferenceDifferential => &SPECS[5],
+        MethodId::SchemaOnly => &SPECS[6],
+    }
 }
 
 /// The methods whose rows may support a runtime-accuracy statement, ascending

@@ -231,6 +231,9 @@ pub enum RefusalReason {
     OperatorNotApplicable,
     /// A derived identifier failed validation (unreachable for valid inputs).
     DerivationFailed,
+    /// Cross-family collision evidence without a validator expectation for the
+    /// target and every competitor.
+    MissingEvidenceChecks,
 }
 
 impl RefusalReason {
@@ -262,6 +265,7 @@ impl RefusalReason {
             RefusalReason::OperatorVersionMismatch => "operator-version-mismatch",
             RefusalReason::OperatorNotApplicable => "operator-not-applicable",
             RefusalReason::DerivationFailed => "derivation-failed",
+            RefusalReason::MissingEvidenceChecks => "missing-evidence-checks",
         }
     }
 
@@ -354,6 +358,21 @@ impl ReviewReason {
 /// row unchanged: it is recorded, not scored.
 pub fn apply_review(mut row: OutcomeRow, review: Option<ReviewReason>) -> OutcomeRow {
     if review.is_some_and(ReviewReason::unmeasures_type_axis) {
+        row.type_identity = TypeState::NotMeasured;
+    }
+    row
+}
+
+/// Gate an observed outcome row by the variant's **strategy**, which is in the
+/// sealed snapshot: a `review-required` variant (validator or reference
+/// unavailable) has an unmeasured type axis; every other strategy leaves the
+/// row alone. A reference disagreement keeps strategy `authored`, so it is
+/// recorded (in [`VariantProvenance::review`]) but never gates a row.
+///
+/// Unlike [`apply_review`] this needs nothing but the snapshot, so a stored
+/// snapshot replays identically. See [`crate::methods::ReviewGate`].
+pub fn apply_review_strategy(mut row: OutcomeRow, strategy: Strategy) -> OutcomeRow {
+    if strategy == Strategy::ReviewRequired {
         row.type_identity = TypeState::NotMeasured;
     }
     row
@@ -565,6 +584,13 @@ impl<'v> Generator<'v> {
             }
             MethodParams::JurisdictionCollision { competing, checks } => {
                 let declared = self.collision(case, competing)?;
+                // The oracle checks every party (target and each competitor)
+                // of a cross-family collision entry.
+                if case.evidence == Some(EvidenceClass::CrossFamilyCollision)
+                    && checks.len() < 1 + declared.competing_families.len()
+                {
+                    return Err(RefusalReason::MissingEvidenceChecks);
+                }
                 let drafts = self.collision_drafts(case, value, checks)?;
                 collision = Some(declared);
                 drafts
@@ -1072,6 +1098,7 @@ where
             run: self,
             max_units,
             pending: None,
+            deferred_error: None,
         }
     }
 
@@ -1164,7 +1191,9 @@ impl Batch {
     }
 }
 
-/// Batches of a run. Each batch holds at most `batch_variants` variants plus
+/// Batches of a run. When the run fails, the partial batch generated so far is
+/// returned first and the error on the next call; after the error the iterator
+/// ends. Each batch holds at most `batch_variants` variants plus
 /// refusals (at least one case, so progress is guaranteed; a case never
 /// exceeds the per-case limit, which is at most the batch size).
 #[derive(Debug)]
@@ -1172,6 +1201,7 @@ pub struct Batches<'g, 'v, I> {
     run: GenerationRun<'g, 'v, I>,
     max_units: usize,
     pending: Option<CaseResult>,
+    deferred_error: Option<GenerateError>,
 }
 
 impl<'g, 'v, 'c, I> Batches<'g, 'v, I>
@@ -1205,6 +1235,9 @@ where
     type Item = Result<Batch, GenerateError>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if let Some(e) = self.deferred_error.take() {
+            return Some(Err(e));
+        }
         let mut batch = Batch::default();
         if let Some(item) = self.pending.take() {
             Self::push(&mut batch, item);
@@ -1212,7 +1245,16 @@ where
         loop {
             match self.run.next() {
                 None => break,
-                Some(Err(e)) => return Some(Err(e)),
+                Some(Err(e)) => {
+                    // Cases already generated into this batch are valid results
+                    // of a run that then failed: they are returned first, and
+                    // the error follows on the next call, so nothing is lost.
+                    if batch.generated.is_empty() && batch.refused.is_empty() {
+                        return Some(Err(e));
+                    }
+                    self.deferred_error = Some(e);
+                    break;
+                }
                 Some(Ok(item)) => {
                     if batch.units() + Self::weight(&item) > self.max_units {
                         self.pending = Some(item);

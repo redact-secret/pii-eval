@@ -106,8 +106,13 @@ The snapshot records the rule id; a generator built for an unknown id fails with
   (64 digits, within the 64-byte seed limit). The case seed is the author's
   per-case seed; the generator identity is part of the preimage, so a new
   generator version yields new seeds and the same ids.
-- `legacy-case-seed`. A derived variant records the case seed unchanged: the
-  oracle's behaviour (`piiVariant` copies `provenance.seed`).
+- `legacy-case-seed`. A derived variant records the case seed unchanged, after
+  the oracle's free-form seed is made a contract seed by
+  `legacy_contract_seed` (every `/` becomes `.`; the contract alphabet is
+  `[A-Za-z0-9._-]`). That mapping is **not injective** (`a/b` and `a.b` give one
+  seed), so a legacy seed is not bit-identical to the oracle's: a parity
+  comparison (P9) must apply the same function to the oracle side. A seed still
+  invalid after the mapping is an error.
 
 An **authored** variant records no seed and no operator (the contract forbids
 both). A **review-required** variant (validator or reference unavailable,
@@ -164,7 +169,7 @@ only (a test pins `SPECS` to the metric registry's `restricted_to_method`).
 Common refusals for every method: `range-invalid`, `range-out-of-bounds`,
 `range-not-on-char-boundary`, `range-offset-too-large`, `text-too-large`,
 `family-scope-mismatch`, `evidence-role-mismatch`, `slot-invalid`,
-`duplicate-frame`. `RefusalReason::contract_code()` maps a refusal to the
+`duplicate-frame`, `missing-evidence-checks`. `RefusalReason::contract_code()` maps a refusal to the
 contract's reason code where one exists; the rest are method-level reasons
 because the contract's reason-code list is frozen.
 
@@ -177,8 +182,22 @@ A validator observation is `valid`, `invalid` or `unavailable`, and
 unavailable observation yields a `review-required` variant (operator
 `review-hold` v1, because the contract requires an operator on every
 review-required variant; the hold transforms nothing), a `ReviewReason`, and an
-instruction for the outcome rows: `apply_review(row, review)` sets the type axis
-to `not-measured` and leaves the sensitivity, range and action axes alone. The
+instruction for the outcome rows: the type axis becomes `not-measured`; the
+sensitivity, range and action axes are left alone.
+
+**The gate is derivable from the sealed snapshot.** `account` and the matcher
+ignore `derivation.strategy`, so a replay of a stored snapshot would otherwise
+score a clean pass for a held variant. `ReviewGate::from_body(&body)` collects
+the `review-required` variants and `apply_review_strategy(row, Strategy)` /
+`ReviewGate::apply(variant_id, row)` gate a row by strategy alone (a reference
+disagreement keeps strategy `authored`, so it never gates). **Whoever turns
+matcher output into outcome rows (the run and replay paths, P8) must pass every
+row through the gate before accounting, or call `account_gated(body, index,
+scanners, rows, mechanics)`, which does so.** `account` itself is unchanged and
+stays strategy-agnostic; a test accounts a snapshot with provenance dropped and
+gets 7 of 8 measured, against a clean 8 of 8 without the gate.
+`apply_review(row, ReviewReason)` remains for callers that hold the generation
+provenance and is equivalent for unavailable states. The
 variant is therefore counted, in the denominator of every metric it is eligible
 for, as not measured, never as a pass or a failure (tested through `account`:
 7 eligible, 6 measured, 1 not measured for `type-miss-rate`; without the gate the
@@ -258,7 +277,9 @@ Two kinds of failure, chosen so results never depend on input order:
   `GenerateError` and yields nothing more. Truncating at a run-level limit
   would drop a different set of cases for each input order, so the run fails
   instead. Whether a run fails does not depend on order; which of several
-  simultaneously exceeded limits is reported first can.
+  simultaneously exceeded limits is reported first can. `Batches` returns the
+  partial batch generated before the error first (it holds valid results) and
+  the error on the next call, then ends; nothing generated is dropped.
 
 ## 8. Determinism
 
@@ -281,7 +302,9 @@ cases with `tests/vectors/oracle_methods_driver.mjs` (Node 22.16,
 `--experimental-strip-types`). Two oracle modules load committed evidence corpora
 through Ajv and JSON imports and were replaced by stubs in the scratch tree
 (`benign-collision-evidence.ts`: an entry per case from the driver;
-`context-evidence.ts`: the real frames of `context-evidence-v1.json`); the method
+`context-evidence.ts`: the real frames of `context-evidence-v1.json`); both stubs are
+committed under `tests/vectors/oracle_stubs/` and the pin is in
+`regenerate_oracle_vectors.sh`. The method
 files are unmodified. Equal for every case: text, candidate range, authored type,
 sensitivity, context class, strategy, derived-variant operator, method version,
 the oracle's `invalidate` effect, the type-axis gating and the reference
@@ -293,12 +316,15 @@ disposition of a perfect scanner, and the collision's sorted competitors.
 | D2 | `context-discrimination` frames: the oracle accepts any number of frames; its real groups hold 8 (`en-email-core`) and 11 (`ko-email-core`) frames. The contract and the accounting index require exactly one frame per context class, so the kernel refuses any other set (`context-frames-not-a-trio`). The oracle derives 8 variants for `en-email-core`; the kernel refuses it. | Contract shape; open item for P7 (section 11) |
 | D3 | An unknown validator or reference, or a reference pinned at another version: the oracle throws and aborts the run; the kernel yields a review-required variant with an explicit reason and an unmeasured type axis. | Intentional (unavailable is a state, never an abort and never a pass) |
 | D4 | Authored variants: the oracle records operator `authored` v1 and the case seed on every variant; the contract forbids an operator and a seed on an authored variant. A review-required variant records `review-hold` v1 (the oracle: `authored`). | Contract shape |
-| D5 | Under `pii-seed-v1` a derived seed is derived (section 3); only `legacy-case-seed` reproduces the oracle's seed. | Intentional (distinct seeds per variant; the legacy rule is kept) |
+| D5 | Under `pii-seed-v1` a derived seed is derived (section 3); `legacy-case-seed` reproduces the oracle's seed only up to the D7 mapping. | Intentional (distinct seeds per variant; the legacy rule is kept) |
 | D6 | A candidate range inside a multi-byte character: the oracle slices bytes and decodes lossily (a replacement character reaches the validator); the kernel validates character boundaries (ADR 0004) and refuses (`range-not-on-char-boundary`). | Intentional (ADR 0004; Korean, combining marks and emoji are first-class) |
-| D7 | Seeds: the oracle's are free-form (`pii-benign-collision-v1/<id>`, `<group>/1`); the contract's seed alphabet is `[A-Za-z0-9._-]`. Corpus conversion maps `/` to `.`; the seed is a label, so there is no semantic effect. | Contract shape |
+| D7 | Seeds: the oracle's are free-form (`pii-benign-collision-v1/<id>`, `<group>/1`); the contract's seed alphabet is `[A-Za-z0-9._-]`. `legacy_contract_seed` maps `/` to `.`: not injective, so legacy seeds are not bit-identical to the oracle's and P9 must apply the same mapping. The seed is a label, so there is no semantic effect. | Contract shape |
+| D8 | Benign evidence: the oracle requires the evidence entry's accounting class to equal the case's exactly (and `collision` null, class not near-miss or cross-family); the kernel checks that the case's class is among the classes the evidence class allows (`reserved-documentation` allows `reserved` and `documentation`) and that the evidence class belongs to the method. The exact match needs the entry's own accounting class, which the kernel does not load. | Open item (evidence loader) |
+| D9 | Near-miss evidence on `type-validation`: the oracle requires the entry's validator id, version and expected state to equal the case's validator and authored type. The kernel confirms the validator against the authored type (`validator-expectation-mismatch`) and checks the evidence class's method, but does not compare an entry's validator identity, which it does not load. Cross-family collision evidence must carry a validator check for the target and every competitor (`missing-evidence-checks`); benign evidence has one optional validator in the oracle, so none is required. | Open item (evidence loader) |
 
-The census test fails if a documented difference stops occurring or an
-undocumented one appears. Same-observation replay parity and live-scanner parity
+The census test covers D1 to D7 (it fails if one stops occurring or an
+undocumented one appears); D8 and D9 are not exercised because the kernel does
+not load evidence entries. Same-observation replay parity and live-scanner parity
 remain P9.
 
 ## 10. What is not here
@@ -343,7 +369,7 @@ frozen for this phase:
 `GenerationOutput`, `GenerationReport`, `MethodReport`, `GenerationLimits`
 (`DEFAULT`, `validate`), `GenerationLimit`, `GenerateError`, `GeneratorError`,
 `Refusal`, `RefusalReason` (`as_str`, `contract_code`), `GeneratedCase`,
-`VariantProvenance`, `ReviewReason`, `ReferenceObservation`, `apply_review`,
+`VariantProvenance`, `ReviewReason`, `ReferenceObservation`, `apply_review`, `apply_review_strategy`, `ReviewGate`, `account_gated`, `legacy_contract_seed`,
 `assemble_cases`, `assemble_body`, `AssembleError`; authored input
 `AuthoredCase`, `MethodParams`, `ContextFrame`, `ValidatorCheck`, `BenignClass`,
 `EvidenceClass`, `CANDIDATE_MARKER`; identity `variant_id`, `derive_seed`,
@@ -372,6 +398,7 @@ validity), `tests/methods_ids.rs` (independent id, seed and pattern vectors),
 `tests/methods_oracle.rs` (oracle compatibility, census of D1 to D7) and
 `tests/methods_accounting.rs` (matcher and accounting conservation, views,
 limits, batching, invariance). Not run in CI: `ids_reference.py` and
-`oracle_methods_driver.mjs` (they regenerate the committed vectors; the driver
-needs the pinned oracle files at their repository paths, fetched from the pin,
-and Node 22.6 or later).
+`regenerate_oracle_vectors.sh` (it fetches the pinned oracle files with `gh`,
+copies the two committed stubs from `tests/vectors/oracle_stubs/`, runs
+`oracle_methods_driver.mjs` on Node 22.6 or later and rewrites
+`oracle_methods.rs`; a rerun reproduces the committed file byte for byte).

@@ -63,6 +63,7 @@ fn the_method_table_is_pinned_to_the_frozen_registry() {
     for (s, m) in SPECS.iter().zip(METHODS.iter()) {
         assert_eq!((s.id, s.version), (m.id, m.version));
         assert_eq!(spec(m.id).id, m.id);
+        assert_eq!(spec(m.id), s);
     }
     // The restricted metrics and their methods agree with the metric registry.
     for metric in METRICS {
@@ -669,9 +670,19 @@ fn jurisdiction_collision_refuses_invalid_declarations() {
         refused(&wrong_evidence),
         RefusalReason::EvidenceRoleMismatch
     );
-    ok(&with(collision_case("case-collision"), |c| {
-        c.evidence = Some(EvidenceClass::CrossFamilyCollision)
-    }));
+    // Cross-family evidence must check the target and every competitor (3 parties here).
+    let evidenced = |checks: usize| {
+        with(collision_case("case-collision"), |c| {
+            c.evidence = Some(EvidenceClass::CrossFamilyCollision);
+            if let MethodParams::JurisdictionCollision { checks: ch, .. } = &mut c.params {
+                let one = ch[0].clone();
+                *ch = vec![one; checks];
+            }
+        })
+    };
+    assert_eq!(refused(&evidenced(0)), RefusalReason::MissingEvidenceChecks);
+    assert_eq!(refused(&evidenced(2)), RefusalReason::MissingEvidenceChecks);
+    ok(&evidenced(3));
 
     // The target validator expectation is contradicted by the observation.
     let mismatch = with(collision_case("case-collision"), |c| {

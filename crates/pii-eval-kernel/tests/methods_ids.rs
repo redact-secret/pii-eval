@@ -19,7 +19,7 @@ fn hex(bytes: &[u8]) -> String {
 #[test]
 fn preimages_match_the_independent_vectors() {
     for (fields, digest) in PREIMAGE_VECTORS {
-        assert_eq!(hex(&preimage(fields)), *digest, "{fields:?}");
+        assert_eq!(hex(&preimage(fields).unwrap()), *digest, "{fields:?}");
     }
 }
 
@@ -27,8 +27,9 @@ fn preimages_match_the_independent_vectors() {
 fn field_boundaries_are_unambiguous() {
     assert_ne!(preimage(&["ab", "c"]), preimage(&["a", "bc"]));
     assert_ne!(preimage(&["abc"]), preimage(&["abc", ""]));
+    assert!(preimage(&["ab", "c"]).is_ok());
     // 4-byte big-endian length, then the bytes.
-    assert_eq!(preimage(&["ab"]), [0, 0, 0, 2, b'a', b'b']);
+    assert_eq!(preimage(&["ab"]).unwrap(), [0, 0, 0, 2, b'a', b'b']);
 }
 
 #[test]
@@ -147,4 +148,24 @@ fn sha256_pattern_is_deterministic_and_keeps_non_placeholder_characters() {
     assert!(a[4..8].bytes().all(|b| b.is_ascii_digit()));
     assert!(a[9..].bytes().all(|b| b.is_ascii_uppercase()));
     assert_ne!(a, materialize_sha256_pattern("other", "ref-DDDD-AA"));
+}
+
+#[test]
+fn legacy_contract_seed_maps_slashes_and_is_not_injective() {
+    use pii_eval_kernel::methods::legacy_contract_seed;
+    assert_eq!(
+        legacy_contract_seed("pii-benign-collision-v1/example")
+            .unwrap()
+            .as_str(),
+        "pii-benign-collision-v1.example"
+    );
+    // Documented non-injectivity: two oracle seeds, one contract seed.
+    assert_eq!(
+        legacy_contract_seed("a/b").unwrap(),
+        legacy_contract_seed("a.b").unwrap()
+    );
+    // Not repaired: still invalid after the mapping.
+    assert!(legacy_contract_seed("has space/1").is_err());
+    assert!(legacy_contract_seed("").is_err());
+    assert!(legacy_contract_seed(&"x/".repeat(33)).is_err());
 }

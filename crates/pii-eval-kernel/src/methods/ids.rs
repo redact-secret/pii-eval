@@ -82,16 +82,29 @@ impl SeedRule {
 /// The hash preimage of an ordered list of text fields: each field is a
 /// 4-byte big-endian length followed by its UTF-8 bytes, so no field boundary
 /// is ambiguous (`["ab","c"]` and `["a","bc"]` differ).
-pub fn preimage(fields: &[&str]) -> Vec<u8> {
+///
+/// A field longer than `u32::MAX` bytes is an error, so the length prefix is
+/// always exact and the encoding stays injective.
+pub fn preimage(fields: &[&str]) -> Result<Vec<u8>, DerivationError> {
     let mut out = Vec::with_capacity(fields.iter().map(|f| f.len() + 4).sum());
     for field in fields {
-        // Fields are short identifiers; a length above u32::MAX cannot occur
-        // because identifiers are at most 80 bytes (seeds 64).
-        let len = u32::try_from(field.len()).unwrap_or(u32::MAX);
+        let len = u32::try_from(field.len()).map_err(|_| DerivationError)?;
         out.extend_from_slice(&len.to_be_bytes());
         out.extend_from_slice(field.as_bytes());
     }
-    out
+    Ok(out)
+}
+
+/// The contract seed for one of the oracle's free-form case seeds, as the
+/// `legacy-case-seed` rule needs it: every `/` becomes `.` (the contract's seed
+/// alphabet is `[A-Za-z0-9._-]`, 1 to 64 bytes).
+///
+/// The mapping is **not injective** (`a/b` and `a.b` give the same seed), so a
+/// legacy seed is not bit-identical to the oracle's; any parity comparison
+/// (P9) must apply this same function to the oracle side. A seed that is still
+/// invalid after the mapping is an error, never repaired.
+pub fn legacy_contract_seed(oracle_seed: &str) -> Result<Seed, DerivationError> {
+    Seed::new(oracle_seed.replace('/', ".")).map_err(|_| DerivationError)
 }
 
 /// The snapshot-unique identifier of the variant in `slot` of `case_id`:
@@ -105,7 +118,7 @@ pub fn variant_id(case_id: &Id, slot: &Slot) -> Result<Id, DerivationError> {
         VARIANT_ID_DOMAIN,
         case_id.as_str(),
         slot.as_str(),
-    ]));
+    ])?);
     let id = format!(
         "{}-{}",
         slot.as_str(),
@@ -146,7 +159,7 @@ pub fn derive_seed(
                 case_seed.as_str(),
                 case_id.as_str(),
                 slot.as_str(),
-            ]));
+            ])?);
             Seed::new(digest.as_str()).map_err(|_| DerivationError)
         }
     }

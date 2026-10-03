@@ -104,13 +104,6 @@ fn evidence_class(s: &str) -> EvidenceClass {
     .unwrap_or_else(|| panic!("evidence class {s}"))
 }
 
-/// D7: the oracle's seeds are free-form (`group/1`); the contract's seed alphabet is
-/// `[A-Za-z0-9._-]`. Corpus conversion maps `/` to `.`; the seed is a label, so this
-/// has no semantic effect.
-fn contract_seed(oracle_seed: &str) -> String {
-    oracle_seed.replace('/', ".")
-}
-
 fn build(o: &OracleCase) -> AuthoredCase {
     let checks: Vec<ValidatorCheck> = o
         .checks
@@ -171,7 +164,7 @@ fn build(o: &OracleCase) -> AuthoredCase {
     c.context_class = class(o.context_class);
     c.context_obligation = obligation(o.context_obligation);
     c.reference = o.reference.map(|(v, ver)| vref(v, ver));
-    c.seed = pii_eval_contracts::Seed::new(contract_seed(o.seed)).unwrap();
+    c.seed = pii_eval_kernel::methods::legacy_contract_seed(o.seed).unwrap();
     c.evidence = o.evidence_class.map(evidence_class);
     c
 }
@@ -317,7 +310,9 @@ fn compare_variants(
                 assert_eq!((op.id.as_str(), op.version), ov.operator, "{}", o.name);
                 assert_eq!(
                     v.derivation.seed.as_ref().unwrap().as_str(),
-                    contract_seed(ov.seed),
+                    pii_eval_kernel::methods::legacy_contract_seed(ov.seed)
+                        .unwrap()
+                        .as_str(),
                     "{}: legacy seed",
                     o.name
                 );
