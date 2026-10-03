@@ -17,13 +17,30 @@ use sha2::{Digest, Sha256};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct IdentError(pub &'static str);
 
-/// Prefix of the serde error message produced for an invalid identifier; the
-/// parser maps it to [`crate::ReasonCode::InvalidIdentifier`].
-pub(crate) const IDENT_ERROR_TAG: &str = "pii-eval:invalid-identifier";
+thread_local! {
+    /// Set by this crate's own identifier validators while deserializing. The
+    /// parser reads it instead of inspecting serde's message text, which can
+    /// echo attacker-chosen field names.
+    static IDENTIFIER_FAILED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+pub(crate) fn mark_identifier_failure() {
+    IDENTIFIER_FAILED.with(|f| f.set(true));
+}
+
+/// Clear the flag before a typed parse.
+pub(crate) fn reset_identifier_failure() {
+    IDENTIFIER_FAILED.with(|f| f.set(false));
+}
+
+/// Read and clear the flag after a typed parse.
+pub(crate) fn take_identifier_failure() -> bool {
+    IDENTIFIER_FAILED.with(|f| f.replace(false))
+}
 
 impl fmt::Display for IdentError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{IDENT_ERROR_TAG}:{}", self.0)
+        write!(f, "invalid {}", self.0)
     }
 }
 
@@ -174,13 +191,25 @@ fn valid_timestamp(s: &str) -> bool {
 macro_rules! string_newtype {
     (
         $(#[$doc:meta])*
-        $name:ident, kind = $kind:literal, valid = $valid:path,
+        $name:ident, kind = $kind:literal, redact = $redact:literal, valid = $valid:path,
         pattern = $pattern:literal, min = $min:literal, max = $max:literal
     ) => {
         $(#[$doc])*
-        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+        #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
         #[serde(try_from = "String")]
         pub struct $name(String);
+
+        impl fmt::Debug for $name {
+            /// Identifiers flagged `redact` (case, variant and seed identifiers)
+            /// print only their length, so debug logs cannot leak them.
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                if $redact {
+                    write!(f, "{}(<redacted {} bytes>)", stringify!($name), self.0.len())
+                } else {
+                    f.debug_tuple(stringify!($name)).field(&self.0).finish()
+                }
+            }
+        }
 
         impl $name {
             /// Validate and wrap a string.
@@ -202,7 +231,10 @@ macro_rules! string_newtype {
         impl TryFrom<String> for $name {
             type Error = IdentError;
             fn try_from(value: String) -> Result<Self, IdentError> {
-                Self::new(value)
+                // Used by `Deserialize`: record that this crate's own validator
+                // failed, so the parser can report `invalid-identifier` without
+                // reading any serde message text.
+                Self::new(value).inspect_err(|_| mark_identifier_failure())
             }
         }
 
@@ -237,56 +269,76 @@ macro_rules! string_newtype {
 string_newtype!(
     /// Stable semantic identifier for cases, variants, occurrences, populations,
     /// operators and validators. Independent of scanner detector names.
-    Id, kind = "id", valid = valid_slug,
+    Id, kind = "id", redact = true, valid = valid_slug,
     pattern = "^[a-z][a-z0-9-]{1,79}$", min = 2, max = 80
 );
 string_newtype!(
     /// Scanner or adapter identifier.
-    ScannerId, kind = "scanner-id", valid = valid_dotted,
+    ScannerId, kind = "scanner-id", redact = false, valid = valid_dotted,
     pattern = "^[a-z][a-z0-9.-]{1,79}$", min = 2, max = 80
 );
 string_newtype!(
     /// Credential-neutral PII family identifier, `pii:<scope>:<name>`, where the
     /// scope is `global` or a lowercase ISO 3166-1 alpha-2 jurisdiction.
-    FamilyId, kind = "family-id", valid = valid_family,
+    FamilyId, kind = "family-id", redact = false, valid = valid_family,
     pattern = "^pii:(global|[a-z]{2}):[a-z0-9]+(-[a-z0-9]+)*$", min = 8, max = 80
 );
 string_newtype!(
     /// Language tag, a lowercase subset of BCP 47 (`ko`, `en`, `zh-hans`).
-    LanguageTag, kind = "language-tag", valid = valid_language,
+    LanguageTag, kind = "language-tag", redact = false, valid = valid_language,
     pattern = "^[a-z]{2,8}(-[a-z0-9]{2,8})*$", min = 2, max = 35
 );
 string_newtype!(
     /// Lowercase hexadecimal SHA-256 digest.
-    Sha256Digest, kind = "sha256-digest", valid = valid_digest,
+    Sha256Digest, kind = "sha256-digest", redact = false, valid = valid_digest,
     pattern = "^[0-9a-f]{64}$", min = 64, max = 64
 );
 string_newtype!(
     /// Three-part numeric version with an optional pre-release or build suffix.
-    VersionString, kind = "version", valid = valid_version,
+    VersionString, kind = "version", redact = false, valid = valid_version,
     pattern = "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][A-Za-z0-9.-]+)?$", min = 5, max = 64
 );
 string_newtype!(
     /// Scanner configuration parameter name.
-    ConfigKey, kind = "config-key", valid = valid_config_key,
+    ConfigKey, kind = "config-key", redact = false, valid = valid_config_key,
     pattern = "^[a-zA-Z][a-zA-Z0-9]{0,63}$", min = 1, max = 64
 );
 string_newtype!(
     /// Activation or enable-set selector (`pii:global`, `pii-context:v2`).
-    ActivationSelector, kind = "activation-selector", valid = valid_selector,
+    ActivationSelector, kind = "activation-selector", redact = false, valid = valid_selector,
     pattern = "^[a-z][a-z0-9:.-]{1,79}$", min = 2, max = 80
 );
 string_newtype!(
     /// Seed or seed-derivation label for a generated variant.
-    Seed, kind = "seed", valid = valid_seed,
+    Seed, kind = "seed", redact = true, valid = valid_seed,
     pattern = "^[A-Za-z0-9._-]{1,64}$", min = 1, max = 64
 );
 string_newtype!(
     /// UTC timestamp, `YYYY-MM-DDTHH:MM:SS[.mmm]Z`. Diagnostic only; never part
     /// of a semantic digest.
-    TimestampUtc, kind = "timestamp", valid = valid_timestamp,
+    TimestampUtc, kind = "timestamp", redact = false, valid = valid_timestamp,
     pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{3})?Z$", min = 20, max = 24
 );
+
+impl TimestampUtc {
+    /// Milliseconds since the Unix epoch. The format check guarantees the
+    /// digits parse; days-from-civil is the standard proleptic Gregorian
+    /// conversion, so values with different fraction lengths compare correctly.
+    pub fn unix_millis(&self) -> i64 {
+        let b = self.0.as_bytes();
+        let n = |r: std::ops::Range<usize>| -> i64 { self.0[r].parse().unwrap_or(0) };
+        let (y, m, d) = (n(0..4), n(5..7), n(8..10));
+        let y = if m <= 2 { y - 1 } else { y };
+        let era = y.div_euclid(400);
+        let yoe = y - era * 400;
+        let mp = (m + 9) % 12;
+        let doy = (153 * mp + 2) / 5 + d - 1;
+        let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+        let days = era * 146_097 + doe - 719_468;
+        let millis = if b.len() == 24 { n(20..23) } else { 0 };
+        ((days * 24 + n(11..13)) * 60 + n(14..16)) * 60_000 + n(17..19) * 1000 + millis
+    }
+}
 
 impl Sha256Digest {
     /// SHA-256 of raw bytes, as the identity of those exact bytes (for example
@@ -344,7 +396,7 @@ fn valid_jurisdiction(s: &str) -> bool {
 
 string_newtype!(
     /// ISO 3166-1 alpha-2 jurisdiction code (uppercase), from the pinned set.
-    JurisdictionCode, kind = "jurisdiction", valid = valid_jurisdiction,
+    JurisdictionCode, kind = "jurisdiction", redact = false, valid = valid_jurisdiction,
     pattern = "^[A-Z]{2}$", min = 2, max = 2
 );
 

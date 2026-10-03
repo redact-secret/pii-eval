@@ -12,7 +12,7 @@ a breaking change (new construction identifier and schema major).
 ## Strict input
 
 A document is one JSON text in UTF-8 and is rejected with a stable code if it:
-exceeds 128 MiB (`document-too-large`), nests deeper than 32 levels
+exceeds 32 MiB (`document-too-large`), nests deeper than 32 levels
 (`nesting-too-deep`), repeats an object key (`duplicate-key`), contains `null`
 (`null-not-allowed`), contains a number that is not an integer
 (`float-not-allowed`; this includes `1.0`, `1e2`, `-0`, `-0.0`, and integers
@@ -58,7 +58,7 @@ sensitive, action)` with absent before present; duplicates are kept.
 ```
 digest = lowercase_hex( SHA-256(
     "pii-eval-semantic-digest/1" "\n" domain "\n" canonical(semantic) ) )
-domain = schemaId "/" schemaMajor      e.g. "pii-eval.corpus-snapshot/1"
+domain = schemaId "/" schemaMajor "." schemaMinor   e.g. "pii-eval.corpus-snapshot/1.0"
 ```
 
 `semantic` is the document's digested body. `diagnostics` (start and end

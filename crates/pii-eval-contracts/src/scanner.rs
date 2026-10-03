@@ -132,8 +132,13 @@ impl ScannerCapabilities {
 
 /// Product identity of the thing under test. Independent of the population's
 /// visibility: a public-synthetic run of a candidate is candidate evidence.
+///
+/// Deserialization and the JSON Schema go through [`ProductIdentityWire`]:
+/// serde ignores extra keys on an internally tagged unit variant, so the wire
+/// form uses an empty struct variant that `deny_unknown_fields` closes.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
+#[serde(tag = "kind", rename_all = "kebab-case", from = "ProductIdentityWire")]
+#[schemars(with = "ProductIdentityWire")]
 pub enum ProductIdentity {
     /// A released build; the scanner version must be stated.
     Released,
@@ -143,6 +148,32 @@ pub enum ProductIdentity {
         /// Digest of the candidate artifact.
         candidate_digest: Sha256Digest,
     },
+}
+
+/// Closed wire form of [`ProductIdentity`].
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
+#[schemars(rename = "ProductIdentity")]
+pub enum ProductIdentityWire {
+    /// A released build.
+    Released {},
+    /// A candidate build.
+    #[serde(rename_all = "camelCase")]
+    Candidate {
+        /// Digest of the candidate artifact.
+        candidate_digest: Sha256Digest,
+    },
+}
+
+impl From<ProductIdentityWire> for ProductIdentity {
+    fn from(wire: ProductIdentityWire) -> Self {
+        match wire {
+            ProductIdentityWire::Released {} => ProductIdentity::Released,
+            ProductIdentityWire::Candidate { candidate_digest } => {
+                ProductIdentity::Candidate { candidate_digest }
+            }
+        }
+    }
 }
 
 /// Engine identity.

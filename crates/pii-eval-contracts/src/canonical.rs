@@ -49,11 +49,17 @@ impl Default for ParseLimits {
     }
 }
 
-const TAG_DUPLICATE: &str = "pii-eval:duplicate-key";
-const TAG_NULL: &str = "pii-eval:null";
-const TAG_FLOAT: &str = "pii-eval:float";
-const TAG_INTEGER: &str = "pii-eval:integer-range";
-const TAG_DEPTH: &str = "pii-eval:depth";
+thread_local! {
+    /// Reason set by the strict visitor itself when it rejects input. The
+    /// parser reads it instead of inspecting serde's message text, which can
+    /// echo attacker-chosen keys and must never decide a reason code.
+    static STRICT_REASON: std::cell::Cell<Option<ReasonCode>> = const { std::cell::Cell::new(None) };
+}
+
+fn fail<E: serde::de::Error>(code: ReasonCode) -> E {
+    STRICT_REASON.with(|r| r.set(Some(code)));
+    E::custom("rejected")
+}
 
 struct StrictSeed {
     depth: usize,
@@ -88,14 +94,14 @@ impl<'de> Visitor<'de> for StrictVisitor {
 
     fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<Value, E> {
         if v.unsigned_abs() > MAX_SAFE_INTEGER {
-            return Err(E::custom(TAG_INTEGER));
+            return Err(fail(ReasonCode::IntegerOutOfRange));
         }
         Ok(Value::Number(Number::from(v)))
     }
 
     fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Value, E> {
         if v > MAX_SAFE_INTEGER {
-            return Err(E::custom(TAG_INTEGER));
+            return Err(fail(ReasonCode::IntegerOutOfRange));
         }
         Ok(Value::Number(Number::from(v)))
     }
@@ -103,7 +109,7 @@ impl<'de> Visitor<'de> for StrictVisitor {
     // Any floating-point token, including `-0`, `1.0`, `1e2` and integers too
     // large for 64 bits, reaches here.
     fn visit_f64<E: serde::de::Error>(self, _v: f64) -> Result<Value, E> {
-        Err(E::custom(TAG_FLOAT))
+        Err(fail(ReasonCode::FloatNotAllowed))
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Value, E> {
@@ -115,16 +121,16 @@ impl<'de> Visitor<'de> for StrictVisitor {
     }
 
     fn visit_unit<E: serde::de::Error>(self) -> Result<Value, E> {
-        Err(E::custom(TAG_NULL))
+        Err(fail(ReasonCode::NullNotAllowed))
     }
 
     fn visit_none<E: serde::de::Error>(self) -> Result<Value, E> {
-        Err(E::custom(TAG_NULL))
+        Err(fail(ReasonCode::NullNotAllowed))
     }
 
     fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Value, A::Error> {
         if self.depth >= self.max_depth {
-            return Err(serde::de::Error::custom(TAG_DEPTH));
+            return Err(fail(ReasonCode::NestingTooDeep));
         }
         let mut items = Vec::new();
         while let Some(item) = seq.next_element_seed(StrictSeed {
@@ -138,13 +144,13 @@ impl<'de> Visitor<'de> for StrictVisitor {
 
     fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Value, A::Error> {
         if self.depth >= self.max_depth {
-            return Err(serde::de::Error::custom(TAG_DEPTH));
+            return Err(fail(ReasonCode::NestingTooDeep));
         }
         let mut seen = BTreeSet::new();
         let mut object = Map::new();
         while let Some(key) = map.next_key::<String>()? {
             if !seen.insert(key.clone()) {
-                return Err(serde::de::Error::custom(TAG_DUPLICATE));
+                return Err(fail(ReasonCode::DuplicateKey));
             }
             let value = map.next_value_seed(StrictSeed {
                 depth: self.depth + 1,
@@ -156,30 +162,22 @@ impl<'de> Visitor<'de> for StrictVisitor {
     }
 }
 
-/// Map a serde_json error (from a strict or typed parse) to a stable code.
-/// Only this crate's own static tags are inspected; the error text is never
-/// forwarded.
-pub(crate) fn classify_parse_error(e: &serde_json::Error) -> ContractError {
-    let text = e.to_string();
-    let code = if text.contains(TAG_DUPLICATE) {
-        ReasonCode::DuplicateKey
-    } else if text.contains(TAG_NULL) {
-        ReasonCode::NullNotAllowed
-    } else if text.contains(TAG_FLOAT) {
-        ReasonCode::FloatNotAllowed
-    } else if text.contains(TAG_INTEGER) {
-        ReasonCode::IntegerOutOfRange
-    } else if text.contains(TAG_DEPTH) {
-        ReasonCode::NestingTooDeep
-    } else if text.contains(crate::ident::IDENT_ERROR_TAG) {
+fn position(e: &serde_json::Error) -> Meta {
+    Meta::position(e.line() as u64, e.column() as u64)
+}
+
+/// Classify an error of the typed parse (after the strict pass accepted the
+/// text). Only this crate's own identifier flag and serde's error *category*
+/// are consulted; the message text is never read.
+pub(crate) fn classify_typed_error(e: &serde_json::Error) -> ContractError {
+    let code = if crate::ident::take_identifier_failure() {
         ReasonCode::InvalidIdentifier
+    } else if e.classify() == serde_json::error::Category::Data {
+        ReasonCode::SchemaViolation
     } else {
-        match e.classify() {
-            serde_json::error::Category::Data => ReasonCode::SchemaViolation,
-            _ => ReasonCode::MalformedJson,
-        }
+        ReasonCode::MalformedJson
     };
-    ContractError::root_with(code, Meta::position(e.line() as u64, e.column() as u64))
+    ContractError::root_with(code, position(e))
 }
 
 /// Parse one strict JSON document into a [`Value`].
@@ -194,14 +192,21 @@ pub fn parse_strict(bytes: &[u8], limits: &ParseLimits) -> Result<Value, Contrac
             Meta::limit(limits.max_bytes as u64, bytes.len() as u64),
         ));
     }
+    STRICT_REASON.with(|r| r.set(None));
+    let strict_error = |e: serde_json::Error| {
+        let code = STRICT_REASON
+            .with(|r| r.take())
+            .unwrap_or(ReasonCode::MalformedJson);
+        ContractError::root_with(code, position(&e))
+    };
     let mut de = serde_json::Deserializer::from_slice(bytes);
     let value = StrictSeed {
         depth: 0,
         max_depth: limits.max_depth,
     }
     .deserialize(&mut de)
-    .map_err(|e| classify_parse_error(&e))?;
-    de.end().map_err(|e| classify_parse_error(&e))?;
+    .map_err(strict_error)?;
+    de.end().map_err(strict_error)?;
     Ok(value)
 }
 

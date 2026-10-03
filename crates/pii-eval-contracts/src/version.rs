@@ -134,8 +134,7 @@ impl Serialize for SchemaVersion {
 impl<'de> Deserialize<'de> for SchemaVersion {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let text = String::deserialize(d)?;
-        SchemaVersion::parse(&text)
-            .ok_or_else(|| de::Error::custom("pii-eval:invalid-identifier:schema-version"))
+        SchemaVersion::parse(&text).ok_or_else(|| de::Error::custom("invalid schema version"))
     }
 }
 

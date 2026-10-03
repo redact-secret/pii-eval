@@ -9,8 +9,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::ident::{FamilyId, JurisdictionCode};
 use crate::reason::ReasonCode;
-use crate::scanner::ScannerStatus;
+use crate::scanner::{ActionCapability, CapabilityState, ScannerCapabilities, ScannerStatus};
 
 macro_rules! kebab_enum {
     ($(#[$doc:meta])* $name:ident { $($(#[$vdoc:meta])* $variant:ident),+ $(,)? }) => {
@@ -82,10 +83,15 @@ kebab_enum!(
 
 /// What was observed about action. Never inferred from a finding flag: removal
 /// is asserted only by `output-verified`, which requires sanitized output.
+///
+/// Deserialization and the JSON Schema go through [`ActionOutcomeWire`], whose
+/// variants are closed structs: serde would otherwise ignore extra keys on the
+/// unit variants of an internally tagged enum.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
 )]
-#[serde(tag = "state", rename_all = "kebab-case", deny_unknown_fields)]
+#[serde(tag = "state", rename_all = "kebab-case", from = "ActionOutcomeWire")]
+#[schemars(with = "ActionOutcomeWire")]
 pub enum ActionOutcome {
     /// The scanner cannot report action (or the scanner did not run): explicit, not success.
     NotMeasured,
@@ -101,6 +107,51 @@ pub enum ActionOutcome {
         /// Verification result.
         verification: OutputVerification,
     },
+}
+
+/// Closed wire form of [`ActionOutcome`].
+#[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
+#[serde(tag = "state", rename_all = "kebab-case", deny_unknown_fields)]
+#[schemars(rename = "ActionOutcome")]
+pub enum ActionOutcomeWire {
+    /// See [`ActionOutcome::NotMeasured`].
+    NotMeasured {},
+    /// See [`ActionOutcome::NoActionReported`].
+    NoActionReported {},
+    /// See [`ActionOutcome::Reported`].
+    Reported {
+        /// The reported action kind.
+        action: ActionKind,
+    },
+    /// See [`ActionOutcome::OutputVerified`].
+    OutputVerified {
+        /// Verification result.
+        verification: OutputVerification,
+    },
+}
+
+impl From<ActionOutcomeWire> for ActionOutcome {
+    fn from(wire: ActionOutcomeWire) -> Self {
+        match wire {
+            ActionOutcomeWire::NotMeasured {} => ActionOutcome::NotMeasured,
+            ActionOutcomeWire::NoActionReported {} => ActionOutcome::NoActionReported,
+            ActionOutcomeWire::Reported { action } => ActionOutcome::Reported { action },
+            ActionOutcomeWire::OutputVerified { verification } => {
+                ActionOutcome::OutputVerified { verification }
+            }
+        }
+    }
+}
+
+impl ActionKind {
+    /// The wire string; canonical collections sort by this, bytewise.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            ActionKind::Redact => "redact",
+            ActionKind::Preserve => "preserve",
+            ActionKind::Other => "other",
+        }
+    }
 }
 
 impl TypeState {
@@ -170,29 +221,100 @@ impl SensitivityState {
 /// Validate one occurrence outcome against its authored expectation and the
 /// scanner status. A scanner that did not complete measured nothing: every axis
 /// is `not-measured` / `not-applicable`.
+///
+/// A capability the scanner declares `unsupported` can never yield a measured
+/// axis: missing capability is `not-measured`, never success.
 pub fn validate_outcome_lattice(
-    expected_type: ExpectedType,
-    expected_sensitivity: SensitivityExpectation,
+    authored: &AuthoredAxes<'_>,
     scanner: ScannerStatus,
-    type_state: TypeState,
-    sensitivity_state: SensitivityState,
-    range: RangeState,
-    action: ActionOutcome,
+    capabilities: &ScannerCapabilities,
+    row: &OutcomeRow,
 ) -> Result<(), ReasonCode> {
-    if !TypeState::reachable(expected_type).contains(&type_state)
-        || !SensitivityState::reachable(expected_sensitivity).contains(&sensitivity_state)
+    if !TypeState::reachable(authored.expected_type).contains(&row.type_identity)
+        || !SensitivityState::reachable(authored.sensitivity).contains(&row.sensitivity_context)
     {
         return Err(ReasonCode::OutcomeContradiction);
     }
-    if scanner != ScannerStatus::Complete
-        && (type_state != TypeState::NotMeasured
-            || sensitivity_state != SensitivityState::NotMeasured
-            || range != RangeState::NotApplicable
-            || action != ActionOutcome::NotMeasured)
-    {
+    if scanner != ScannerStatus::Complete && !row.is_unmeasured() {
         return Err(ReasonCode::OutcomeContradiction);
     }
-    Ok(())
+    // The expected family or jurisdiction itself being unsupported leaves the
+    // type axis unmeasured.
+    let unsupported_expected = capabilities.family_state(authored.family)
+        == CapabilityState::Unsupported
+        || authored
+            .jurisdiction
+            .is_some_and(|j| capabilities.jurisdiction_state(j) == CapabilityState::Unsupported);
+    if unsupported_expected && row.type_identity != TypeState::NotMeasured {
+        return Err(ReasonCode::OutcomeContradiction);
+    }
+    check_capability_rules(capabilities, row)
+}
+
+/// The authored side of an outcome row.
+#[derive(Debug, Clone, Copy)]
+pub struct AuthoredAxes<'a> {
+    /// Authored type expectation.
+    pub expected_type: ExpectedType,
+    /// Authored sensitivity expectation.
+    pub sensitivity: SensitivityExpectation,
+    /// Expected family.
+    pub family: &'a FamilyId,
+    /// Case jurisdiction, or `None` for a global case.
+    pub jurisdiction: Option<&'a JurisdictionCode>,
+}
+
+/// The four observed axes of one outcome row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OutcomeRow {
+    /// Type-identity axis.
+    pub type_identity: TypeState,
+    /// Sensitivity-context axis.
+    pub sensitivity_context: SensitivityState,
+    /// Range axis.
+    pub range: RangeState,
+    /// Action axis.
+    pub action: ActionOutcome,
+}
+
+impl OutcomeRow {
+    /// True when every axis is `not-measured` / `not-applicable`.
+    pub fn is_unmeasured(&self) -> bool {
+        self.type_identity == TypeState::NotMeasured
+            && self.sensitivity_context == SensitivityState::NotMeasured
+            && self.range == RangeState::NotApplicable
+            && self.action == ActionOutcome::NotMeasured
+    }
+}
+
+/// Rules that need only the scanner's declared capabilities: an axis whose
+/// capability is `unsupported` (or, for action, `unavailable`) must be unmeasured.
+pub fn check_capability_rules(
+    capabilities: &ScannerCapabilities,
+    row: &OutcomeRow,
+) -> Result<(), ReasonCode> {
+    let unsupported = |state: CapabilityState| state == CapabilityState::Unsupported;
+    let violated = (unsupported(capabilities.ranges) && row.range != RangeState::NotApplicable)
+        || (unsupported(capabilities.family_classification)
+            && row.type_identity != TypeState::NotMeasured)
+        || (unsupported(capabilities.jurisdiction_reporting)
+            && row.type_identity == TypeState::WrongJurisdiction)
+        || (unsupported(capabilities.sensitivity_classification)
+            && row.sensitivity_context != SensitivityState::NotMeasured)
+        || match row.action {
+            ActionOutcome::NotMeasured => false,
+            ActionOutcome::NoActionReported | ActionOutcome::Reported { .. } => {
+                capabilities.action == ActionCapability::Unavailable
+            }
+            ActionOutcome::OutputVerified { .. } => {
+                capabilities.action != ActionCapability::SanitizedOutput
+            }
+        };
+    if violated {
+        Err(ReasonCode::OutcomeContradiction)
+    } else {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -225,39 +347,178 @@ mod tests {
         );
     }
 
+    fn caps(state: CapabilityState) -> ScannerCapabilities {
+        ScannerCapabilities {
+            ranges: state,
+            family_classification: state,
+            sensitivity_classification: state,
+            jurisdiction_reporting: state,
+            action: ActionCapability::ReportedAction,
+            families: vec![],
+            jurisdictions: vec![],
+        }
+    }
+
+    fn row(t: TypeState, s: SensitivityState, r: RangeState, a: ActionOutcome) -> OutcomeRow {
+        OutcomeRow {
+            type_identity: t,
+            sensitivity_context: s,
+            range: r,
+            action: a,
+        }
+    }
+
+    fn check(
+        expected: ExpectedType,
+        sens: SensitivityExpectation,
+        status: ScannerStatus,
+        caps: &ScannerCapabilities,
+        row: OutcomeRow,
+    ) -> Result<(), ReasonCode> {
+        let family = FamilyId::new("pii:global:email").unwrap();
+        let authored = AuthoredAxes {
+            expected_type: expected,
+            sensitivity: sens,
+            family: &family,
+            jurisdiction: None,
+        };
+        validate_outcome_lattice(&authored, status, caps, &row)
+    }
+
     #[test]
     fn lattice_rejects_contradictions() {
-        let ok = validate_outcome_lattice(
-            ExpectedType::Valid,
-            SensitivityExpectation::Sensitive,
-            ScannerStatus::Complete,
+        let supported = caps(CapabilityState::Supported);
+        let good = row(
             TypeState::Correct,
             SensitivityState::Correct,
             RangeState::Exact,
             ActionOutcome::NoActionReported,
         );
-        assert_eq!(ok, Ok(()));
-        let unreachable = validate_outcome_lattice(
-            ExpectedType::Invalid,
-            SensitivityExpectation::Sensitive,
-            ScannerStatus::Complete,
+        let v = ExpectedType::Valid;
+        let s = SensitivityExpectation::Sensitive;
+        assert_eq!(
+            check(v, s, ScannerStatus::Complete, &supported, good),
+            Ok(())
+        );
+        let unreachable = row(
             TypeState::Miss,
             SensitivityState::Correct,
             RangeState::Miss,
             ActionOutcome::NotMeasured,
         );
-        assert_eq!(unreachable, Err(ReasonCode::OutcomeContradiction));
-        let failed_scanner_measured = validate_outcome_lattice(
-            ExpectedType::Valid,
-            SensitivityExpectation::Sensitive,
-            ScannerStatus::Error,
-            TypeState::Correct,
-            SensitivityState::NotMeasured,
-            RangeState::NotApplicable,
-            ActionOutcome::NotMeasured,
+        assert_eq!(
+            check(
+                ExpectedType::Invalid,
+                s,
+                ScannerStatus::Complete,
+                &supported,
+                unreachable
+            ),
+            Err(ReasonCode::OutcomeContradiction)
         );
         assert_eq!(
-            failed_scanner_measured,
+            check(v, s, ScannerStatus::Error, &supported, good),
+            Err(ReasonCode::OutcomeContradiction)
+        );
+    }
+
+    #[test]
+    fn unsupported_capability_forces_not_measured_on_its_axis() {
+        let v = ExpectedType::Valid;
+        let s = SensitivityExpectation::Sensitive;
+        let good = row(
+            TypeState::Correct,
+            SensitivityState::Correct,
+            RangeState::Exact,
+            ActionOutcome::Reported {
+                action: ActionKind::Redact,
+            },
+        );
+        let measured_except = |t, se, r| {
+            row(
+                t,
+                se,
+                r,
+                ActionOutcome::Reported {
+                    action: ActionKind::Redact,
+                },
+            )
+        };
+        let cases = [
+            // ranges unsupported: range must be not-applicable
+            (
+                ScannerCapabilities {
+                    ranges: CapabilityState::Unsupported,
+                    ..caps(CapabilityState::Supported)
+                },
+                good,
+                measured_except(
+                    TypeState::Correct,
+                    SensitivityState::Correct,
+                    RangeState::NotApplicable,
+                ),
+            ),
+            // family classification unsupported: type must be not-measured
+            (
+                ScannerCapabilities {
+                    family_classification: CapabilityState::Unsupported,
+                    ..caps(CapabilityState::Supported)
+                },
+                good,
+                measured_except(
+                    TypeState::NotMeasured,
+                    SensitivityState::Correct,
+                    RangeState::Exact,
+                ),
+            ),
+            // sensitivity unsupported: sensitivity must be not-measured
+            (
+                ScannerCapabilities {
+                    sensitivity_classification: CapabilityState::Unsupported,
+                    ..caps(CapabilityState::Supported)
+                },
+                good,
+                measured_except(
+                    TypeState::Correct,
+                    SensitivityState::NotMeasured,
+                    RangeState::Exact,
+                ),
+            ),
+            // action unavailable: action must be not-measured
+            (
+                ScannerCapabilities {
+                    action: ActionCapability::Unavailable,
+                    ..caps(CapabilityState::Supported)
+                },
+                good,
+                row(
+                    TypeState::Correct,
+                    SensitivityState::Correct,
+                    RangeState::Exact,
+                    ActionOutcome::NotMeasured,
+                ),
+            ),
+        ];
+        for (c, bad, fixed) in cases {
+            assert_eq!(
+                check(v, s, ScannerStatus::Complete, &c, bad),
+                Err(ReasonCode::OutcomeContradiction)
+            );
+            assert_eq!(check(v, s, ScannerStatus::Complete, &c, fixed), Ok(()));
+        }
+        // wrong-jurisdiction cannot be observed when jurisdiction is unsupported
+        let c = ScannerCapabilities {
+            jurisdiction_reporting: CapabilityState::Unsupported,
+            ..caps(CapabilityState::Supported)
+        };
+        let wrong = row(
+            TypeState::WrongJurisdiction,
+            SensitivityState::Correct,
+            RangeState::Exact,
+            ActionOutcome::NoActionReported,
+        );
+        assert_eq!(
+            check(v, s, ScannerStatus::Complete, &c, wrong),
             Err(ReasonCode::OutcomeContradiction)
         );
     }

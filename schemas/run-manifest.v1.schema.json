@@ -186,6 +186,32 @@
       ],
       "type": "object"
     },
+    "GenerationRules": {
+      "additionalProperties": false,
+      "description": "Deterministic generation rules for derived variants.",
+      "properties": {
+        "generator": {
+          "$ref": "#/$defs/Id",
+          "description": "Generator identifier."
+        },
+        "generatorVersion": {
+          "description": "Generator version.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "seedDerivation": {
+          "$ref": "#/$defs/Seed",
+          "description": "Seed-derivation rule identifier."
+        }
+      },
+      "required": [
+        "generator",
+        "generatorVersion",
+        "seedDerivation"
+      ],
+      "type": "object"
+    },
     "Id": {
       "maxLength": 80,
       "minLength": 2,
@@ -328,21 +354,26 @@
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "description": "Visibility of the population, copied from the snapshot. A run class\nmust agree with it."
         }
       },
       "required": [
         "populationId",
+        "visibility",
         "populationVersion",
         "populationDigest"
       ],
       "type": "object"
     },
     "ProductIdentity": {
-      "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.",
+      "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.\n\nDeserialization and the JSON Schema go through [`ProductIdentityWire`]:\nserde ignores extra keys on an internally tagged unit variant, so the wire\nform uses an empty struct variant that `deny_unknown_fields` closes.",
       "oneOf": [
         {
           "additionalProperties": false,
-          "description": "A released build; the scanner version must be stated.",
+          "description": "A released build.",
           "properties": {
             "kind": {
               "const": "released",
@@ -356,7 +387,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "A candidate build, identified by the digest of its artifact.",
+          "description": "A candidate build.",
           "properties": {
             "candidateDigest": {
               "$ref": "#/$defs/Sha256Digest",
@@ -427,6 +458,10 @@
           "$ref": "#/$defs/EngineIdentity",
           "description": "Engine implementation identity."
         },
+        "generation": {
+          "$ref": "#/$defs/GenerationRules",
+          "description": "Generator and seed-derivation rule; must equal the snapshot's."
+        },
         "limits": {
           "$ref": "#/$defs/ExecutionLimits",
           "description": "Execution limits."
@@ -471,10 +506,6 @@
         "scope": {
           "$ref": "#/$defs/Scope",
           "description": "Language and jurisdiction scope."
-        },
-        "seedDerivation": {
-          "$ref": "#/$defs/Seed",
-          "description": "Seed-derivation rule for derived variants."
         }
       },
       "required": [
@@ -486,7 +517,7 @@
         "methods",
         "metrics",
         "mechanics",
-        "seedDerivation",
+        "generation",
         "limits",
         "scanners"
       ],
@@ -677,6 +708,14 @@
       "maxLength": 64,
       "minLength": 5,
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][A-Za-z0-9.-]+)?$",
+      "type": "string"
+    },
+    "Visibility": {
+      "description": "Who may see the population. Independent of product identity: a\n`public-synthetic` population can be run against a candidate.",
+      "enum": [
+        "public-synthetic",
+        "protected"
+      ],
       "type": "string"
     }
   },

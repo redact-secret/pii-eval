@@ -18,22 +18,24 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::axes::{ActionOutcome, RangeState, SensitivityState, TypeState, kebab_enum};
+use crate::axes::{
+    ActionOutcome, OutcomeRow, RangeState, SensitivityState, TypeState, check_capability_rules,
+    kebab_enum,
+};
 use crate::check::{non_empty, sorted_unique, within_limit};
+use crate::corpus::Visibility;
 use crate::decimal::ScaledDecimal;
 use crate::document::{impl_document, schema_tag, to_pretty_json};
 use crate::ident::{FamilyId, Id, JurisdictionCode, ScannerId, Sha256Digest, TimestampUtc};
 use crate::limits::{MAX_FAILURES, MAX_OUTCOMES, MAX_SAFE_INTEGER, MAX_SCANNERS};
 use crate::manifest::{PopulationBinding, RunClass};
-use crate::observation::ReplayRecord;
+use crate::observation::{ReplayRecord, scanner_state_consistent};
 use crate::protocol::{
     EffectiveNBasis, Mechanics, MethodId, MethodRef, MetricRef, MetricStatus, ProtocolIdentity,
     WithheldReason,
 };
 use crate::reason::{Collector, ContractError, Meta, Path, ReasonCode, Violations};
-use crate::scanner::{
-    ActionCapability, EngineIdentity, ScannerCapabilities, ScannerIdentity, ScannerStatus,
-};
+use crate::scanner::{EngineIdentity, ScannerCapabilities, ScannerIdentity, ScannerStatus};
 use crate::version::SchemaVersion;
 
 schema_tag!(
@@ -69,6 +71,64 @@ kebab_enum!(
     /// Phases timed in diagnostics. Timing never reaches the semantic digest.
     Phase { KernelReplay, ScannerStartup, Scan, Materialization, Serialization, Total }
 );
+
+impl FailureCode {
+    /// The wire string; failures sort by it.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            FailureCode::Unsupported => "unsupported",
+            FailureCode::Unavailable => "unavailable",
+            FailureCode::ExecutionError => "execution-error",
+            FailureCode::Timeout => "timeout",
+            FailureCode::OutputLimitExceeded => "output-limit-exceeded",
+            FailureCode::MalformedOutput => "malformed-output",
+            FailureCode::ReplayDisagreement => "replay-disagreement",
+            FailureCode::Cancelled => "cancelled",
+        }
+    }
+
+    /// Whether this failure can explain a scanner with `status`.
+    pub const fn allowed_for(self, status: ScannerStatus) -> bool {
+        match status {
+            ScannerStatus::Complete => false,
+            ScannerStatus::Unsupported => matches!(self, FailureCode::Unsupported),
+            ScannerStatus::Unavailable => matches!(self, FailureCode::Unavailable),
+            ScannerStatus::Unstable => matches!(self, FailureCode::ReplayDisagreement),
+            ScannerStatus::Error => matches!(
+                self,
+                FailureCode::ExecutionError
+                    | FailureCode::Timeout
+                    | FailureCode::OutputLimitExceeded
+                    | FailureCode::MalformedOutput
+                    | FailureCode::Cancelled
+            ),
+        }
+    }
+}
+
+impl Phase {
+    /// Every phase.
+    pub const ALL: [Phase; 6] = [
+        Phase::KernelReplay,
+        Phase::ScannerStartup,
+        Phase::Scan,
+        Phase::Materialization,
+        Phase::Serialization,
+        Phase::Total,
+    ];
+
+    /// The wire string; phases sort by it.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Phase::KernelReplay => "kernel-replay",
+            Phase::ScannerStartup => "scanner-startup",
+            Phase::Scan => "scan",
+            Phase::Materialization => "materialization",
+            Phase::Serialization => "serialization",
+            Phase::Total => "total",
+        }
+    }
+}
 
 /// A recorded measurement failure.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -443,7 +503,8 @@ pub struct RunArtifact {
 impl_document!(
     RunArtifact,
     RunArtifactBody,
-    crate::version::DocumentKind::RunArtifact
+    crate::version::DocumentKind::RunArtifact,
+    diagnostics
 );
 
 impl RunArtifact {
@@ -457,6 +518,21 @@ impl RunArtifact {
             diagnostics: None,
         }
     }
+}
+
+/// Population binding of a public-synthetic artifact. Its visibility type has
+/// one value, so a protected population cannot be represented.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PublicPopulationBinding {
+    /// Population identifier.
+    pub population_id: Id,
+    /// Always `public-synthetic`.
+    pub visibility: PublicSyntheticClass,
+    /// Population revision.
+    pub population_version: u32,
+    /// Semantic digest of the corpus snapshot.
+    pub population_digest: Sha256Digest,
 }
 
 /// The semantic content of a public-synthetic artifact. Aggregates and
@@ -475,7 +551,7 @@ pub struct PublicSyntheticArtifactBody {
     /// Digest of the manifest.
     pub manifest_digest: Sha256Digest,
     /// The population measured.
-    pub population: PopulationBinding,
+    pub population: PublicPopulationBinding,
     /// Mechanics used.
     pub mechanics: Mechanics,
     /// Authored counts.
@@ -521,8 +597,12 @@ impl RunArtifact {
     /// [`PublicSyntheticArtifact`] from internal data; protected publication is
     /// the custodian's decision and has no code path here.
     pub fn to_public_synthetic(&self) -> Result<PublicSyntheticArtifact, Violations> {
+        // A tampered or corrupt artifact is never projected.
+        crate::document::validate(self)?;
         let body = &self.semantic;
-        if body.run_class != RunClass::PublicSynthetic {
+        if body.run_class != RunClass::PublicSynthetic
+            || body.population.visibility != Visibility::PublicSynthetic
+        {
             return Err(Violations::single(ContractError::root(
                 ReasonCode::PublicProjectionForbidden,
             )));
@@ -537,7 +617,12 @@ impl RunArtifact {
                 protocol: body.protocol,
                 source_artifact_digest: self.semantic_digest.clone(),
                 manifest_digest: body.manifest_digest.clone(),
-                population: body.population.clone(),
+                population: PublicPopulationBinding {
+                    population_id: body.population.population_id.clone(),
+                    visibility: PublicSyntheticClass::Only,
+                    population_version: body.population.population_version,
+                    population_digest: body.population.population_digest.clone(),
+                },
                 mechanics: body.mechanics,
                 population_counts: body.population_counts,
                 scanners: body
@@ -585,7 +670,7 @@ pub fn serialize_internal(artifact: &RunArtifact) -> Result<String, ContractErro
 
 /// The parts of an artifact body shared by the internal and public shapes.
 struct Shape<'a> {
-    scanner_ids: Vec<&'a ScannerId>,
+    scanners: Vec<(&'a ScannerId, ScannerStatus)>,
     methods: &'a [MethodCoverage],
     counts: &'a PopulationCounts,
     metrics: &'a [MetricResult],
@@ -597,7 +682,7 @@ struct Shape<'a> {
 
 fn check_artifact_shape(shape: &Shape<'_>, path: &Path<'_>, c: &mut Collector) {
     let Shape {
-        scanner_ids,
+        scanners,
         methods,
         counts,
         metrics,
@@ -606,7 +691,7 @@ fn check_artifact_shape(shape: &Shape<'_>, path: &Path<'_>, c: &mut Collector) {
         completeness,
         outcome_count,
     } = shape;
-    let scanner_count = scanner_ids.len();
+    let scanner_count = scanners.len();
     mechanics.validate(&path.field("mechanics"), c);
     non_empty_scanners(scanner_count, &path.field("scanners"), c);
 
@@ -644,13 +729,26 @@ fn check_artifact_shape(shape: &Shape<'_>, path: &Path<'_>, c: &mut Collector) {
     if within_limit(failures.len(), MAX_FAILURES, &failures_path, c) {
         sorted_unique(
             failures,
-            |f| (f.scanner_id.as_str(), f.code),
+            |f| (f.scanner_id.as_str(), f.code.as_str()),
             &failures_path,
             c,
         );
         for (i, f) in failures.iter().enumerate() {
-            if !scanner_ids.contains(&&f.scanner_id) {
+            if !scanners.iter().any(|(id, _)| **id == f.scanner_id) {
                 c.push(ReasonCode::UnknownScanner, &failures_path.index(i));
+            }
+        }
+        // Failures and scanner status must agree: a scanner that did not
+        // complete has a matching failure record; a complete one has none.
+        for (id, status) in scanners {
+            let mut own = failures.iter().filter(|f| f.scanner_id == **id).peekable();
+            let consistent = if *status == ScannerStatus::Complete {
+                own.peek().is_none()
+            } else {
+                own.peek().is_some() && own.all(|f| f.code.allowed_for(*status))
+            };
+            if !consistent {
+                c.push(ReasonCode::StatusInconsistent, &failures_path);
             }
         }
     }
@@ -678,38 +776,75 @@ fn non_empty_scanners(count: usize, path: &Path<'_>, c: &mut Collector) {
     }
 }
 
+/// A scanner record as the shared checks see it, whichever artifact shape holds it.
+struct ScannerView<'a> {
+    identity: &'a ScannerIdentity,
+    status: ScannerStatus,
+    capabilities: &'a ScannerCapabilities,
+    replays: &'a ReplayRecord,
+}
+
+fn check_scanners(views: &[ScannerView<'_>], path: &Path<'_>, c: &mut Collector) {
+    let scanners = path.field("scanners");
+    if !within_limit(views.len(), MAX_SCANNERS, &scanners, c) {
+        return;
+    }
+    sorted_unique(views, |s| s.identity.scanner_id.as_str(), &scanners, c);
+    for (i, s) in views.iter().enumerate() {
+        let p = scanners.index(i);
+        s.identity.validate(&p.field("identity"), c);
+        s.capabilities.validate(&p.field("capabilities"), c);
+        // The same rules as an observation set: a recorded scanner state must
+        // agree with its replays and capabilities.
+        if !scanner_state_consistent(s.status, s.replays, s.capabilities) {
+            c.push(ReasonCode::StatusInconsistent, &p.field("status"));
+        }
+    }
+}
+
 fn check_outcome_row(
-    status: Option<ScannerStatus>,
-    action_capability: Option<ActionCapability>,
-    row: (TypeState, SensitivityState, RangeState, ActionOutcome),
+    scanner: Option<&ScannerView<'_>>,
+    row: OutcomeRow,
     path: &Path<'_>,
     c: &mut Collector,
 ) {
-    let (type_state, sensitivity, range, action) = row;
-    let Some(status) = status else {
+    let Some(s) = scanner else {
         c.push(ReasonCode::UnknownScanner, path);
         return;
     };
-    if status != ScannerStatus::Complete
-        && (type_state != TypeState::NotMeasured
-            || sensitivity != SensitivityState::NotMeasured
-            || range != RangeState::NotApplicable
-            || action != ActionOutcome::NotMeasured)
+    // A scanner that did not complete measured nothing, and an axis whose
+    // capability is unsupported is never measured.
+    if (s.status != ScannerStatus::Complete && !row.is_unmeasured())
+        || check_capability_rules(s.capabilities, &row).is_err()
     {
         c.push(ReasonCode::OutcomeContradiction, path);
     }
-    let action_ok = match (action, action_capability) {
-        (ActionOutcome::NotMeasured, _) => true,
-        (ActionOutcome::NoActionReported | ActionOutcome::Reported { .. }, Some(cap)) => {
-            cap != ActionCapability::Unavailable
+}
+
+type OutcomeKey<'a> = (&'a str, &'a str, &'a str, &'a str);
+
+fn check_outcomes<'a, T>(
+    items: &'a [T],
+    key: impl Fn(&'a T) -> OutcomeKey<'a>,
+    row_of: impl Fn(&T) -> OutcomeRow,
+    views: &[ScannerView<'_>],
+    path: &Path<'_>,
+    c: &mut Collector,
+) {
+    let outcomes = path.field("outcomes");
+    if !within_limit(items.len(), MAX_OUTCOMES, &outcomes, c) {
+        return;
+    }
+    sorted_unique(items, &key, &outcomes, c);
+    for (i, item) in items.iter().enumerate() {
+        let scanner_id = key(item).0;
+        let scanner = views
+            .iter()
+            .find(|s| s.identity.scanner_id.as_str() == scanner_id);
+        check_outcome_row(scanner, row_of(item), &outcomes.index(i), c);
+        if c.is_full() {
+            return;
         }
-        (ActionOutcome::OutputVerified { .. }, Some(cap)) => {
-            cap == ActionCapability::SanitizedOutput
-        }
-        (_, None) => false,
-    };
-    if !action_ok {
-        c.push(ReasonCode::OutcomeContradiction, &path.field("action"));
     }
 }
 
@@ -718,26 +853,25 @@ impl RunArtifactBody {
         if self.protocol != ProtocolIdentity::CURRENT {
             c.push(ReasonCode::ProtocolBindingMismatch, &path.field("protocol"));
         }
-        let scanners = path.field("scanners");
-        if within_limit(self.scanners.len(), MAX_SCANNERS, &scanners, c) {
-            sorted_unique(
-                &self.scanners,
-                |s| s.identity.scanner_id.as_str(),
-                &scanners,
-                c,
-            );
-            for (i, s) in self.scanners.iter().enumerate() {
-                s.identity.validate(&scanners.index(i).field("identity"), c);
-                s.capabilities
-                    .validate(&scanners.index(i).field("capabilities"), c);
-            }
+        if !self.run_class.matches(self.population.visibility) {
+            c.push(ReasonCode::RunClassMismatch, &path.field("runClass"));
         }
+        let views: Vec<ScannerView<'_>> = self
+            .scanners
+            .iter()
+            .map(|s| ScannerView {
+                identity: &s.identity,
+                status: s.status,
+                capabilities: &s.capabilities,
+                replays: &s.replays,
+            })
+            .collect();
+        check_scanners(&views, path, c);
         check_artifact_shape(
             &Shape {
-                scanner_ids: self
-                    .scanners
+                scanners: views
                     .iter()
-                    .map(|s| &s.identity.scanner_id)
+                    .map(|v| (&v.identity.scanner_id, v.status))
                     .collect(),
                 methods: &self.method_coverage,
                 counts: &self.population_counts,
@@ -750,11 +884,7 @@ impl RunArtifactBody {
             path,
             c,
         );
-        let outcomes = path.field("outcomes");
-        if !within_limit(self.outcomes.len(), MAX_OUTCOMES, &outcomes, c) {
-            return;
-        }
-        sorted_unique(
+        check_outcomes(
             &self.outcomes,
             |o| {
                 (
@@ -764,39 +894,44 @@ impl RunArtifactBody {
                     o.occurrence_id.as_str(),
                 )
             },
-            &outcomes,
+            |o| OutcomeRow {
+                type_identity: o.type_identity,
+                sensitivity_context: o.sensitivity_context,
+                range: o.range,
+                action: o.action,
+            },
+            &views,
+            path,
             c,
         );
+        let outcomes = path.field("outcomes");
+        if self.outcomes.len() > MAX_OUTCOMES {
+            return;
+        }
         for (i, o) in self.outcomes.iter().enumerate() {
-            let scanner = self
-                .scanners
-                .iter()
-                .find(|s| s.identity.scanner_id == o.scanner_id);
             let p = outcomes.index(i);
-            check_outcome_row(
-                scanner.map(|s| s.status),
-                scanner.map(|s| s.capabilities.action),
-                (o.type_identity, o.sensitivity_context, o.range, o.action),
-                &p,
-                c,
-            );
-            if scanner.is_some_and(|s| s.status != ScannerStatus::Complete)
+            let incomplete = views
+                .iter()
+                .find(|s| s.identity.scanner_id == o.scanner_id)
+                .is_some_and(|s| s.status != ScannerStatus::Complete);
+            if incomplete
                 && (o.observed.finding_count != 0
                     || !o.observed.families.is_empty()
                     || !o.observed.jurisdictions.is_empty())
             {
                 c.push(ReasonCode::OutcomeContradiction, &p.field("observed"));
             }
+            let observed = p.field("observed");
             sorted_unique(
                 &o.observed.families,
                 |f| f.as_str(),
-                &p.field("observed").field("families"),
+                &observed.field("families"),
                 c,
             );
             sorted_unique(
                 &o.observed.jurisdictions,
                 |j| j.as_str(),
-                &p.field("observed").field("jurisdictions"),
+                &observed.field("jurisdictions"),
                 c,
             );
             if c.is_full() {
@@ -811,26 +946,22 @@ impl PublicSyntheticArtifactBody {
         if self.protocol != ProtocolIdentity::CURRENT {
             c.push(ReasonCode::ProtocolBindingMismatch, &path.field("protocol"));
         }
-        let scanners = path.field("scanners");
-        if within_limit(self.scanners.len(), MAX_SCANNERS, &scanners, c) {
-            sorted_unique(
-                &self.scanners,
-                |s| s.identity.scanner_id.as_str(),
-                &scanners,
-                c,
-            );
-            for (i, s) in self.scanners.iter().enumerate() {
-                s.identity.validate(&scanners.index(i).field("identity"), c);
-                s.capabilities
-                    .validate(&scanners.index(i).field("capabilities"), c);
-            }
-        }
+        let views: Vec<ScannerView<'_>> = self
+            .scanners
+            .iter()
+            .map(|s| ScannerView {
+                identity: &s.identity,
+                status: s.status,
+                capabilities: &s.capabilities,
+                replays: &s.replays,
+            })
+            .collect();
+        check_scanners(&views, path, c);
         check_artifact_shape(
             &Shape {
-                scanner_ids: self
-                    .scanners
+                scanners: views
                     .iter()
-                    .map(|s| &s.identity.scanner_id)
+                    .map(|v| (&v.identity.scanner_id, v.status))
                     .collect(),
                 methods: &self.method_coverage,
                 counts: &self.population_counts,
@@ -843,11 +974,7 @@ impl PublicSyntheticArtifactBody {
             path,
             c,
         );
-        let outcomes = path.field("outcomes");
-        if !within_limit(self.outcomes.len(), MAX_OUTCOMES, &outcomes, c) {
-            return;
-        }
-        sorted_unique(
+        check_outcomes(
             &self.outcomes,
             |o| {
                 (
@@ -857,24 +984,38 @@ impl PublicSyntheticArtifactBody {
                     o.occurrence_id.as_str(),
                 )
             },
-            &outcomes,
+            |o| OutcomeRow {
+                type_identity: o.type_identity,
+                sensitivity_context: o.sensitivity_context,
+                range: o.range,
+                action: o.action,
+            },
+            &views,
+            path,
             c,
         );
-        for (i, o) in self.outcomes.iter().enumerate() {
-            let scanner = self
-                .scanners
-                .iter()
-                .find(|s| s.identity.scanner_id == o.scanner_id);
-            check_outcome_row(
-                scanner.map(|s| s.status),
-                scanner.map(|s| s.capabilities.action),
-                (o.type_identity, o.sensitivity_context, o.range, o.action),
-                &outcomes.index(i),
-                c,
+    }
+}
+
+impl RunDiagnostics {
+    pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {
+        let phases = path.field("phases");
+        if self.started_at.unix_millis() > self.finished_at.unix_millis() {
+            c.push(ReasonCode::DiagnosticsInvalid, path);
+        }
+        if self.phases.len() > Phase::ALL.len() {
+            c.push_with(
+                ReasonCode::LimitExceeded,
+                &phases,
+                Meta::limit(Phase::ALL.len() as u64, self.phases.len() as u64),
             );
-            if c.is_full() {
-                return;
-            }
+            return;
+        }
+        // Ascending by wire string and unique, like every other set.
+        let mut ordering = Collector::new();
+        sorted_unique(&self.phases, |p| p.phase.as_str(), &phases, &mut ordering);
+        if !ordering.is_clean() {
+            c.push(ReasonCode::DiagnosticsInvalid, &phases);
         }
     }
 }

@@ -7,7 +7,7 @@
 //! (minor) change, lowering one is breaking (see ADR 0002).
 
 /// Largest accepted serialized document, in bytes.
-pub const MAX_DOCUMENT_BYTES: usize = 128 * 1024 * 1024;
+pub const MAX_DOCUMENT_BYTES: usize = 32 * 1024 * 1024;
 /// Deepest accepted JSON nesting. Contract documents nest less than 16 levels.
 pub const MAX_NESTING_DEPTH: usize = 32;
 /// Largest integer magnitude any contract number may carry (2^53 - 1), the

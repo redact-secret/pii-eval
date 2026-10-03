@@ -10,8 +10,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::axes::kebab_enum;
 use crate::check::{non_empty, sorted_unique, within_limit};
+use crate::corpus::{GenerationRules, Visibility};
 use crate::document::{impl_document, schema_tag};
-use crate::ident::{Id, JurisdictionCode, LanguageTag, Seed, Sha256Digest};
+use crate::ident::{Id, JurisdictionCode, LanguageTag, Sha256Digest};
 use crate::limits::{MAX_SCANNERS, execution};
 use crate::protocol::{Mechanics, MethodRef, MetricRef, ProtocolIdentity};
 use crate::reason::{Collector, Path, ReasonCode};
@@ -25,6 +26,17 @@ kebab_enum!(
     RunClass { PublicSynthetic, Protected }
 );
 
+impl RunClass {
+    /// Whether this run class is the one for a population of `visibility`.
+    pub fn matches(self, visibility: Visibility) -> bool {
+        matches!(
+            (self, visibility),
+            (RunClass::PublicSynthetic, Visibility::PublicSynthetic)
+                | (RunClass::Protected, Visibility::Protected)
+        )
+    }
+}
+
 schema_tag!(
     /// `schema` value of a run manifest.
     RunManifestSchema, "pii-eval.run-manifest"
@@ -36,6 +48,9 @@ schema_tag!(
 pub struct PopulationBinding {
     /// Population identifier.
     pub population_id: Id,
+    /// Visibility of the population, copied from the snapshot. A run class
+    /// must agree with it.
+    pub visibility: Visibility,
     /// Population revision.
     pub population_version: u32,
     /// Semantic digest of the corpus snapshot.
@@ -124,8 +139,8 @@ pub struct RunManifestBody {
     pub metrics: Vec<MetricRef>,
     /// Neutral accounting mechanics (part of protocol and configuration identity).
     pub mechanics: Mechanics,
-    /// Seed-derivation rule for derived variants.
-    pub seed_derivation: Seed,
+    /// Generator and seed-derivation rule; must equal the snapshot's.
+    pub generation: GenerationRules,
     /// Execution limits.
     pub limits: ExecutionLimits,
     /// Scanners, ascending by scanner id.
@@ -169,6 +184,9 @@ impl RunManifestBody {
         if self.protocol != ProtocolIdentity::CURRENT {
             c.push(ReasonCode::ProtocolBindingMismatch, &path.field("protocol"));
         }
+        if !self.run_class.matches(self.population.visibility) {
+            c.push(ReasonCode::RunClassMismatch, &path.field("runClass"));
+        }
         self.mechanics.validate(&path.field("mechanics"), c);
         self.limits.validate(&path.field("limits"), c);
 
@@ -197,6 +215,15 @@ impl RunManifestBody {
         for (i, m) in self.metrics.iter().enumerate() {
             if m.version != m.id.definition().version {
                 c.push(ReasonCode::ProtocolBindingMismatch, &metrics.index(i));
+            }
+        }
+
+        // A metric restricted to a method is meaningless without that method.
+        for (i, m) in self.metrics.iter().enumerate() {
+            if let Some(required) = m.id.definition().restricted_to_method {
+                if !self.methods.iter().any(|r| r.id == required) {
+                    c.push(ReasonCode::ProtocolBindingMismatch, &metrics.index(i));
+                }
             }
         }
 

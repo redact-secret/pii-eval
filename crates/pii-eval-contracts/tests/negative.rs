@@ -279,6 +279,66 @@ fn probes() -> Vec<Probe> {
         replace_once(&art, "\"affectedInputs\": 6", "\"affectedInputs\": 7"),
     );
 
+    // Internally tagged enums must reject extra keys (serde ignores them on unit variants).
+    let first_replace = |text: &str, from: &str, to: &str| {
+        assert!(text.contains(from), "mutation anchor must exist");
+        text.replacen(from, to, 1)
+    };
+    let digest64 = "a".repeat(64);
+    raw(
+        k_man,
+        "released-product-with-candidate-digest",
+        ReasonCode::SchemaViolation,
+        replace_once(
+            &man,
+            "\"kind\": \"released\"",
+            &format!("\"kind\": \"released\",\n          \"candidateDigest\": \"{digest64}\""),
+        ),
+    );
+    raw(
+        k_man,
+        "candidate-product-with-unknown-key",
+        ReasonCode::SchemaViolation,
+        replace_once(
+            &man,
+            "\"kind\": \"candidate\"",
+            "\"kind\": \"candidate\",\n          \"junk\": 1",
+        ),
+    );
+    raw(
+        k_art,
+        "not-measured-action-with-unknown-key",
+        ReasonCode::SchemaViolation,
+        first_replace(
+            &art,
+            "\"state\": \"not-measured\"",
+            "\"state\": \"not-measured\",\n        \"junk\": 1",
+        ),
+    );
+    raw(
+        k_art,
+        "no-action-reported-with-unknown-key",
+        ReasonCode::SchemaViolation,
+        first_replace(
+            &art,
+            "\"state\": \"no-action-reported\"",
+            "\"state\": \"no-action-reported\",\n        \"junk\": 1",
+        ),
+    );
+    // A hostile key spelled like an internal sentinel must not choose the reason code.
+    raw(
+        k_snap,
+        "unknown-key-spelled-like-a-sentinel",
+        ReasonCode::SchemaViolation,
+        replace_once(
+            &snap,
+            version_line,
+            &format!(
+                "{version_line}\n  \"pii-eval:null\": 1,\n  \"pii-eval:invalid-identifier\": 1,"
+            ),
+        ),
+    );
+
     // ---- Typed mutations of the corpus snapshot (re-sealed). ----
     let mut snap_probe = |label: &str, code, change: &dyn Fn(&mut CorpusSnapshotBody)| {
         let doc = typed(&f.snapshot, |d| change(&mut d.semantic));
@@ -364,6 +424,16 @@ fn probes() -> Vec<Probe> {
     snap_probe("no-cases", ReasonCode::EmptyCollection, &|b| {
         b.cases.clear()
     });
+    snap_probe(
+        "variant-expectations-disagree-on-context-class",
+        ReasonCode::ContextClassConflict,
+        &|b| {
+            let mut second = b.cases[2].variants[0].expectations[0].clone();
+            second.occurrence_id = id("occurrence-2");
+            second.context_class = ContextClass::Neutral;
+            b.cases[2].variants[0].expectations.push(second);
+        },
+    );
 
     // ---- Typed mutations of the manifest. ----
     let mut man_probe = |label: &str, code, change: &dyn Fn(&mut RunManifestBody)| {
@@ -418,6 +488,27 @@ fn probes() -> Vec<Probe> {
     man_probe("no-scanners", ReasonCode::EmptyCollection, &|b| {
         b.scanners.clear()
     });
+    man_probe(
+        "population-visibility-contradicts-run-class",
+        ReasonCode::RunClassMismatch,
+        &|b| b.population.visibility = Visibility::Protected,
+    );
+    man_probe(
+        "context-metric-without-its-method",
+        ReasonCode::ProtocolBindingMismatch,
+        &|b| {
+            b.methods
+                .retain(|m| m.id != MethodId::ContextDiscrimination)
+        },
+    );
+    man_probe(
+        "collision-metric-without-its-method",
+        ReasonCode::ProtocolBindingMismatch,
+        &|b| {
+            b.methods
+                .retain(|m| m.id != MethodId::JurisdictionCollision)
+        },
+    );
 
     // ---- Typed mutations of observation sets. ----
     let mut obs_probe = |label: &str, code, change: &dyn Fn(&mut ObservationSetBody)| {
@@ -474,6 +565,18 @@ fn probes() -> Vec<Probe> {
         "protocol-revision-2",
         ReasonCode::ProtocolBindingMismatch,
         &|b| b.protocol.version = 2,
+    );
+
+    // Findings sort by the wire string of the action: other < preserve < redact.
+    obs_probe(
+        "findings-sorted-by-enum-order-not-wire-order",
+        ReasonCode::NonCanonicalOrder,
+        &|b| {
+            let redact = b.inputs[0].findings[0].clone();
+            let mut preserve = redact.clone();
+            preserve.action = Some(ActionKind::Preserve);
+            b.inputs[0].findings = vec![redact, preserve];
+        },
     );
 
     // ---- Typed mutations of the internal artifact. ----
@@ -596,6 +699,92 @@ fn probes() -> Vec<Probe> {
         let dup = b.outcomes[0].clone();
         b.outcomes[1] = dup;
     });
+    // Capability-aware outcome rules: an unsupported capability is never measured.
+    art_probe(
+        "sensitivity-measured-though-unsupported",
+        ReasonCode::OutcomeContradiction,
+        &|b| b.scanners[0].capabilities.sensitivity_classification = CapabilityState::Unsupported,
+    );
+    art_probe(
+        "type-measured-though-family-unsupported",
+        ReasonCode::OutcomeContradiction,
+        &|b| b.scanners[0].capabilities.family_classification = CapabilityState::Unsupported,
+    );
+    art_probe(
+        "complete-scanner-without-range-support",
+        ReasonCode::StatusInconsistent,
+        &|b| b.scanners[0].capabilities.ranges = CapabilityState::Unsupported,
+    );
+    art_probe(
+        "complete-scanner-with-disagreeing-replays",
+        ReasonCode::StatusInconsistent,
+        &|b| b.scanners[0].replays.agreed = false,
+    );
+    // Failures must agree with scanner status.
+    art_probe(
+        "complete-scanner-with-timeout-failure",
+        ReasonCode::StatusInconsistent,
+        &|b| {
+            b.failures.insert(
+                0,
+                MeasurementFailure {
+                    scanner_id: sid("alpha-scan"),
+                    code: FailureCode::Timeout,
+                    affected_inputs: 1,
+                },
+            )
+        },
+    );
+    art_probe(
+        "unsupported-scanner-without-failure",
+        ReasonCode::StatusInconsistent,
+        &|b| b.failures.clear(),
+    );
+    art_probe(
+        "error-scanner-with-unsupported-failure-code",
+        ReasonCode::StatusInconsistent,
+        &|b| b.scanners[1].status = ScannerStatus::Error,
+    );
+    art_probe(
+        "population-visibility-contradicts-run-class",
+        ReasonCode::RunClassMismatch,
+        &|b| b.population.visibility = Visibility::Protected,
+    );
+    // Diagnostics: bounded, ordered, and not time-travelling.
+    let mut diag_probe = |label: &str, code, change: &dyn Fn(&mut RunDiagnostics)| {
+        let doc = typed(&f.artifact, |d| {
+            change(d.diagnostics.as_mut().expect("fixture has diagnostics"))
+        });
+        out.push(doc_probe(
+            k_art,
+            label,
+            code,
+            serialize_internal(&doc).unwrap().into_bytes(),
+        ));
+    };
+    diag_probe("phases-unsorted", ReasonCode::DiagnosticsInvalid, &|d| {
+        d.phases.reverse()
+    });
+    diag_probe("phase-repeated", ReasonCode::DiagnosticsInvalid, &|d| {
+        let dup = d.phases[0];
+        d.phases.insert(1, dup);
+    });
+    diag_probe("too-many-phases", ReasonCode::LimitExceeded, &|d| {
+        d.phases = vec![d.phases[0]; 7]
+    });
+    diag_probe(
+        "finished-before-started",
+        ReasonCode::DiagnosticsInvalid,
+        &|d| std::mem::swap(&mut d.started_at, &mut d.finished_at),
+    );
+    diag_probe(
+        "finished-before-started-by-a-fraction",
+        ReasonCode::DiagnosticsInvalid,
+        &|d| {
+            d.started_at = TimestampUtc::new("2026-10-02T09:00:00.500Z").unwrap();
+            d.finished_at = TimestampUtc::new("2026-10-02T09:00:00Z").unwrap();
+        },
+    );
 
     // ---- Cross-document bindings (in code, no committed file). ----
     let mut bind = |name: &str, code: ReasonCode, outcome: Result<(), Violations>| {
@@ -819,7 +1008,71 @@ fn probes() -> Vec<Probe> {
         validate_artifact_against_snapshot(&wrong_counts, &f.snapshot),
     );
 
+    let other_generator = typed(&f.manifest, |d| d.semantic.generation.generator_version = 2);
+    bind(
+        "plan-generator-version-differs-from-snapshot",
+        ReasonCode::GenerationBindingMismatch,
+        validate_manifest_against_snapshot(&other_generator, &f.snapshot),
+    );
+    let other_seed_rule = typed(&f.manifest, |d| {
+        d.semantic.generation.seed_derivation = Seed::new("seed-v2").unwrap()
+    });
+    bind(
+        "plan-seed-derivation-differs-from-snapshot",
+        ReasonCode::GenerationBindingMismatch,
+        validate_manifest_against_snapshot(&other_seed_rule, &f.snapshot),
+    );
+    let wrong_visibility = typed(&f.manifest, |d| {
+        d.semantic.population.visibility = Visibility::Protected;
+        d.semantic.run_class = RunClass::Protected;
+    });
+    bind(
+        "plan-binds-protected-visibility-for-a-public-snapshot",
+        ReasonCode::RunClassMismatch,
+        validate_manifest_against_snapshot(&wrong_visibility, &f.snapshot),
+    );
+    bind(
+        "plan-population-visibility-differs-from-snapshot",
+        ReasonCode::PopulationBindingMismatch,
+        validate_manifest_against_snapshot(&wrong_visibility, &f.snapshot),
+    );
+    let family_unsupported_for_row = typed(&f.snapshot, |d| {
+        d.semantic.cases[2].variants[0].expectations[0].family = fam("pii:global:phone")
+    });
+    let mut unsupported_family = f.artifact.clone();
+    unsupported_family.semantic.scanners[0]
+        .capabilities
+        .families
+        .push(FamilyCapability {
+            family: fam("pii:global:phone"),
+            state: CapabilityState::Unsupported,
+        });
+    unsupported_family.semantic.scanners[0]
+        .capabilities
+        .families
+        .sort_by(|a, b| a.family.cmp(&b.family));
+    bind(
+        "expected-family-unsupported-but-type-axis-measured",
+        ReasonCode::OutcomeContradiction,
+        validate_artifact_against_snapshot(&unsupported_family, &family_unsupported_for_row),
+    );
+
     // ---- Publication boundary. ----
+    let mut tampered = f.artifact.clone();
+    tampered.semantic.failures[0].affected_inputs = 99;
+    bind(
+        "tampered-artifact-is-not-projected",
+        ReasonCode::SemanticDigestMismatch,
+        tampered.to_public_synthetic().map(|_| ()),
+    );
+    let mut inconsistent = f.artifact.clone();
+    inconsistent.semantic.population.visibility = Visibility::Protected;
+    seal(&mut inconsistent).unwrap();
+    bind(
+        "public-run-class-over-protected-population-is-not-projected",
+        ReasonCode::RunClassMismatch,
+        inconsistent.to_public_synthetic().map(|_| ()),
+    );
     bind(
         "protected-run-cannot-be-projected",
         ReasonCode::PublicProjectionForbidden,

@@ -6,6 +6,11 @@
       "name": "pii-eval",
       "version": "0.0.0"
     },
+    "generation": {
+      "generator": "synthetic-generator",
+      "generatorVersion": 1,
+      "seedDerivation": "seed-v1"
+    },
     "limits": {
       "batchVariants": 128,
       "maxMemoryBytes": 1073741824,
@@ -33,6 +38,10 @@
       },
       {
         "id": "jurisdiction-collision",
+        "version": 3
+      },
+      {
+        "id": "pii-benign",
         "version": 3
       },
       {
@@ -83,9 +92,10 @@
       }
     ],
     "population": {
-      "populationDigest": "c95f8a7a22761ba7b3d21dc9b8351294faea52b141b5bc50c6e1cf1a0f0ceabb",
+      "populationDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae",
       "populationId": "synthetic-demo-population",
-      "populationVersion": 1
+      "populationVersion": 1,
+      "visibility": "public-synthetic"
     },
     "protocol": {
       "accounting": "pii-v1",
@@ -177,8 +187,7 @@
         "en",
         "ko"
       ]
-    },
-    "seedDerivation": "seed-v1"
+    }
   },
-  "semanticDigest": "304e703150342d667b04434e9afab29f664048ae5f9cefd1972b1d3a3dfde025"
+  "semanticDigest": "7ece0922c89f578902bf8d2f6e0db9a887c5e383d3fb4275d08c208d436bcfab"
 }

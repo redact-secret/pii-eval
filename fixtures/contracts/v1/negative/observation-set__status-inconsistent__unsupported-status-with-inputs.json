@@ -115,7 +115,7 @@
         "variantId": "type-card-demo-mutated"
       }
     ],
-    "populationDigest": "c95f8a7a22761ba7b3d21dc9b8351294faea52b141b5bc50c6e1cf1a0f0ceabb",
+    "populationDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae",
     "protocol": {
       "accounting": "pii-v1",
       "id": "pii-v1",
@@ -142,5 +142,5 @@
     },
     "status": "unsupported"
   },
-  "semanticDigest": "96a705dd8dd2a558d60702cd3003d53c9c675b77fffe05852bed452996c81d6b"
+  "semanticDigest": "f8f40be8976e2ebf602a265a3574d39d316b5a003d84efe3b90365fe30aabfaa"
 }

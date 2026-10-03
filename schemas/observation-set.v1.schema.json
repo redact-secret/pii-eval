@@ -352,11 +352,11 @@
       ]
     },
     "ProductIdentity": {
-      "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.",
+      "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.\n\nDeserialization and the JSON Schema go through [`ProductIdentityWire`]:\nserde ignores extra keys on an internally tagged unit variant, so the wire\nform uses an empty struct variant that `deny_unknown_fields` closes.",
       "oneOf": [
         {
           "additionalProperties": false,
-          "description": "A released build; the scanner version must be stated.",
+          "description": "A released build.",
           "properties": {
             "kind": {
               "const": "released",
@@ -370,7 +370,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "A candidate build, identified by the digest of its artifact.",
+          "description": "A candidate build.",
           "properties": {
             "candidateDigest": {
               "$ref": "#/$defs/Sha256Digest",

@@ -29,11 +29,11 @@
       "type": "string"
     },
     "ActionOutcome": {
-      "description": "What was observed about action. Never inferred from a finding flag: removal\nis asserted only by `output-verified`, which requires sanitized output.",
+      "description": "What was observed about action. Never inferred from a finding flag: removal\nis asserted only by `output-verified`, which requires sanitized output.\n\nDeserialization and the JSON Schema go through [`ActionOutcomeWire`], whose\nvariants are closed structs: serde would otherwise ignore extra keys on the\nunit variants of an internally tagged enum.",
       "oneOf": [
         {
           "additionalProperties": false,
-          "description": "The scanner cannot report action (or the scanner did not run): explicit, not success.",
+          "description": "See [`ActionOutcome::NotMeasured`].",
           "properties": {
             "state": {
               "const": "not-measured",
@@ -47,7 +47,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "The scanner can report action and reported none for this occurrence.",
+          "description": "See [`ActionOutcome::NoActionReported`].",
           "properties": {
             "state": {
               "const": "no-action-reported",
@@ -61,7 +61,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "The scanner reported this action; whether text actually changed is unknown.",
+          "description": "See [`ActionOutcome::Reported`].",
           "properties": {
             "action": {
               "$ref": "#/$defs/ActionKind",
@@ -80,7 +80,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "Sanitized output was available and verified.",
+          "description": "See [`ActionOutcome::OutputVerified`].",
           "properties": {
             "state": {
               "const": "output-verified",
@@ -739,10 +739,15 @@
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "description": "Visibility of the population, copied from the snapshot. A run class\nmust agree with it."
         }
       },
       "required": [
         "populationId",
+        "visibility",
         "populationVersion",
         "populationDigest"
       ],
@@ -779,11 +784,11 @@
       "type": "object"
     },
     "ProductIdentity": {
-      "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.",
+      "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.\n\nDeserialization and the JSON Schema go through [`ProductIdentityWire`]:\nserde ignores extra keys on an internally tagged unit variant, so the wire\nform uses an empty struct variant that `deny_unknown_fields` closes.",
       "oneOf": [
         {
           "additionalProperties": false,
-          "description": "A released build; the scanner version must be stated.",
+          "description": "A released build.",
           "properties": {
             "kind": {
               "const": "released",
@@ -797,7 +802,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "A candidate build, identified by the digest of its artifact.",
+          "description": "A candidate build.",
           "properties": {
             "candidateDigest": {
               "$ref": "#/$defs/Sha256Digest",
@@ -1216,6 +1221,14 @@
       "maxLength": 64,
       "minLength": 5,
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][A-Za-z0-9.-]+)?$",
+      "type": "string"
+    },
+    "Visibility": {
+      "description": "Who may see the population. Independent of product identity: a\n`public-synthetic` population can be run against a candidate.",
+      "enum": [
+        "public-synthetic",
+        "protected"
+      ],
       "type": "string"
     },
     "WithheldReason": {

@@ -139,7 +139,7 @@ pub struct Expectation {
 }
 
 /// One concrete input text with its expectations.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Variant {
     /// Identifier unique across the whole snapshot.
@@ -152,6 +152,22 @@ pub struct Variant {
     pub text_digest: Sha256Digest,
     /// Expected occurrences, ascending by occurrence id.
     pub expectations: Vec<Expectation>,
+}
+
+impl std::fmt::Debug for Variant {
+    /// Never prints the input text: only its length and digest.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Variant")
+            .field("variant_id", &self.variant_id)
+            .field("derivation", &self.derivation)
+            .field(
+                "text",
+                &format_args!("<redacted {} bytes>", self.text.len()),
+            )
+            .field("text_digest", &self.text_digest)
+            .field("expectations", &self.expectations)
+            .finish()
+    }
 }
 
 /// Declaration for a jurisdiction-collision case.
@@ -282,6 +298,15 @@ impl Variant {
         }
         let expectations = path.field("expectations");
         non_empty(&self.expectations, &expectations, c);
+        if let Some(first) = self.expectations.first() {
+            if self
+                .expectations
+                .iter()
+                .any(|e| e.context_class != first.context_class)
+            {
+                c.push(ReasonCode::ContextClassConflict, &expectations);
+            }
+        }
         if within_limit(
             self.expectations.len(),
             MAX_EXPECTATIONS_PER_VARIANT,

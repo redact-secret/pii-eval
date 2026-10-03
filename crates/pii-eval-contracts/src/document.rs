@@ -14,7 +14,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::canonical::{
-    ParseLimits, canonical_bytes_of, classify_parse_error, parse_strict, semantic_digest,
+    ParseLimits, canonical_bytes_of, classify_typed_error, parse_strict, semantic_digest,
 };
 use crate::ident::Sha256Digest;
 use crate::reason::{Collector, ContractError, Path, ReasonCode, Violations};
@@ -42,11 +42,16 @@ pub trait Document: Serialize + DeserializeOwned + Sized {
 
     /// Structural validation of the body. Called with the path of the body.
     fn validate_body(&self, path: &Path<'_>, c: &mut Collector);
+
+    /// Validation of the non-semantic diagnostics, when the kind has any.
+    fn validate_diagnostics(&self, _path: &Path<'_>, _c: &mut Collector) {}
 }
 
-/// Digest domain for a document kind and schema major version.
+/// Digest domain for a document kind and the full schema version
+/// (`<schemaId>/<major>.<minor>`). A document is sealed under the version it
+/// declares, so re-declaring a version requires re-sealing.
 pub fn digest_domain(kind: DocumentKind, version: SchemaVersion) -> String {
-    format!("{}/{}", kind.schema_id(), version.major)
+    format!("{}/{}", kind.schema_id(), version)
 }
 
 /// Recompute the semantic digest of a document body.
@@ -72,6 +77,7 @@ pub fn validate<D: Document>(doc: &D) -> Result<(), Violations> {
         c.push(code, &Path::ROOT.field("schemaVersion"));
     }
     doc.validate_body(&Path::ROOT.field("semantic"), &mut c);
+    doc.validate_diagnostics(&Path::ROOT.field("diagnostics"), &mut c);
     match compute_digest(doc) {
         Ok(d) if d == *doc.claimed_digest() => {}
         _ => c.push(
@@ -85,9 +91,14 @@ pub fn validate<D: Document>(doc: &D) -> Result<(), Violations> {
 /// Parse and validate a document from bytes: strict parse, envelope check,
 /// typed parse, structural validation and digest verification.
 pub fn parse<D: Document>(bytes: &[u8], limits: &ParseLimits) -> Result<D, Violations> {
-    let value = parse_strict(bytes, limits)?;
-    check_envelope(&value, D::KIND)?;
-    let doc: D = serde_json::from_slice(bytes).map_err(|e| classify_parse_error(&e))?;
+    {
+        // The strict value tree is dropped before the typed parse allocates,
+        // so the peak is the larger of the two, not their sum.
+        let value = parse_strict(bytes, limits)?;
+        check_envelope(&value, D::KIND)?;
+    }
+    crate::ident::reset_identifier_failure();
+    let doc: D = serde_json::from_slice(bytes).map_err(|e| classify_typed_error(&e))?;
     validate(&doc)?;
     Ok(doc)
 }
@@ -125,7 +136,23 @@ pub(crate) use schema_tag;
 /// Implements [`Document`] for a struct with `schema_version`, `semantic_digest`
 /// and `semantic` fields.
 macro_rules! impl_document {
+    ($doc:ident, $body:ident, $kind:expr, diagnostics) => {
+        impl_document!(@impl $doc, $body, $kind, {
+            fn validate_diagnostics(
+                &self,
+                path: &$crate::reason::Path<'_>,
+                c: &mut $crate::reason::Collector,
+            ) {
+                if let Some(d) = &self.diagnostics {
+                    d.validate(path, c);
+                }
+            }
+        });
+    };
     ($doc:ident, $body:ident, $kind:expr) => {
+        impl_document!(@impl $doc, $body, $kind, {});
+    };
+    (@impl $doc:ident, $body:ident, $kind:expr, { $($extra:tt)* }) => {
         impl $crate::document::Document for $doc {
             type Body = $body;
             const KIND: $crate::version::DocumentKind = $kind;
@@ -148,6 +175,7 @@ macro_rules! impl_document {
             ) {
                 self.semantic.validate(path, c);
             }
+            $($extra)*
         }
     };
 }

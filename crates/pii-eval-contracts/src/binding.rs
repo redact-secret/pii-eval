@@ -12,21 +12,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::artifact::RunArtifact;
-use crate::axes::validate_outcome_lattice;
-use crate::corpus::{Case, CorpusSnapshot, Variant, Visibility};
+use crate::axes::{AuthoredAxes, OutcomeRow, validate_outcome_lattice};
+use crate::corpus::{Case, CorpusSnapshot, Variant};
 use crate::ident::Id;
-use crate::manifest::{RunClass, RunManifest};
+use crate::manifest::RunManifest;
 use crate::observation::ObservationSet;
 use crate::reason::{Collector, Meta, Path, ReasonCode, Violations};
 use crate::scanner::ScannerStatus;
-
-fn class_matches(run: RunClass, visibility: Visibility) -> bool {
-    matches!(
-        (run, visibility),
-        (RunClass::PublicSynthetic, Visibility::PublicSynthetic)
-            | (RunClass::Protected, Visibility::Protected)
-    )
-}
 
 fn index_variants(snapshot: &CorpusSnapshot) -> BTreeMap<&Id, (&Case, &Variant)> {
     snapshot
@@ -52,11 +44,18 @@ pub fn validate_manifest_against_snapshot(
     let body = Path::ROOT.field("semantic");
     let m = &manifest.semantic;
     let s = &snapshot.semantic;
-    if !class_matches(m.run_class, s.population.visibility) {
+    if !m.run_class.matches(s.population.visibility) {
         c.push(ReasonCode::RunClassMismatch, &body.field("runClass"));
+    }
+    if m.generation != s.generation {
+        c.push(
+            ReasonCode::GenerationBindingMismatch,
+            &body.field("generation"),
+        );
     }
     let binding = &m.population;
     if binding.population_id != s.population.population_id
+        || binding.visibility != s.population.visibility
         || binding.population_version != s.population.population_version
         || binding.population_digest != snapshot.semantic_digest
     {
@@ -260,6 +259,7 @@ pub fn validate_artifact_against_snapshot(
     let s = &snapshot.semantic;
     if a.population.population_digest != snapshot.semantic_digest
         || a.population.population_id != s.population.population_id
+        || a.population.visibility != s.population.visibility
         || a.population.population_version != s.population.population_version
     {
         c.push(
@@ -267,7 +267,7 @@ pub fn validate_artifact_against_snapshot(
             &body.field("population"),
         );
     }
-    if !class_matches(a.run_class, s.population.visibility) {
+    if !a.run_class.matches(s.population.visibility) {
         c.push(ReasonCode::RunClassMismatch, &body.field("runClass"));
     }
     let counts = &a.population_counts;
@@ -317,16 +317,19 @@ pub fn validate_artifact_against_snapshot(
             c.push(ReasonCode::UnknownScanner, &p.field("scannerId"));
             continue;
         };
-        if validate_outcome_lattice(
-            expectation.type_expectation,
-            expectation.sensitivity,
-            scanner.status,
-            o.type_identity,
-            o.sensitivity_context,
-            o.range,
-            o.action,
-        )
-        .is_err()
+        let authored = AuthoredAxes {
+            expected_type: expectation.type_expectation,
+            sensitivity: expectation.sensitivity,
+            family: &expectation.family,
+            jurisdiction: case.jurisdiction.as_ref(),
+        };
+        let row = OutcomeRow {
+            type_identity: o.type_identity,
+            sensitivity_context: o.sensitivity_context,
+            range: o.range,
+            action: o.action,
+        };
+        if validate_outcome_lattice(&authored, scanner.status, &scanner.capabilities, &row).is_err()
         {
             c.push(ReasonCode::OutcomeContradiction, &p);
         }

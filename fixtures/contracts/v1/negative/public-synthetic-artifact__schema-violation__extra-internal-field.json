@@ -15,7 +15,7 @@
         "scannerId": "beta-scan"
       }
     ],
-    "manifestDigest": "9bf14bf232bafe39f8a176da88ad70e71535bed5f8a7fd7d244f83810bc64fb6",
+    "manifestDigest": "acbe57ceb46a5a3b659f9cd2bafb391888bc8980118d6d76fe26f2da132509e4",
     "mechanics": {
       "intervalPrecision": 6,
       "intervalZ": {
@@ -483,9 +483,10 @@
       }
     ],
     "population": {
-      "populationDigest": "c95f8a7a22761ba7b3d21dc9b8351294faea52b141b5bc50c6e1cf1a0f0ceabb",
+      "populationDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae",
       "populationId": "synthetic-demo-population",
-      "populationVersion": 1
+      "populationVersion": 1,
+      "visibility": "public-synthetic"
     },
     "populationCounts": {
       "authoredCases": 3,
@@ -575,7 +576,7 @@
         "status": "unsupported"
       }
     ],
-    "sourceArtifactDigest": "29d3668685ef29cd9832f24d4d6917cc66a185da28f76932c369a2af0050fc74"
+    "sourceArtifactDigest": "e706ce24a4bfefb6d87105ade3039d812cf9de83117b331b452aff183e27dfa4"
   },
-  "semanticDigest": "bf2ef7f85d45d67f4595a33c92cf8c87ca6dcffb145e851060bdeec44677f296"
+  "semanticDigest": "fcaf53d85aa00065ade59f9deb2c7aa2fdddd9b4b11685f7e749e0e00dac679e"
 }

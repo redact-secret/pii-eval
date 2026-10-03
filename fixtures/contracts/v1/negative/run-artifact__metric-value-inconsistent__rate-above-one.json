@@ -29,7 +29,7 @@
         "scannerId": "beta-scan"
       }
     ],
-    "manifestDigest": "9bf14bf232bafe39f8a176da88ad70e71535bed5f8a7fd7d244f83810bc64fb6",
+    "manifestDigest": "acbe57ceb46a5a3b659f9cd2bafb391888bc8980118d6d76fe26f2da132509e4",
     "mechanics": {
       "intervalPrecision": 6,
       "intervalZ": {
@@ -567,9 +567,10 @@
       }
     ],
     "population": {
-      "populationDigest": "c95f8a7a22761ba7b3d21dc9b8351294faea52b141b5bc50c6e1cf1a0f0ceabb",
+      "populationDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae",
       "populationId": "synthetic-demo-population",
-      "populationVersion": 1
+      "populationVersion": 1,
+      "visibility": "public-synthetic"
     },
     "populationCounts": {
       "authoredCases": 3,
@@ -621,7 +622,7 @@
           "scannerId": "alpha-scan",
           "scannerVersion": "1.0.0"
         },
-        "observationDigest": "20201bfb344842e793e9eb5d09c04da00b5108525d33db139e0c3d168c148404",
+        "observationDigest": "19bd6ad72d60531b7326d75f769bac321c02a0eedcf2be1e0d475f8f4ef9746c",
         "replays": {
           "agreed": true,
           "count": 2
@@ -653,7 +654,7 @@
           },
           "scannerId": "beta-scan"
         },
-        "observationDigest": "af174d667dfe610ee1574c86be3e92bcd43ab03feb4da183dd5945bac9067502",
+        "observationDigest": "345f32c649053b8e7dc7ae4d599581d676a34c31b6a81375981a8e1894c7aa83",
         "replays": {
           "agreed": true,
           "count": 2
@@ -662,5 +663,5 @@
       }
     ]
   },
-  "semanticDigest": "d923aa3ea41c1c871c59aaf6fff0fc6d492195ccf0b4f538d1b62692f0af3a2d"
+  "semanticDigest": "6a06d7af512f97c3c808480a86d3e86f22a0a4f04f2a65d6e8ebeda4bd70fa05"
 }

@@ -40,9 +40,28 @@ pub struct ReplayRecord {
     pub agreed: bool,
 }
 
+/// Status, replays and capabilities must agree: a complete scanner needs
+/// agreeing replays and range support; an unstable one has disagreeing replays;
+/// replay count is 1 to 1024. Shared by observation sets and artifact scanner
+/// records so the same rules hold wherever a scanner state is recorded.
+pub(crate) fn scanner_state_consistent(
+    status: ScannerStatus,
+    replays: &ReplayRecord,
+    capabilities: &ScannerCapabilities,
+) -> bool {
+    (1..=1024).contains(&replays.count)
+        && match status {
+            ScannerStatus::Complete => {
+                replays.agreed && capabilities.ranges != CapabilityState::Unsupported
+            }
+            ScannerStatus::Unstable => !replays.agreed,
+            ScannerStatus::Unsupported | ScannerStatus::Unavailable | ScannerStatus::Error => true,
+        }
+}
+
 /// One normalized finding. Every optional field is absent when the scanner did
 /// not report it; absence is not a negative answer.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Finding {
     /// Reported half-open UTF-8 byte range into the original input.
@@ -59,6 +78,33 @@ pub struct Finding {
     /// Reported action.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action: Option<ActionKind>,
+}
+
+impl Finding {
+    /// Canonical sort key: range, family, jurisdiction, sensitivity, then action
+    /// by its wire string (absent before present). Enum-valued keys sort by
+    /// wire string, never by declaration order (ADR 0003).
+    fn sort_key(&self) -> impl Ord + '_ {
+        (
+            self.range,
+            self.family.as_ref(),
+            self.jurisdiction.as_ref(),
+            self.sensitive,
+            self.action.map(ActionKind::as_str),
+        )
+    }
+}
+
+impl PartialOrd for Finding {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Finding {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.sort_key().cmp(&other.sort_key())
+    }
 }
 
 /// Findings for one input.
@@ -130,8 +176,17 @@ pub struct ObservationSet {
 impl_document!(
     ObservationSet,
     ObservationSetBody,
-    crate::version::DocumentKind::ObservationSet
+    crate::version::DocumentKind::ObservationSet,
+    diagnostics
 );
+
+impl ObservationDiagnostics {
+    pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {
+        if self.started_at.unix_millis() > self.finished_at.unix_millis() {
+            c.push(ReasonCode::DiagnosticsInvalid, path);
+        }
+    }
+}
 
 impl ObservationSet {
     /// Wrap a body in an envelope with the current version and a placeholder digest.
@@ -172,20 +227,9 @@ impl ObservationSetBody {
         self.scanner.validate(&path.field("scanner"), c);
         self.capabilities.validate(&path.field("capabilities"), c);
 
-        let replays = path.field("replays");
-        if self.replays.count < 1 || self.replays.count > 1024 {
-            c.push(ReasonCode::StatusInconsistent, &replays);
-        }
         let status = path.field("status");
-        let status_ok = match self.status {
-            ScannerStatus::Complete => {
-                self.replays.agreed && self.capabilities.ranges != CapabilityState::Unsupported
-            }
-            ScannerStatus::Unstable => !self.replays.agreed,
-            ScannerStatus::Unsupported | ScannerStatus::Unavailable | ScannerStatus::Error => true,
-        };
         let inputs_ok = self.status == ScannerStatus::Complete || self.inputs.is_empty();
-        if !status_ok || !inputs_ok {
+        if !scanner_state_consistent(self.status, &self.replays, &self.capabilities) || !inputs_ok {
             c.push(ReasonCode::StatusInconsistent, &status);
         }
 

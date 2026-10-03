@@ -29,11 +29,11 @@
       "type": "string"
     },
     "ActionOutcome": {
-      "description": "What was observed about action. Never inferred from a finding flag: removal\nis asserted only by `output-verified`, which requires sanitized output.",
+      "description": "What was observed about action. Never inferred from a finding flag: removal\nis asserted only by `output-verified`, which requires sanitized output.\n\nDeserialization and the JSON Schema go through [`ActionOutcomeWire`], whose\nvariants are closed structs: serde would otherwise ignore extra keys on the\nunit variants of an internally tagged enum.",
       "oneOf": [
         {
           "additionalProperties": false,
-          "description": "The scanner cannot report action (or the scanner did not run): explicit, not success.",
+          "description": "See [`ActionOutcome::NotMeasured`].",
           "properties": {
             "state": {
               "const": "not-measured",
@@ -47,7 +47,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "The scanner can report action and reported none for this occurrence.",
+          "description": "See [`ActionOutcome::NoActionReported`].",
           "properties": {
             "state": {
               "const": "no-action-reported",
@@ -61,7 +61,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "The scanner reported this action; whether text actually changed is unknown.",
+          "description": "See [`ActionOutcome::Reported`].",
           "properties": {
             "action": {
               "$ref": "#/$defs/ActionKind",
@@ -80,7 +80,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "Sanitized output was available and verified.",
+          "description": "See [`ActionOutcome::OutputVerified`].",
           "properties": {
             "state": {
               "const": "output-verified",
@@ -564,32 +564,6 @@
       ],
       "type": "string"
     },
-    "PopulationBinding": {
-      "additionalProperties": false,
-      "description": "The one population a run measures, by identity and digest.",
-      "properties": {
-        "populationDigest": {
-          "$ref": "#/$defs/Sha256Digest",
-          "description": "Semantic digest of the corpus snapshot."
-        },
-        "populationId": {
-          "$ref": "#/$defs/Id",
-          "description": "Population identifier."
-        },
-        "populationVersion": {
-          "description": "Population revision.",
-          "format": "uint32",
-          "minimum": 0,
-          "type": "integer"
-        }
-      },
-      "required": [
-        "populationId",
-        "populationVersion",
-        "populationDigest"
-      ],
-      "type": "object"
-    },
     "PopulationCounts": {
       "additionalProperties": false,
       "description": "Authored counts, kept apart from metric effective N.",
@@ -621,11 +595,11 @@
       "type": "object"
     },
     "ProductIdentity": {
-      "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.",
+      "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.\n\nDeserialization and the JSON Schema go through [`ProductIdentityWire`]:\nserde ignores extra keys on an internally tagged unit variant, so the wire\nform uses an empty struct variant that `deny_unknown_fields` closes.",
       "oneOf": [
         {
           "additionalProperties": false,
-          "description": "A released build; the scanner version must be stated.",
+          "description": "A released build.",
           "properties": {
             "kind": {
               "const": "released",
@@ -639,7 +613,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "A candidate build, identified by the digest of its artifact.",
+          "description": "A candidate build.",
           "properties": {
             "candidateDigest": {
               "$ref": "#/$defs/Sha256Digest",
@@ -748,6 +722,37 @@
       ],
       "type": "object"
     },
+    "PublicPopulationBinding": {
+      "additionalProperties": false,
+      "description": "Population binding of a public-synthetic artifact. Its visibility type has\none value, so a protected population cannot be represented.",
+      "properties": {
+        "populationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Semantic digest of the corpus snapshot."
+        },
+        "populationId": {
+          "$ref": "#/$defs/Id",
+          "description": "Population identifier."
+        },
+        "populationVersion": {
+          "description": "Population revision.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "visibility": {
+          "$ref": "#/$defs/PublicSyntheticClass",
+          "description": "Always `public-synthetic`."
+        }
+      },
+      "required": [
+        "populationId",
+        "visibility",
+        "populationVersion",
+        "populationDigest"
+      ],
+      "type": "object"
+    },
     "PublicScannerSummary": {
       "additionalProperties": false,
       "description": "Scanner record in a public-synthetic artifact: no observation digest.",
@@ -826,7 +831,7 @@
           "type": "array"
         },
         "population": {
-          "$ref": "#/$defs/PopulationBinding",
+          "$ref": "#/$defs/PublicPopulationBinding",
           "description": "The population measured."
         },
         "populationCounts": {

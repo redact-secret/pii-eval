@@ -106,6 +106,10 @@ reason_codes! {
     MechanicsInvalid => "mechanics-invalid",
     /// Product identity fields are inconsistent (for example a candidate without a digest).
     ProductIdentityInvalid => "product-identity-invalid",
+    /// Variant expectations disagree on the context class.
+    ContextClassConflict => "context-class-conflict",
+    /// Diagnostics are out of order, unbounded or self-contradictory.
+    DiagnosticsInvalid => "diagnostics-invalid",
     // Bindings.
     /// Population id, version or digest differ between documents.
     PopulationBindingMismatch => "population-binding-mismatch",
@@ -113,6 +117,8 @@ reason_codes! {
     RunClassMismatch => "run-class-mismatch",
     /// Language or jurisdiction is outside the declared scope.
     ScopeViolation => "scope-violation",
+    /// Generator or seed derivation differs between plan and snapshot.
+    GenerationBindingMismatch => "generation-binding-mismatch",
     /// Engine identity differs between documents.
     EngineBindingMismatch => "engine-binding-mismatch",
     /// Protocol, method or metric identity or version differs from the frozen registry or plan.

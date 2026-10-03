@@ -84,8 +84,11 @@ Design points:
   adding a reason code, raising a documented limit, adding a document-level
   optional section. The old schema file stays; the new minor is published as
   `schemas/<name>.v<major>.schema.json` with a new `$id` minor, and the minor
-  constant is bumped. Digests of old documents stay valid because absent fields
-  are omitted from canonical form.
+  constant is bumped. The digest domain includes the full declared version
+  (ADR 0003), so a document is sealed under the version it declares: old
+  documents stay valid under their own version, and a document moved to a new
+  minor is re-sealed, which changes its digest. Absent optional fields are
+  omitted from canonical form.
 - **Breaking (major) changes**: removing or renaming a field, reason code or
   enum value; making a field required; changing a type, unit, encoding or
   meaning; lowering a limit; changing canonical serialization or the digest
@@ -127,3 +130,55 @@ classes, validator observation shape, multi-population comparison.
 - Schema validation of documents with an independent JSON Schema validator is
   not part of CI; the drift test proves generated equals committed, and Rust
   validation is the enforcement point.
+
+## Review amendments (PR #15)
+
+Independent review found defects; the fixes are part of the 1.0 freeze.
+
+- **Closed tagged enums.** serde ignores extra keys on the unit variants of an
+  internally tagged enum, so `ProductIdentity` and `ActionOutcome` deserialize
+  and generate their schema through closed wire types (`ProductIdentityWire`,
+  `ActionOutcomeWire`, empty struct variants under `deny_unknown_fields`). The
+  audit covered every internally tagged enum (`MetricValue` was already closed);
+  `hardening.rs` asserts each rejects an extra key, and the schema test
+  requires every object schema to be closed.
+- **Capability-aware outcomes.** An axis whose capability is `unsupported`
+  (ranges, family, jurisdiction, sensitivity; action `unavailable`) must be
+  `not-measured` / `not-applicable`, also when the expected family or
+  jurisdiction itself is unsupported (`check_capability_rules`,
+  `validate_outcome_lattice`). Artifact scanner records follow the same status
+  rules as observation sets (complete needs agreeing replays and range support).
+- **Failures follow status.** Every scanner that did not complete has a failure
+  record whose code is allowed for its status; a complete scanner has none.
+- **Wire-string ordering.** Every enum-valued sort key (finding action, failure
+  code, phase) sorts by wire string, as ADR 0003 states.
+- **Generation and visibility are bound.** A manifest carries the snapshot's
+  `generation` (generator, version, seed derivation) and the population's
+  `visibility`; both are compared with the snapshot, and run class must match
+  visibility. `to_public_synthetic` first validates the artifact (including its
+  digest) and refuses unless both run class and population visibility are
+  public-synthetic; the public artifact's population binding has a one-value
+  visibility type.
+- **Plans** must include the method a restricted metric depends on.
+- **Diagnostics** are validated: at most one entry per phase, ascending by wire
+  string, `startedAt` not after `finishedAt` (compared as instants).
+- **Context class** must be the same across all expectations of a variant
+  (`context-class-conflict`).
+- **Reason-code integrity.** Parse errors are classified from this crate's own
+  state, never from serde message text, so a key named like an internal
+  sentinel cannot choose a reason code.
+- **Redacting `Debug`** for case, variant and seed identifiers and for variant
+  text; a test asserts no text, seed or identifier appears in debug output.
+- **Digest domain** includes the full schema version (see ADR 0003).
+- **Dependency guard** inspects normal and build edges for all targets.
+
+### Deferred (explicit)
+
+- Point and bound against counts, and metric counts against outcome rows:
+  deferred to P4 (accounting arithmetic and Wilson endpoints).
+- Parse memory: a document is read twice, the strict value tree and then the
+  typed document. The tree is dropped before the typed parse, so the peak is the
+  larger of the two plus the input, and the document cap was lowered from
+  128 MiB to 32 MiB. The peak is not measured on this host (the sandbox refused
+  the timing wrapper); streaming parse and resource limits are deferred to P7,
+  which must measure peak RSS with its execution limits.

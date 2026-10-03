@@ -468,6 +468,7 @@ impl Fixtures {
             MethodId::TypeValidation,
             MethodId::ContextDiscrimination,
             MethodId::JurisdictionCollision,
+            MethodId::PiiBenign,
         ]
         .into_iter()
         .map(MethodRef::frozen)
@@ -482,6 +483,7 @@ impl Fixtures {
             run_class: run_class_of(visibility),
             population: PopulationBinding {
                 population_id: snapshot.semantic.population.population_id.clone(),
+                visibility,
                 population_version: 1,
                 population_digest: snapshot.semantic_digest.clone(),
             },
@@ -492,7 +494,7 @@ impl Fixtures {
             methods,
             metrics: metric_refs,
             mechanics: Mechanics::PII_V1,
-            seed_derivation: Seed::new("seed-v1").unwrap(),
+            generation: snapshot.semantic.generation.clone(),
             limits: limits(),
             scanners: vec![
                 ScannerPlan {
