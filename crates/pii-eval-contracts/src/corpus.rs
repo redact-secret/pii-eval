@@ -1,0 +1,416 @@
+//! The corpus snapshot contract: one identified population of authored cases.
+//!
+//! A snapshot is scanner-neutral input. It carries authored expectations and
+//! never absorbs scanner output; `pii-eval` never edits an expectation to match
+//! a scanner. One run measures one snapshot (one population). A snapshot of a
+//! `protected` population is an internal record: it holds case text and is
+//! consumed only inside an authorized custodian run.
+
+use std::collections::BTreeSet;
+
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+use crate::axes::{
+    ActionExpectation, ContextClass, ContextObligation, ExpectedType, SensitivityExpectation,
+    kebab_enum,
+};
+use crate::check::{non_empty, sorted_unique, within_limit};
+use crate::decimal::ByteRange;
+use crate::document::{impl_document, schema_tag};
+use crate::ident::{FamilyId, FamilyScope, Id, JurisdictionCode, LanguageTag, Seed, Sha256Digest};
+use crate::limits::{
+    MAX_CASES, MAX_COMPETING_FAMILIES, MAX_EXPECTATIONS_PER_VARIANT, MAX_TEXT_BYTES,
+    MAX_VARIANTS_PER_CASE,
+};
+use crate::protocol::MethodId;
+use crate::reason::{Collector, Meta, Path, ReasonCode};
+use crate::version::SchemaVersion;
+
+kebab_enum!(
+    /// Who may see the population. Independent of product identity: a
+    /// `public-synthetic` population can be run against a candidate.
+    Visibility { PublicSynthetic, Protected }
+);
+
+kebab_enum!(
+    /// How a variant was produced.
+    Strategy { Authored, Derived, ReviewRequired }
+);
+
+schema_tag!(
+    /// `schema` value of a corpus snapshot.
+    CorpusSnapshotSchema, "pii-eval.corpus-snapshot"
+);
+
+/// Population identity. The snapshot's semantic digest is the content commitment.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Population {
+    /// Population identifier, assigned by the corpus author.
+    pub population_id: Id,
+    /// Population revision, assigned by the corpus author.
+    pub population_version: u32,
+    /// Visibility class.
+    pub visibility: Visibility,
+}
+
+/// Deterministic generation rules for derived variants.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GenerationRules {
+    /// Generator identifier.
+    pub generator: Id,
+    /// Generator version.
+    pub generator_version: u32,
+    /// Seed-derivation rule identifier.
+    pub seed_derivation: Seed,
+}
+
+/// Source lineage of an authored case.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Lineage {
+    /// Source identifier.
+    pub source_id: Id,
+    /// Digest of the source material.
+    pub source_digest: Sha256Digest,
+}
+
+/// Operator that derived a variant.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct OperatorRef {
+    /// Operator identifier.
+    pub id: Id,
+    /// Operator version.
+    pub version: u32,
+}
+
+/// How a variant came to be.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Derivation {
+    /// Authored, derived, or review-required.
+    pub strategy: Strategy,
+    /// The operator, required for derived and review-required variants and
+    /// forbidden for authored ones.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operator: Option<OperatorRef>,
+    /// The seed used, when the operator is seeded.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seed: Option<Seed>,
+}
+
+/// Validator that established the authored type expectation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ValidatorRef {
+    /// Validator identifier.
+    pub id: Id,
+    /// Validator version.
+    pub version: u32,
+}
+
+/// One authored expected occurrence inside a variant's text. The four axes are
+/// separate fields and none is derived from another.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Expectation {
+    /// Identifier unique within the variant.
+    pub occurrence_id: Id,
+    /// Expected byte range in the variant text.
+    pub range: ByteRange,
+    /// Expected family. Its scope must agree with the case jurisdiction.
+    pub family: FamilyId,
+    /// Type axis: is the occurrence a valid or invalid instance of the family.
+    pub type_expectation: ExpectedType,
+    /// Validator behind the type expectation, when there is one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validator: Option<ValidatorRef>,
+    /// Sensitivity axis.
+    pub sensitivity: SensitivityExpectation,
+    /// Context frame of this variant.
+    pub context_class: ContextClass,
+    /// Whether context is needed for a sensitive classification.
+    pub context_obligation: ContextObligation,
+    /// Action axis: the action a scanner is expected to report.
+    pub action: ActionExpectation,
+}
+
+/// One concrete input text with its expectations.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Variant {
+    /// Identifier unique across the whole snapshot.
+    pub variant_id: Id,
+    /// Derivation.
+    pub derivation: Derivation,
+    /// The exact input text. Coordinates are half-open UTF-8 byte offsets into it.
+    pub text: String,
+    /// SHA-256 of the UTF-8 bytes of `text`; observations bind to it.
+    pub text_digest: Sha256Digest,
+    /// Expected occurrences, ascending by occurrence id.
+    pub expectations: Vec<Expectation>,
+}
+
+/// Declaration for a jurisdiction-collision case.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Collision {
+    /// The family the case targets.
+    pub target_family: FamilyId,
+    /// Families that collide with the target, ascending, unique, excluding the target.
+    pub competing_families: Vec<FamilyId>,
+}
+
+/// One authored case: the sampling unit (together with its method).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Case {
+    /// Authored case identifier.
+    pub case_id: Id,
+    /// Method this case belongs to. Case/method grouping is the sample identity.
+    pub method: MethodId,
+    /// Source lineage.
+    pub lineage: Lineage,
+    /// Language of the case text.
+    pub language: LanguageTag,
+    /// Jurisdiction, or absent for a global case.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jurisdiction: Option<JurisdictionCode>,
+    /// Collision declaration; required for, and only for, `jurisdiction-collision`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub collision: Option<Collision>,
+    /// Variants, ascending by variant id.
+    pub variants: Vec<Variant>,
+}
+
+/// The semantic content of a corpus snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CorpusSnapshotBody {
+    /// Population identity.
+    pub population: Population,
+    /// Generation rules.
+    pub generation: GenerationRules,
+    /// Cases, ascending by case id.
+    pub cases: Vec<Case>,
+}
+
+/// A corpus snapshot document. Its `semanticDigest` is the population digest
+/// that manifests, observations and artifacts bind to.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CorpusSnapshot {
+    /// Document kind tag.
+    pub schema: CorpusSnapshotSchema,
+    /// Schema version.
+    pub schema_version: SchemaVersion,
+    /// Semantic digest of `semantic`.
+    pub semantic_digest: Sha256Digest,
+    /// The digested body.
+    pub semantic: CorpusSnapshotBody,
+}
+
+impl_document!(
+    CorpusSnapshot,
+    CorpusSnapshotBody,
+    crate::version::DocumentKind::CorpusSnapshot
+);
+
+impl CorpusSnapshot {
+    /// Wrap a body in an envelope with the current version and a placeholder
+    /// digest; call [`crate::seal`] to compute the real digest.
+    pub fn unsealed(semantic: CorpusSnapshotBody) -> Self {
+        Self {
+            schema: CorpusSnapshotSchema::Only,
+            schema_version: SchemaVersion::CURRENT,
+            semantic_digest: Sha256Digest::of_bytes(b""),
+            semantic,
+        }
+    }
+}
+
+impl Expectation {
+    fn validate(
+        &self,
+        text: &str,
+        jurisdiction: Option<&JurisdictionCode>,
+        path: &Path<'_>,
+        c: &mut Collector,
+    ) {
+        self.range.check(text, &path.field("range"), c);
+        let scope_ok = match (self.family.scope(), jurisdiction) {
+            (FamilyScope::Global, None) => true,
+            (FamilyScope::Jurisdiction(a), Some(b)) => a == *b,
+            _ => false,
+        };
+        if !scope_ok {
+            c.push(ReasonCode::FamilyScopeMismatch, &path.field("family"));
+        }
+    }
+}
+
+impl Variant {
+    fn validate(
+        &self,
+        jurisdiction: Option<&JurisdictionCode>,
+        path: &Path<'_>,
+        c: &mut Collector,
+    ) {
+        let text_path = path.field("text");
+        if self.text.len() > MAX_TEXT_BYTES {
+            c.push_with(
+                ReasonCode::LimitExceeded,
+                &text_path,
+                Meta::limit(MAX_TEXT_BYTES as u64, self.text.len() as u64),
+            );
+            return;
+        }
+        if Sha256Digest::of_bytes(self.text.as_bytes()) != self.text_digest {
+            c.push(ReasonCode::TextDigestMismatch, &path.field("textDigest"));
+        }
+        let derivation = path.field("derivation");
+        let has_operator = self.derivation.operator.is_some();
+        let operator_ok = match self.derivation.strategy {
+            Strategy::Authored => !has_operator && self.derivation.seed.is_none(),
+            Strategy::Derived | Strategy::ReviewRequired => has_operator,
+        };
+        if !operator_ok {
+            c.push(ReasonCode::DerivationInvalid, &derivation);
+        }
+        let expectations = path.field("expectations");
+        non_empty(&self.expectations, &expectations, c);
+        if within_limit(
+            self.expectations.len(),
+            MAX_EXPECTATIONS_PER_VARIANT,
+            &expectations,
+            c,
+        ) {
+            sorted_unique(
+                &self.expectations,
+                |e| e.occurrence_id.clone(),
+                &expectations,
+                c,
+            );
+            for (i, e) in self.expectations.iter().enumerate() {
+                e.validate(&self.text, jurisdiction, &expectations.index(i), c);
+            }
+        }
+    }
+
+    /// The context class of this variant: that of its first expectation.
+    fn context_class(&self) -> Option<ContextClass> {
+        self.expectations.first().map(|e| e.context_class)
+    }
+}
+
+impl Case {
+    fn validate(&self, path: &Path<'_>, c: &mut Collector) {
+        let variants = path.field("variants");
+        non_empty(&self.variants, &variants, c);
+        if within_limit(self.variants.len(), MAX_VARIANTS_PER_CASE, &variants, c) {
+            sorted_unique(&self.variants, |v| v.variant_id.clone(), &variants, c);
+            for (i, v) in self.variants.iter().enumerate() {
+                v.validate(self.jurisdiction.as_ref(), &variants.index(i), c);
+            }
+        }
+        // Collision declaration exists exactly for jurisdiction-collision cases.
+        let is_collision = self.method == MethodId::JurisdictionCollision;
+        match (&self.collision, is_collision) {
+            (Some(collision), true) => {
+                let p = path.field("collision");
+                let competing = p.field("competingFamilies");
+                non_empty(&collision.competing_families, &competing, c);
+                if within_limit(
+                    collision.competing_families.len(),
+                    MAX_COMPETING_FAMILIES,
+                    &competing,
+                    c,
+                ) {
+                    sorted_unique(&collision.competing_families, |f| f.clone(), &competing, c);
+                }
+                let target_in_competing = collision
+                    .competing_families
+                    .contains(&collision.target_family);
+                let all_target = self
+                    .variants
+                    .iter()
+                    .flat_map(|v| &v.expectations)
+                    .all(|e| e.family == collision.target_family);
+                if target_in_competing || !all_target {
+                    c.push(ReasonCode::CollisionInvalid, &p);
+                }
+            }
+            (None, false) => {}
+            _ => c.push(ReasonCode::CollisionInvalid, &path.field("collision")),
+        }
+        if self.method == MethodId::ContextDiscrimination {
+            let mut classes: Vec<ContextClass> = self
+                .variants
+                .iter()
+                .filter_map(Variant::context_class)
+                .collect();
+            classes.sort();
+            let complete = classes.len() == self.variants.len()
+                && classes
+                    == [
+                        ContextClass::Sensitive,
+                        ContextClass::Neutral,
+                        ContextClass::NonSensitive,
+                    ];
+            if !complete {
+                c.push(ReasonCode::IncompleteContextTrio, &variants);
+            }
+        }
+    }
+}
+
+impl CorpusSnapshotBody {
+    pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {
+        let cases = path.field("cases");
+        non_empty(&self.cases, &cases, c);
+        if !within_limit(self.cases.len(), MAX_CASES, &cases, c) {
+            return;
+        }
+        sorted_unique(&self.cases, |case| case.case_id.clone(), &cases, c);
+        let mut variant_ids: BTreeSet<&Id> = BTreeSet::new();
+        for (i, case) in self.cases.iter().enumerate() {
+            case.validate(&cases.index(i), c);
+            for (j, v) in case.variants.iter().enumerate() {
+                if !variant_ids.insert(&v.variant_id) {
+                    c.push(
+                        ReasonCode::DuplicateIdentity,
+                        &cases.index(i).field("variants").index(j),
+                    );
+                }
+            }
+            if c.is_full() {
+                return;
+            }
+        }
+    }
+
+    /// Number of authored cases.
+    pub fn case_count(&self) -> u64 {
+        self.cases.len() as u64
+    }
+
+    /// Number of variants across all cases.
+    pub fn variant_count(&self) -> u64 {
+        self.cases
+            .iter()
+            .map(|case| case.variants.len() as u64)
+            .sum()
+    }
+
+    /// Number of expected occurrences across all variants.
+    pub fn occurrence_count(&self) -> u64 {
+        self.cases
+            .iter()
+            .flat_map(|case| &case.variants)
+            .map(|v| v.expectations.len() as u64)
+            .sum()
+    }
+}
