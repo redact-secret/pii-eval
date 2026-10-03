@@ -6,6 +6,7 @@ members = [
     "crates/pii-eval-adapters",
     "crates/pii-eval-cli",
     "crates/pii-eval-compat",
+    "crates/pii-eval-app",
 ]
 
 [workspace.package]

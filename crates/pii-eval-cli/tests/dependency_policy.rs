@@ -118,7 +118,39 @@ const WORKSPACE_CRATES: &[&str] = &[
     "pii-eval-adapters",
     "pii-eval-cli",
     "pii-eval-compat",
+    "pii-eval-app",
 ];
+
+fn closure_with_edges(package: &str, edges: &str) -> BTreeSet<String> {
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+    let output = Command::new(cargo)
+        .args([
+            "tree",
+            "--locked",
+            "--edges",
+            edges,
+            "--target",
+            "all",
+            "--prefix",
+            "none",
+            "--package",
+            package,
+        ])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .output()
+        .expect("cargo tree runs");
+    assert!(
+        output.status.success(),
+        "cargo tree failed for {package}: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8(output.stdout)
+        .expect("utf-8")
+        .lines()
+        .filter_map(|line| line.split_whitespace().next())
+        .map(str::to_owned)
+        .collect()
+}
 
 fn normal_closure(package: &str) -> BTreeSet<String> {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
@@ -291,6 +323,91 @@ fn the_cli_adds_only_the_reviewed_signal_crates() {
             assert!(
                 !lower_closure.contains(*extra),
                 "{lower} must not depend on `{extra}`"
+            );
+        }
+    }
+}
+
+/// The internal GitHub App crate (P11, ADR 0011) adds no third-party crate: its
+/// closure is exactly the CLI's reviewed set (it uses the CLI library, `serde`,
+/// `serde_json` and `sha2`). A transport crate (HTTP client or server, JWT/RSA
+/// signing) therefore fails here until the guard and docs/dependency-policy.md
+/// are changed deliberately; the forbidden fragments stay forbidden.
+#[test]
+fn the_app_adds_no_third_party_crate() {
+    let package = "pii-eval-app";
+    let closure = normal_closure(package);
+    assert!(closure.contains(package));
+    assert!(
+        closure.contains("pii-eval-cli"),
+        "the app runs jobs through the CLI library"
+    );
+    for name in &closure {
+        let allowed = WORKSPACE_CRATES.contains(&name.as_str())
+            || ALLOWED_THIRD_PARTY.contains(&name.as_str())
+            || ADAPTER_EXTRA_THIRD_PARTY.contains(&name.as_str())
+            || CLI_EXTRA_THIRD_PARTY.contains(&name.as_str());
+        assert!(allowed, "{package} depends on unreviewed crate `{name}`");
+        if let Some((_, only)) = CLI_FRAGMENT_EXCEPTIONS.iter().find(|(c, _)| c == name) {
+            let dependents = direct_dependents(package, name);
+            let allowed: BTreeSet<String> = only.iter().map(|s| (*s).to_owned()).collect();
+            assert!(
+                !dependents.is_empty() && dependents.is_subset(&allowed),
+                "{package}: `{name}` must be reached only through {only:?}, found {dependents:?}"
+            );
+            continue;
+        }
+        assert!(
+            !FORBIDDEN_FRAGMENTS.iter().any(|f| name.contains(f)),
+            "{package} depends on forbidden crate `{name}`"
+        );
+    }
+}
+
+/// Names of the workspace members, from `cargo metadata` (not a hand-kept list).
+fn workspace_members() -> BTreeSet<String> {
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+    let output = Command::new(cargo)
+        .args(["metadata", "--no-deps", "--locked", "--format-version", "1"])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .output()
+        .expect("cargo metadata runs");
+    assert!(output.status.success(), "cargo metadata failed");
+    let doc: serde_json::Value = serde_json::from_slice(&output.stdout).expect("metadata is JSON");
+    doc["packages"]
+        .as_array()
+        .expect("packages")
+        .iter()
+        .map(|p| p["name"].as_str().expect("name").to_owned())
+        .collect()
+}
+
+/// A crate added to the workspace must be classified here (it appears in
+/// `WORKSPACE_CRATES`, and the rules above are extended or confirmed for it);
+/// otherwise this fails, so a new crate cannot sit outside the guard unnoticed.
+#[test]
+fn every_workspace_member_is_classified() {
+    let members = workspace_members();
+    let known: BTreeSet<String> = WORKSPACE_CRATES.iter().map(|s| (*s).to_owned()).collect();
+    assert_eq!(
+        members, known,
+        "classify new workspace crates in WORKSPACE_CRATES and give them dependency rules"
+    );
+}
+
+/// The dependency points one way: no other workspace crate reaches the app, by
+/// any edge kind (normal, build or dev), so the CLI builds, tests and works with
+/// the app crate absent from its closure (ADR 0011, D1). Every other member is
+/// taken from `cargo metadata`.
+#[test]
+fn nothing_in_the_workspace_depends_on_the_app() {
+    let members = workspace_members();
+    assert!(members.contains("pii-eval-cli"));
+    for package in members.iter().filter(|m| m.as_str() != "pii-eval-app") {
+        for edges in ["normal,build", "all"] {
+            assert!(
+                !closure_with_edges(package, edges).contains("pii-eval-app"),
+                "{package} reaches pii-eval-app through {edges} edges"
             );
         }
     }
