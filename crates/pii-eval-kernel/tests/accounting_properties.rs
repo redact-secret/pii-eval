@@ -140,26 +140,15 @@ fn reference(g: &G, metric: MetricId) -> Vec<B> {
             if g.method != MethodId::PiiBenign {
                 B::Na
             } else {
-                bucket(
-                    &all_s,
-                    &rows
-                        .iter()
-                        .map(|r| sstatus(r.s) == "pass")
-                        .collect::<Vec<_>>(),
-                )
+                // A8 (ADR 0008): all rows must pass, not any.
+                bucket(&all_s, &[rows.iter().all(|r| sstatus(r.s) == "pass")])
             }
         }
         MetricId::JurisdictionCollisionRate => {
             if g.method != MethodId::JurisdictionCollision {
                 B::Na
             } else {
-                bucket(
-                    &all_t,
-                    &rows
-                        .iter()
-                        .map(|r| tstatus(r.t) == "pass")
-                        .collect::<Vec<_>>(),
-                )
+                bucket(&all_t, &[rows.iter().all(|r| tstatus(r.t) == "pass")])
             }
         }
         MetricId::RangeCollateralRate => {

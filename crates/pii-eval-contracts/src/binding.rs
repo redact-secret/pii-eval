@@ -230,9 +230,25 @@ pub fn validate_artifact_against_manifest(
         }
     }
     let planned: Vec<_> = m.metrics.iter().map(|r| r.id).collect();
-    let produced: Vec<_> = a.metrics.iter().map(|r| r.metric.id).collect();
-    if planned != produced {
-        c.push(ReasonCode::ProtocolBindingMismatch, &body.field("metrics"));
+    if a.protocol.is_canonical() {
+        // Revision 2: every scanner carries exactly the planned metrics.
+        let each_planned = a.scanner_metrics.iter().all(|s| {
+            s.metrics
+                .iter()
+                .map(|r| r.metric.id)
+                .eq(planned.iter().copied())
+        });
+        if !each_planned {
+            c.push(
+                ReasonCode::ProtocolBindingMismatch,
+                &body.field("scannerMetrics"),
+            );
+        }
+    } else {
+        let produced: Vec<_> = a.metrics.iter().map(|r| r.metric.id).collect();
+        if planned != produced {
+            c.push(ReasonCode::ProtocolBindingMismatch, &body.field("metrics"));
+        }
     }
     if a.method_coverage
         .iter()

@@ -16,11 +16,17 @@ use serde::{Deserialize, Serialize};
 use crate::axes::kebab_enum;
 use crate::decimal::ScaledDecimal;
 use crate::reason::{Collector, Path, ReasonCode};
+use crate::version::SchemaVersion;
 
 /// The protocol identifier a manifest and its artifacts bind to.
 pub const PROTOCOL_ID: &str = "pii-v1";
-/// Protocol revision. A change to any frozen definition below bumps this.
-pub const PROTOCOL_VERSION: u32 = 1;
+/// Protocol revision this engine emits: revision 2, the canonical rules (ADR
+/// 0008). A change to any frozen definition below bumps this.
+pub const PROTOCOL_VERSION: u32 = 2;
+/// The legacy revision (the oracle's first-overlap semantics). Documents of this
+/// revision stay readable and structurally valid under schema 1.0; they are not
+/// re-measured and not accounting-verified (ADR 0008, section 1).
+pub const PROTOCOL_VERSION_LEGACY: u32 = 1;
 /// Accounting identity, equal to the legacy `domainAccountingVersion`.
 pub const ACCOUNTING_VERSION: &str = "pii-v1";
 
@@ -58,25 +64,136 @@ pub enum AccountingId {
     PiiV1,
 }
 
+kebab_enum!(
+    /// A rule that revision 2 binds by identity. Each id is valid in exactly one
+    /// slot of [`ProtocolRules`].
+    RuleId { PiiV1Canonical, PiiV1CanonicalAccounting, PiiV1WilsonExact }
+);
+
+impl RuleId {
+    /// The wire string.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            RuleId::PiiV1Canonical => "pii-v1-canonical",
+            RuleId::PiiV1CanonicalAccounting => "pii-v1-canonical-accounting",
+            RuleId::PiiV1WilsonExact => "pii-v1-wilson-exact",
+        }
+    }
+}
+
+/// One bound rule: its identity and the revision of the rule text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RuleRef {
+    /// Rule identifier.
+    pub id: RuleId,
+    /// Rule revision.
+    pub revision: u32,
+}
+
+/// The rules a revision-2 document states it was produced with (ADR 0008). The
+/// kernel's `MATCHING_RULE_ID`, `ACCOUNTING_RULE_ID` and `STATS_RULE_ID` repeat
+/// these values and a kernel test pins the equality.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProtocolRules {
+    /// Matching rule (ADR 0004): `pii-v1-canonical`.
+    pub matching: RuleRef,
+    /// Accounting rule (ADR 0005, ADR 0008): `pii-v1-canonical-accounting`.
+    pub accounting: RuleRef,
+    /// Statistics rule (ADR 0005): `pii-v1-wilson-exact`.
+    pub statistics: RuleRef,
+}
+
+impl ProtocolRules {
+    /// The rules of revision 2.
+    pub const CANONICAL_V2: ProtocolRules = ProtocolRules {
+        matching: RuleRef {
+            id: RuleId::PiiV1Canonical,
+            revision: 2,
+        },
+        accounting: RuleRef {
+            id: RuleId::PiiV1CanonicalAccounting,
+            revision: 2,
+        },
+        statistics: RuleRef {
+            id: RuleId::PiiV1WilsonExact,
+            revision: 1,
+        },
+    };
+}
+
 /// Protocol identity bound into every plan and artifact.
+///
+/// Two values are valid: [`ProtocolIdentity::LEGACY_V1`] (revision 1, no
+/// `rules`, the oracle's semantics) and [`ProtocolIdentity::CANONICAL_V2`]
+/// (revision 2 with the rule identities it was produced under). Anything else
+/// is `protocol-binding-mismatch`; a revision-2 document must also declare
+/// schema 1.1 or later.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProtocolIdentity {
     /// Protocol identifier.
     pub id: ProtocolId,
-    /// Protocol revision.
+    /// Protocol revision: 1 (legacy) or 2 (canonical).
     pub version: u32,
-    /// Accounting identity.
+    /// Accounting family identity.
     pub accounting: AccountingId,
+    /// Rule identities; present exactly for revision 2.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rules: Option<ProtocolRules>,
 }
 
 impl ProtocolIdentity {
-    /// The protocol this crate implements.
-    pub const CURRENT: ProtocolIdentity = ProtocolIdentity {
+    /// Revision 1: the legacy first-overlap semantics. Readable, never emitted.
+    pub const LEGACY_V1: ProtocolIdentity = ProtocolIdentity {
+        id: ProtocolId::PiiV1,
+        version: PROTOCOL_VERSION_LEGACY,
+        accounting: AccountingId::PiiV1,
+        rules: None,
+    };
+
+    /// Revision 2: the canonical rules. What this engine emits.
+    pub const CANONICAL_V2: ProtocolIdentity = ProtocolIdentity {
         id: ProtocolId::PiiV1,
         version: PROTOCOL_VERSION,
         accounting: AccountingId::PiiV1,
+        rules: Some(ProtocolRules::CANONICAL_V2),
     };
+
+    /// Whether this is the legacy revision.
+    pub fn is_legacy(&self) -> bool {
+        *self == Self::LEGACY_V1
+    }
+
+    /// Whether this is the canonical revision.
+    pub fn is_canonical(&self) -> bool {
+        *self == Self::CANONICAL_V2
+    }
+
+    /// Record `protocol-binding-mismatch` unless this is exactly one of the two
+    /// accepted identities.
+    pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {
+        if !self.is_legacy() && !self.is_canonical() {
+            c.push(ReasonCode::ProtocolBindingMismatch, path);
+        }
+    }
+}
+
+/// Revision gate shared by every document that carries a protocol identity: a
+/// revision-2 document must declare schema 1.1 or later, because 1.0 readers
+/// know neither its rules nor its per-scanner metrics.
+pub(crate) fn check_revision_gate(
+    version: SchemaVersion,
+    protocol: &ProtocolIdentity,
+    c: &mut Collector,
+) {
+    if protocol.is_canonical() && version < SchemaVersion::V1_1 {
+        c.push(
+            ReasonCode::ProtocolBindingMismatch,
+            &Path::ROOT.field("schemaVersion"),
+        );
+    }
 }
 
 kebab_enum!(
@@ -490,7 +607,22 @@ pub fn registry_json() -> serde_json::Value {
             "id": PROTOCOL_ID,
             "version": PROTOCOL_VERSION,
             "accounting": ACCOUNTING_VERSION,
+            "readableRevisions": [PROTOCOL_VERSION_LEGACY, PROTOCOL_VERSION],
         },
+        "revisions": [
+            {
+                "version": PROTOCOL_VERSION_LEGACY,
+                "state": "legacy",
+                "rules": "legacy-first-overlap matching and legacy accounting (pii-eval-compat); a revision-1 document carries no rule identities",
+                "minimumSchemaVersion": "1.0",
+            },
+            {
+                "version": PROTOCOL_VERSION,
+                "state": "canonical",
+                "rules": ProtocolRules::CANONICAL_V2,
+                "minimumSchemaVersion": "1.1",
+            },
+        ],
         "identityRules": {
             "sampleIdentity": "authored case within a method",
             "variantsAreIndependentSamples": false,

@@ -1,0 +1,61 @@
+{
+  "schema": "pii-eval.observation-set",
+  "schemaVersion": "1.1",
+  "semantic": {
+    "capabilities": {
+      "action": "unavailable",
+      "families": [],
+      "familyClassification": "unsupported",
+      "jurisdictionReporting": "unsupported",
+      "jurisdictions": [],
+      "ranges": "unsupported",
+      "sensitivityClassification": "unsupported"
+    },
+    "engine": {
+      "name": "pii-eval",
+      "version": "0.0.0"
+    },
+    "inputs": [],
+    "populationDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae",
+    "protocol": {
+      "accounting": "pii-v1",
+      "id": "pii-v1",
+      "rules": {
+        "accounting": {
+          "id": "pii-v1-canonical-accounting",
+          "revision": 2
+        },
+        "matching": {
+          "id": "pii-v1-canonical",
+          "revision": 2
+        },
+        "statistics": {
+          "id": "pii-v1-wilson-exact",
+          "revision": 1
+        }
+      },
+      "version": 2
+    },
+    "replays": {
+      "agreed": true,
+      "count": 2
+    },
+    "scanner": {
+      "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+      "adapter": {
+        "adapterId": "fake-adapter",
+        "adapterVersion": "0.0.1",
+        "normalizationVersion": 1
+      },
+      "artifactDigest": "49a6bacd520d98afdc89655cab9f30a65d71d51dcc2dd9ceb4fce29fe926d4bd",
+      "configurationDigest": "28a91ab076e3bb94c9930a167b927c2c0bf892c334a1424bce968df1f1a040f5",
+      "product": {
+        "kind": "released"
+      },
+      "scannerId": "beta-scan",
+      "scannerVersion": "1.0.0"
+    },
+    "status": "unsupported"
+  },
+  "semanticDigest": "e9324026d653c9b813df9328642ed80ee9e0e0133f62c3e9f4adcbfd8c2f2c7c"
+}

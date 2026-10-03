@@ -185,8 +185,12 @@ fn timestamps_compare_by_instant_not_by_text() {
 fn schema_version_is_part_of_the_digest_domain() {
     let f = Fixtures::default_public();
     assert_eq!(
-        digest_domain(DocumentKind::CorpusSnapshot, SchemaVersion::CURRENT),
+        digest_domain(DocumentKind::CorpusSnapshot, SchemaVersion::V1_0),
         "pii-eval.corpus-snapshot/1.0"
+    );
+    assert_eq!(
+        digest_domain(DocumentKind::RunArtifact, SchemaVersion::CURRENT),
+        "pii-eval.run-artifact/1.1"
     );
     // The same body under another declared version has another digest.
     let body = canonical_bytes_of(&f.snapshot.semantic).unwrap();

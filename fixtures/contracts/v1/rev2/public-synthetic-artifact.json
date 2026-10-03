@@ -1,0 +1,779 @@
+{
+  "schema": "pii-eval.public-synthetic-artifact",
+  "schemaVersion": "1.1",
+  "semantic": {
+    "completeness": "complete",
+    "engine": {
+      "name": "pii-eval",
+      "version": "0.0.0"
+    },
+    "failures": [
+      {
+        "affectedInputs": 6,
+        "code": "unsupported",
+        "scannerId": "beta-scan"
+      }
+    ],
+    "manifestDigest": "f360a806a0d7d6be921f28435e637bd9a47939c69139ae6531db3a68d383c5dd",
+    "mechanics": {
+      "intervalPrecision": 6,
+      "intervalZ": {
+        "mantissa": 196,
+        "scale": 2
+      },
+      "minDenominator": 4,
+      "replays": 2
+    },
+    "methodCoverage": [
+      {
+        "cases": 1,
+        "method": {
+          "id": "context-discrimination",
+          "version": 2
+        },
+        "variants": 3
+      },
+      {
+        "cases": 1,
+        "method": {
+          "id": "jurisdiction-collision",
+          "version": 3
+        },
+        "variants": 1
+      },
+      {
+        "cases": 1,
+        "method": {
+          "id": "type-validation",
+          "version": 2
+        },
+        "variants": 2
+      }
+    ],
+    "outcomes": [
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "removed"
+        },
+        "caseId": "collision-us-ssn-demo",
+        "method": "jurisdiction-collision",
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "correct",
+        "typeIdentity": "correct",
+        "variantId": "collision-us-ssn-demo-authored"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "removed"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "correct",
+        "variantId": "context-email-ko-demo-neutral"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "removed"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "false-positive",
+        "typeIdentity": "correct",
+        "variantId": "context-email-ko-demo-non-sensitive"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "removed"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "correct",
+        "typeIdentity": "correct",
+        "variantId": "context-email-ko-demo-sensitive"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "removed"
+        },
+        "caseId": "type-card-demo",
+        "method": "type-validation",
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "correct",
+        "typeIdentity": "correct",
+        "variantId": "type-card-demo-authored"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "removed"
+        },
+        "caseId": "type-card-demo",
+        "method": "type-validation",
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "false-positive",
+        "typeIdentity": "invalid-accepted",
+        "variantId": "type-card-demo-mutated"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "collision-us-ssn-demo",
+        "method": "jurisdiction-collision",
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "collision-us-ssn-demo-authored"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "context-email-ko-demo-neutral"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "context-email-ko-demo-non-sensitive"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "context-email-ko-demo-sensitive"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "type-card-demo",
+        "method": "type-validation",
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "type-card-demo-authored"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "type-card-demo",
+        "method": "type-validation",
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "type-card-demo-mutated"
+      }
+    ],
+    "population": {
+      "populationDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae",
+      "populationId": "synthetic-demo-population",
+      "populationVersion": 1,
+      "visibility": "public-synthetic"
+    },
+    "populationCounts": {
+      "authoredCases": 3,
+      "occurrences": 6,
+      "variants": 6
+    },
+    "protocol": {
+      "accounting": "pii-v1",
+      "id": "pii-v1",
+      "rules": {
+        "accounting": {
+          "id": "pii-v1-canonical-accounting",
+          "revision": 2
+        },
+        "matching": {
+          "id": "pii-v1-canonical",
+          "revision": 2
+        },
+        "statistics": {
+          "id": "pii-v1-wilson-exact",
+          "revision": 1
+        }
+      },
+      "version": 2
+    },
+    "runClass": "public-synthetic",
+    "scannerMetrics": [
+      {
+        "metrics": [
+          {
+            "counts": {
+              "eligible": 0,
+              "measured": 0,
+              "notApplicable": 3,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "benign-suppression-rate",
+              "version": 1
+            },
+            "status": "not-applicable",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 1,
+              "measured": 1,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 1,
+              "unresolved": 0
+            },
+            "effectiveN": 1,
+            "metric": {
+              "id": "context-discrimination-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 1,
+              "measured": 1,
+              "notApplicable": 2,
+              "notMeasured": 0,
+              "numerator": 1,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 1,
+            "metric": {
+              "id": "jurisdiction-collision-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 6,
+              "measured": 5,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 5,
+              "total": 6,
+              "unresolved": 1
+            },
+            "effectiveN": 6,
+            "metric": {
+              "id": "measurable-share",
+              "version": 1
+            },
+            "status": "partial",
+            "value": {
+              "bound": {
+                "mantissa": 436491,
+                "scale": 6
+              },
+              "point": {
+                "mantissa": 833333,
+                "scale": 6
+              },
+              "state": "measured"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 2,
+              "measured": 2,
+              "notApplicable": 1,
+              "notMeasured": 0,
+              "numerator": 2,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 2,
+            "metric": {
+              "id": "non-sensitive-flag-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 3,
+              "measured": 3,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 3,
+            "metric": {
+              "id": "range-collateral-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 3,
+              "measured": 3,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 3,
+            "metric": {
+              "id": "sensitive-miss-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 3,
+              "measured": 3,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 3,
+            "metric": {
+              "id": "type-miss-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 3,
+              "measured": 3,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 3,
+            "metric": {
+              "id": "wrong-family-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 1,
+              "measured": 1,
+              "notApplicable": 2,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 1,
+            "metric": {
+              "id": "wrong-jurisdiction-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          }
+        ],
+        "scannerId": "alpha-scan"
+      },
+      {
+        "metrics": [
+          {
+            "counts": {
+              "eligible": 0,
+              "measured": 0,
+              "notApplicable": 3,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "benign-suppression-rate",
+              "version": 1
+            },
+            "status": "not-applicable",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 1,
+              "measured": 0,
+              "notApplicable": 0,
+              "notMeasured": 1,
+              "numerator": 0,
+              "total": 1,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "context-discrimination-rate",
+              "version": 1
+            },
+            "status": "not-measured",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 1,
+              "measured": 0,
+              "notApplicable": 2,
+              "notMeasured": 1,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "jurisdiction-collision-rate",
+              "version": 1
+            },
+            "status": "not-measured",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 6,
+              "measured": 0,
+              "notApplicable": 0,
+              "notMeasured": 5,
+              "numerator": 0,
+              "total": 6,
+              "unresolved": 1
+            },
+            "effectiveN": 6,
+            "metric": {
+              "id": "measurable-share",
+              "version": 1
+            },
+            "status": "unresolved",
+            "value": {
+              "bound": {
+                "mantissa": 0,
+                "scale": 0
+              },
+              "point": {
+                "mantissa": 0,
+                "scale": 0
+              },
+              "state": "measured"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 2,
+              "measured": 0,
+              "notApplicable": 1,
+              "notMeasured": 2,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "non-sensitive-flag-rate",
+              "version": 1
+            },
+            "status": "not-measured",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 3,
+              "measured": 0,
+              "notApplicable": 0,
+              "notMeasured": 3,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "range-collateral-rate",
+              "version": 1
+            },
+            "status": "not-measured",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 3,
+              "measured": 0,
+              "notApplicable": 0,
+              "notMeasured": 3,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "sensitive-miss-rate",
+              "version": 1
+            },
+            "status": "not-measured",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 3,
+              "measured": 0,
+              "notApplicable": 0,
+              "notMeasured": 3,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "type-miss-rate",
+              "version": 1
+            },
+            "status": "not-measured",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 3,
+              "measured": 0,
+              "notApplicable": 0,
+              "notMeasured": 3,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "wrong-family-rate",
+              "version": 1
+            },
+            "status": "not-measured",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 1,
+              "measured": 0,
+              "notApplicable": 2,
+              "notMeasured": 1,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "wrong-jurisdiction-rate",
+              "version": 1
+            },
+            "status": "not-measured",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          }
+        ],
+        "scannerId": "beta-scan"
+      }
+    ],
+    "scanners": [
+      {
+        "capabilities": {
+          "action": "sanitized-output",
+          "families": [
+            {
+              "family": "pii:global:email",
+              "state": "supported"
+            },
+            {
+              "family": "pii:global:payment-card",
+              "state": "supported"
+            },
+            {
+              "family": "pii:us:ssn",
+              "state": "supported"
+            }
+          ],
+          "familyClassification": "supported",
+          "jurisdictionReporting": "supported",
+          "jurisdictions": [
+            {
+              "jurisdiction": "US",
+              "state": "supported"
+            }
+          ],
+          "ranges": "supported",
+          "sensitivityClassification": "supported"
+        },
+        "identity": {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "fake-adapter",
+            "adapterVersion": "0.0.1",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "b0e38b8133c3646a1e438e38f45d33b7d0d7c9b7e91936fa10289a2ce9a3c4d0",
+          "configurationDigest": "ec0ea698e39929f6aee9ac0e4cf464267a1ca1902e841bb471e95c7f844f6669",
+          "product": {
+            "kind": "released"
+          },
+          "scannerId": "alpha-scan",
+          "scannerVersion": "1.0.0"
+        },
+        "replays": {
+          "agreed": true,
+          "count": 2
+        },
+        "status": "complete"
+      },
+      {
+        "capabilities": {
+          "action": "unavailable",
+          "families": [],
+          "familyClassification": "unsupported",
+          "jurisdictionReporting": "unsupported",
+          "jurisdictions": [],
+          "ranges": "unsupported",
+          "sensitivityClassification": "unsupported"
+        },
+        "identity": {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "fake-adapter",
+            "adapterVersion": "0.0.1",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "49a6bacd520d98afdc89655cab9f30a65d71d51dcc2dd9ceb4fce29fe926d4bd",
+          "configurationDigest": "28a91ab076e3bb94c9930a167b927c2c0bf892c334a1424bce968df1f1a040f5",
+          "product": {
+            "kind": "released"
+          },
+          "scannerId": "beta-scan",
+          "scannerVersion": "1.0.0"
+        },
+        "replays": {
+          "agreed": true,
+          "count": 2
+        },
+        "status": "unsupported"
+      }
+    ],
+    "sourceArtifactDigest": "4c49d3cc80b7a47a42e8ff31f313df40fa17a8841fee249593f6f185e0486490"
+  },
+  "semanticDigest": "58a1d9fe0eb2acf23be28ea0df03d2a9ea056ce5e791a03763f56f3c1307e2d2"
+}

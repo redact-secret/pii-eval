@@ -63,7 +63,7 @@ kebab_enum!(
     /// Sanitized reason a scanner run did not measure.
     FailureCode {
         Unsupported, Unavailable, ExecutionError, Timeout, OutputLimitExceeded, MalformedOutput,
-        ReplayDisagreement, Cancelled
+        ReplayDisagreement, Cancelled, ResourceLimitExceeded
     }
 );
 
@@ -84,7 +84,14 @@ impl FailureCode {
             FailureCode::MalformedOutput => "malformed-output",
             FailureCode::ReplayDisagreement => "replay-disagreement",
             FailureCode::Cancelled => "cancelled",
+            FailureCode::ResourceLimitExceeded => "resource-limit-exceeded",
         }
+    }
+
+    /// Codes added by protocol revision 2 (schema 1.1). A revision-1 document
+    /// that names one is rejected.
+    pub const fn requires_revision_2(self) -> bool {
+        matches!(self, FailureCode::ResourceLimitExceeded)
     }
 
     /// Whether this failure can explain a scanner with `status`.
@@ -101,6 +108,7 @@ impl FailureCode {
                     | FailureCode::OutputLimitExceeded
                     | FailureCode::MalformedOutput
                     | FailureCode::Cancelled
+                    | FailureCode::ResourceLimitExceeded
             ),
         }
     }
@@ -323,6 +331,17 @@ impl MetricResult {
     }
 }
 
+/// The ten metric results of one scanner (protocol revision 2). A scanner is
+/// never pooled with another: its metrics are computed from its own rows.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ScannerMetrics {
+    /// The scanner the metrics belong to.
+    pub scanner_id: ScannerId,
+    /// Metrics, ascending by metric id, each once.
+    pub metrics: Vec<MetricResult>,
+}
+
 /// Summary of what a scanner reported for one expected occurrence: the
 /// findings whose range overlaps that occurrence (its candidates). Contains
 /// family and jurisdiction identifiers only, never text or ranges.
@@ -465,8 +484,15 @@ pub struct RunArtifactBody {
     pub method_coverage: Vec<MethodCoverage>,
     /// Outcomes, ascending by scanner, case, variant, occurrence.
     pub outcomes: Vec<CaseOutcome>,
-    /// Metrics, ascending by metric id.
+    /// Metrics, ascending by metric id. Protocol revision 1 only: one list with
+    /// no scanner key, so it can be attributed only for a single scanner. Must
+    /// be empty (and is omitted) in revision 2, which uses `scannerMetrics`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub metrics: Vec<MetricResult>,
+    /// Per-scanner metrics, ascending by scanner id, one entry per scanner.
+    /// Protocol revision 2 only (schema 1.1).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scanner_metrics: Vec<ScannerMetrics>,
     /// Failures, ascending by scanner then code.
     pub failures: Vec<MeasurementFailure>,
     /// Coverage of the outcome matrix.
@@ -518,7 +544,8 @@ impl_document!(
     RunArtifact,
     RunArtifactBody,
     crate::version::DocumentKind::RunArtifact,
-    diagnostics
+    diagnostics,
+    protocol
 );
 
 impl RunArtifact {
@@ -576,8 +603,12 @@ pub struct PublicSyntheticArtifactBody {
     pub method_coverage: Vec<MethodCoverage>,
     /// Per-occurrence axis states.
     pub outcomes: Vec<PublicOutcome>,
-    /// Metrics.
+    /// Metrics (protocol revision 1 only; see [`RunArtifactBody::metrics`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub metrics: Vec<MetricResult>,
+    /// Per-scanner metrics (protocol revision 2 only).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scanner_metrics: Vec<ScannerMetrics>,
     /// Failures.
     pub failures: Vec<MeasurementFailure>,
     /// Coverage of the outcome matrix.
@@ -601,7 +632,8 @@ pub struct PublicSyntheticArtifact {
 impl_document!(
     PublicSyntheticArtifact,
     PublicSyntheticArtifactBody,
-    crate::version::DocumentKind::PublicSyntheticArtifact
+    crate::version::DocumentKind::PublicSyntheticArtifact,
+    protocol
 );
 
 impl RunArtifact {
@@ -621,9 +653,15 @@ impl RunArtifact {
                 ReasonCode::PublicProjectionForbidden,
             )));
         }
+        // The projection is sealed under the version of its source: a legacy
+        // (revision 1, schema 1.0) artifact projects to a legacy public one.
         let mut public = PublicSyntheticArtifact {
             schema: PublicSyntheticArtifactSchema::Only,
-            schema_version: SchemaVersion::CURRENT,
+            schema_version: if body.protocol.is_canonical() {
+                SchemaVersion::CURRENT
+            } else {
+                SchemaVersion::V1_0
+            },
             semantic_digest: Sha256Digest::of_bytes(b""),
             semantic: PublicSyntheticArtifactBody {
                 run_class: PublicSyntheticClass::Only,
@@ -652,6 +690,7 @@ impl RunArtifact {
                 method_coverage: body.method_coverage.clone(),
                 outcomes: body.outcomes.iter().map(CaseOutcome::public).collect(),
                 metrics: body.metrics.clone(),
+                scanner_metrics: body.scanner_metrics.clone(),
                 failures: body.failures.clone(),
                 completeness: body.completeness,
             },
@@ -688,10 +727,50 @@ struct Shape<'a> {
     methods: &'a [MethodCoverage],
     counts: &'a PopulationCounts,
     metrics: &'a [MetricResult],
+    scanner_metrics: &'a [ScannerMetrics],
+    protocol: &'a ProtocolIdentity,
     mechanics: &'a Mechanics,
     failures: &'a [MeasurementFailure],
     completeness: Completeness,
     outcome_count: usize,
+}
+
+/// Revision-2 metrics: one entry per scanner, each with exactly the registry's
+/// metric ids in order, every result valid on its own.
+fn check_scanner_metrics(
+    scanner_metrics: &[ScannerMetrics],
+    scanners: &[(&ScannerId, ScannerStatus)],
+    mechanics: &Mechanics,
+    path: &Path<'_>,
+    c: &mut Collector,
+) {
+    let list = path.field("scannerMetrics");
+    if !within_limit(scanner_metrics.len(), MAX_SCANNERS, &list, c) {
+        return;
+    }
+    sorted_unique(scanner_metrics, |m| m.scanner_id.as_str(), &list, c);
+    for (i, entry) in scanner_metrics.iter().enumerate() {
+        let p = list.index(i);
+        if !scanners.iter().any(|(id, _)| **id == entry.scanner_id) {
+            c.push(ReasonCode::UnknownScanner, &p.field("scannerId"));
+        }
+        let metrics = p.field("metrics");
+        non_empty(&entry.metrics, &metrics, c);
+        sorted_unique(&entry.metrics, |m| m.metric.id.as_str(), &metrics, c);
+        for (j, m) in entry.metrics.iter().enumerate() {
+            m.validate(mechanics, &metrics.index(j), c);
+        }
+        if c.is_full() {
+            return;
+        }
+    }
+    // Every scanner has an entry: an omitted scanner cannot hide its metrics.
+    let complete = scanners
+        .iter()
+        .all(|(id, _)| scanner_metrics.iter().any(|m| m.scanner_id == **id));
+    if !complete {
+        c.push(ReasonCode::MetricDefinitionMismatch, &list);
+    }
 }
 
 fn check_artifact_shape(shape: &Shape<'_>, path: &Path<'_>, c: &mut Collector) {
@@ -700,6 +779,8 @@ fn check_artifact_shape(shape: &Shape<'_>, path: &Path<'_>, c: &mut Collector) {
         methods,
         counts,
         metrics,
+        scanner_metrics,
+        protocol,
         mechanics,
         failures,
         completeness,
@@ -733,10 +814,24 @@ fn check_artifact_shape(shape: &Shape<'_>, path: &Path<'_>, c: &mut Collector) {
     }
 
     let metrics_path = path.field("metrics");
-    non_empty(metrics, &metrics_path, c);
-    sorted_unique(metrics, |m| m.metric.id.as_str(), &metrics_path, c);
-    for (i, m) in metrics.iter().enumerate() {
-        m.validate(mechanics, &metrics_path.index(i), c);
+    if protocol.is_canonical() {
+        // Revision 2: metrics are per scanner; the unkeyed list must be absent.
+        if !metrics.is_empty() {
+            c.push(ReasonCode::ProtocolBindingMismatch, &metrics_path);
+        }
+        check_scanner_metrics(scanner_metrics, scanners, mechanics, path, c);
+    } else {
+        if !scanner_metrics.is_empty() {
+            c.push(
+                ReasonCode::ProtocolBindingMismatch,
+                &path.field("scannerMetrics"),
+            );
+        }
+        non_empty(metrics, &metrics_path, c);
+        sorted_unique(metrics, |m| m.metric.id.as_str(), &metrics_path, c);
+        for (i, m) in metrics.iter().enumerate() {
+            m.validate(mechanics, &metrics_path.index(i), c);
+        }
     }
 
     let failures_path = path.field("failures");
@@ -750,6 +845,10 @@ fn check_artifact_shape(shape: &Shape<'_>, path: &Path<'_>, c: &mut Collector) {
         for (i, f) in failures.iter().enumerate() {
             if !scanners.iter().any(|(id, _)| **id == f.scanner_id) {
                 c.push(ReasonCode::UnknownScanner, &failures_path.index(i));
+            }
+            // Codes added by revision 2 do not exist in a revision-1 document.
+            if f.code.requires_revision_2() && !protocol.is_canonical() {
+                c.push(ReasonCode::ProtocolBindingMismatch, &failures_path.index(i));
             }
         }
         // Failures and scanner status must agree: a scanner that did not
@@ -864,9 +963,7 @@ fn check_outcomes<'a, T>(
 
 impl RunArtifactBody {
     pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {
-        if self.protocol != ProtocolIdentity::CURRENT {
-            c.push(ReasonCode::ProtocolBindingMismatch, &path.field("protocol"));
-        }
+        self.protocol.validate(&path.field("protocol"), c);
         if !self.run_class.matches(self.population.visibility) {
             c.push(ReasonCode::RunClassMismatch, &path.field("runClass"));
         }
@@ -890,6 +987,8 @@ impl RunArtifactBody {
                 methods: &self.method_coverage,
                 counts: &self.population_counts,
                 metrics: &self.metrics,
+                scanner_metrics: &self.scanner_metrics,
+                protocol: &self.protocol,
                 mechanics: &self.mechanics,
                 failures: &self.failures,
                 completeness: self.completeness,
@@ -957,9 +1056,7 @@ impl RunArtifactBody {
 
 impl PublicSyntheticArtifactBody {
     pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {
-        if self.protocol != ProtocolIdentity::CURRENT {
-            c.push(ReasonCode::ProtocolBindingMismatch, &path.field("protocol"));
-        }
+        self.protocol.validate(&path.field("protocol"), c);
         let views: Vec<ScannerView<'_>> = self
             .scanners
             .iter()
@@ -980,6 +1077,8 @@ impl PublicSyntheticArtifactBody {
                 methods: &self.method_coverage,
                 counts: &self.population_counts,
                 metrics: &self.metrics,
+                scanner_metrics: &self.scanner_metrics,
+                protocol: &self.protocol,
                 mechanics: &self.mechanics,
                 failures: &self.failures,
                 completeness: self.completeness,

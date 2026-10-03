@@ -11,7 +11,12 @@
 //! consumer that accepts an artifact must also call
 //! [`verify_run_artifact_accounting`] (or the public variant). ADR 0005
 //! records this and assigns the call sites (P8 `validate` and `replay`, P7
-//! after writing).
+//! after writing: the artifact writer calls it on every artifact it produces).
+//!
+//! Since protocol revision 2 (ADR 0008) metrics are keyed by scanner, so an
+//! artifact with several scanners is verified scanner by scanner. A revision-1
+//! artifact is not verifiable here ([`VerifyFailure::UnsupportedRevision`]): its
+//! accounting was the legacy one.
 //!
 //! Failures reuse the contracts' stable reason codes
 //! (`metric-counts-inconsistent`, `metric-value-inconsistent`,
@@ -21,7 +26,7 @@ use std::fmt;
 
 use pii_eval_contracts::{
     Collector, ContractError, CorpusSnapshot, EffectiveNBasis, Mechanics, Meta, MetricResult, Path,
-    PublicSyntheticArtifact, ReasonCode, RunArtifact, Violations,
+    ProtocolIdentity, PublicSyntheticArtifact, ReasonCode, RunArtifact, ScannerMetrics, Violations,
     validate_artifact_against_snapshot,
 };
 
@@ -36,13 +41,14 @@ pub enum VerifyFailure {
     /// The outcome rows or snapshot are not accountable (missing, duplicate or
     /// unknown rows, limits, ...).
     Accounting(AccountError),
-    /// Schema 1.0 holds one metric list per artifact, with no scanner key, so
-    /// metrics of an artifact with several scanners cannot be attributed and
-    /// are not verified. Per-scanner metrics need the contract revision named
-    /// in ADR 0005 ("Contract revision R2 requirements").
-    MetricScopeAmbiguous {
-        /// Scanners in the artifact.
-        scanners: u64,
+    /// The artifact is not protocol revision 2. Revision 1 uses the legacy
+    /// accounting (any-row benign and collision buckets, one unkeyed metric
+    /// list), which this verifier does not implement: such an artifact is
+    /// readable and structurally valid, but its metrics are not recomputed
+    /// (ADR 0008, section 1).
+    UnsupportedRevision {
+        /// The revision the artifact declares.
+        version: u32,
     },
     /// The artifact disagrees with the snapshot or with its own rows.
     Mismatch(Violations),
@@ -52,8 +58,8 @@ impl fmt::Display for VerifyFailure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             VerifyFailure::Accounting(e) => write!(f, "accounting: {e}"),
-            VerifyFailure::MetricScopeAmbiguous { scanners } => {
-                write!(f, "metrics cannot be attributed among {scanners} scanners")
+            VerifyFailure::UnsupportedRevision { version } => {
+                write!(f, "protocol revision {version} is not verifiable")
             }
             VerifyFailure::Mismatch(v) => write!(f, "{v}"),
         }
@@ -134,16 +140,18 @@ fn check_metric_result(
 }
 
 struct Parts<'a> {
+    protocol: &'a ProtocolIdentity,
     scanners: Vec<ScannerInput<'a>>,
     rows: Vec<OutcomeRef<'a>>,
     metrics: &'a [MetricResult],
+    scanner_metrics: &'a [ScannerMetrics],
     mechanics: &'a Mechanics,
 }
 
 fn verify_parts(parts: Parts<'_>, snapshot: &CorpusSnapshot) -> Result<(), VerifyFailure> {
-    if parts.scanners.len() != 1 {
-        return Err(VerifyFailure::MetricScopeAmbiguous {
-            scanners: parts.scanners.len() as u64,
+    if !parts.protocol.is_canonical() {
+        return Err(VerifyFailure::UnsupportedRevision {
+            version: parts.protocol.version,
         });
     }
     let index = AuthoredIndex::new(&snapshot.semantic)?;
@@ -153,22 +161,55 @@ fn verify_parts(parts: Parts<'_>, snapshot: &CorpusSnapshot) -> Result<(), Verif
         parts.rows.iter().copied(),
         parts.mechanics,
     )?;
-    let stratum = accounting
-        .scanners
-        .first()
-        .map(|s| &s.overall)
-        .ok_or(VerifyFailure::MetricScopeAmbiguous { scanners: 0 })?;
-    compare(stratum, parts.metrics, parts.mechanics)
+    let mut c = Collector::new();
+    let root = Path::ROOT.field("semantic");
+    // Revision 2 has no unkeyed list.
+    if !parts.metrics.is_empty() {
+        c.push(ReasonCode::ProtocolBindingMismatch, &root.field("metrics"));
+    }
+    let list = root.field("scannerMetrics");
+    // No entry for an unknown scanner, and exactly one entry per scanner: an
+    // omitted scanner cannot hide a bad metric.
+    for (i, entry) in parts.scanner_metrics.iter().enumerate() {
+        if !accounting
+            .scanners
+            .iter()
+            .any(|s| s.scanner_id == entry.scanner_id)
+        {
+            c.push(
+                ReasonCode::UnknownScanner,
+                &list.index(i).field("scannerId"),
+            );
+        }
+    }
+    for scanner in &accounting.scanners {
+        let entries: Vec<(usize, &ScannerMetrics)> = parts
+            .scanner_metrics
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.scanner_id == scanner.scanner_id)
+            .collect();
+        match entries.as_slice() {
+            [(i, entry)] => compare(
+                &scanner.overall,
+                &entry.metrics,
+                parts.mechanics,
+                &list.index(*i).field("metrics"),
+                &mut c,
+            ),
+            _ => c.push(ReasonCode::MetricDefinitionMismatch, &list),
+        }
+    }
+    c.finish().map_err(VerifyFailure::Mismatch)
 }
 
 fn compare(
     stratum: &StratumAccounting,
     metrics: &[MetricResult],
     mechanics: &Mechanics,
-) -> Result<(), VerifyFailure> {
-    let mut c = Collector::new();
-    let root = Path::ROOT.field("semantic");
-    let list = root.field("metrics");
+    list: &Path<'_>,
+    c: &mut Collector,
+) {
     // Exactly the registry's ten metrics, each once: an artifact that omits
     // (or repeats) a metric cannot hide a bad one.
     let complete = pii_eval_contracts::METRICS
@@ -176,13 +217,13 @@ fn compare(
         .all(|d| metrics.iter().filter(|m| m.metric.id == d.id).count() == 1)
         && metrics.len() == pii_eval_contracts::METRICS.len();
     if !complete {
-        c.push(ReasonCode::MetricDefinitionMismatch, &list);
+        c.push(ReasonCode::MetricDefinitionMismatch, list);
     }
     for (i, result) in metrics.iter().enumerate() {
         let path = list.index(i);
         // Own consistency first (definition and identities); the value is
         // compared with the accounting of the rows below.
-        check_metric_result(result, mechanics, &path, false, &mut c);
+        check_metric_result(result, mechanics, &path, false, c);
         let Some(account) = stratum.metric(result.metric.id) else {
             c.push(ReasonCode::MetricDefinitionMismatch, &path.field("metric"));
             continue;
@@ -198,15 +239,15 @@ fn compare(
             c.push(ReasonCode::MetricValueInconsistent, &path.field("value"));
         }
     }
-    c.finish().map_err(VerifyFailure::Mismatch)
 }
 
 /// Verify an internal artifact against the snapshot it measured: the
 /// contracts' snapshot binding (population, authored counts, method coverage,
-/// outcome lattice), then every listed metric against the outcome rows.
+/// outcome lattice), then every scanner's metrics against that scanner's rows.
 ///
-/// Requires exactly one scanner (see [`VerifyFailure::MetricScopeAmbiguous`])
-/// and a complete outcome matrix (a missing row is `Accounting(MissingRows)`).
+/// Requires protocol revision 2 ([`VerifyFailure::UnsupportedRevision`]
+/// otherwise) and a complete outcome matrix (a missing row is
+/// `Accounting(MissingRows)`). Scanners are never pooled.
 pub fn verify_run_artifact_accounting(
     artifact: &RunArtifact,
     snapshot: &CorpusSnapshot,
@@ -215,6 +256,7 @@ pub fn verify_run_artifact_accounting(
     let body = &artifact.semantic;
     verify_parts(
         Parts {
+            protocol: &body.protocol,
             scanners: body
                 .scanners
                 .iter()
@@ -225,6 +267,7 @@ pub fn verify_run_artifact_accounting(
                 .collect(),
             rows: body.outcomes.iter().map(OutcomeRef::from).collect(),
             metrics: &body.metrics,
+            scanner_metrics: &body.scanner_metrics,
             mechanics: &body.mechanics,
         },
         snapshot,
@@ -248,6 +291,7 @@ pub fn verify_public_artifact_accounting(
     }
     verify_parts(
         Parts {
+            protocol: &body.protocol,
             scanners: body
                 .scanners
                 .iter()
@@ -258,6 +302,7 @@ pub fn verify_public_artifact_accounting(
                 .collect(),
             rows: body.outcomes.iter().map(OutcomeRef::from).collect(),
             metrics: &body.metrics,
+            scanner_metrics: &body.scanner_metrics,
             mechanics: &body.mechanics,
         },
         snapshot,

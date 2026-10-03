@@ -502,7 +502,7 @@
       "type": "string"
     }
   },
-  "$id": "urn:pii-eval:schema:corpus-snapshot:1.0",
+  "$id": "urn:pii-eval:schema:corpus-snapshot:1.1",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "A corpus snapshot document. Its `semanticDigest` is the population digest\nthat manifests, observations and artifacts bind to.",

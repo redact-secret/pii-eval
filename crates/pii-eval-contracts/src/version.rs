@@ -20,7 +20,12 @@ use crate::reason::{ContractError, ReasonCode};
 /// Schema major version this crate reads and writes.
 pub const SCHEMA_MAJOR: u16 = 1;
 /// Highest schema minor version of [`SCHEMA_MAJOR`] this crate reads and writes.
-pub const SCHEMA_MINOR: u16 = 0;
+///
+/// 1.1 (P7, ADR 0008) adds, all optional or revision-gated: protocol revision 2
+/// with its rule identities, per-scanner metrics, the `resource-limit-exceeded`
+/// failure code and the runtime provenance of observation diagnostics. Every
+/// valid 1.0 document is still valid and keeps its digest.
+pub const SCHEMA_MINOR: u16 = 1;
 
 /// The five document kinds. The string is the `schema` field value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -90,6 +95,13 @@ impl SchemaVersion {
         major: SCHEMA_MAJOR,
         minor: SCHEMA_MINOR,
     };
+
+    /// Schema 1.0, the freeze of P2. Legacy (protocol revision 1) documents are
+    /// sealed under it and stay valid and unchanged.
+    pub const V1_0: SchemaVersion = SchemaVersion { major: 1, minor: 0 };
+
+    /// Schema 1.1: protocol revision 2 (ADR 0008).
+    pub const V1_1: SchemaVersion = SchemaVersion { major: 1, minor: 1 };
 
     /// Parse `"<major>.<minor>"`: ASCII digits, no sign, no leading zeros.
     pub fn parse(text: &str) -> Option<Self> {
@@ -199,7 +211,8 @@ mod tests {
     fn readability_rules() {
         let v = |major, minor| SchemaVersion { major, minor };
         assert_eq!(v(1, 0).readable(), Ok(()));
-        assert_eq!(v(1, 1).readable(), Err(ReasonCode::SchemaMinorTooNew));
+        assert_eq!(v(1, 1).readable(), Ok(()));
+        assert_eq!(v(1, 2).readable(), Err(ReasonCode::SchemaMinorTooNew));
         assert_eq!(v(2, 0).readable(), Err(ReasonCode::IncompatibleSchemaMajor));
         assert_eq!(v(0, 9).readable(), Err(ReasonCode::IncompatibleSchemaMajor));
     }

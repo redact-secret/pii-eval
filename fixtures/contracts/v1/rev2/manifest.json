@@ -1,0 +1,191 @@
+{
+  "schema": "pii-eval.run-manifest",
+  "schemaVersion": "1.1",
+  "semantic": {
+    "engine": {
+      "name": "pii-eval",
+      "version": "0.0.0"
+    },
+    "generation": {
+      "generator": "synthetic-generator",
+      "generatorVersion": 1,
+      "seedDerivation": "seed-v1"
+    },
+    "limits": {
+      "batchVariants": 2,
+      "maxMemoryBytes": 17179869184,
+      "maxStderrBytes": 1048576,
+      "maxStdoutBytes": 16777216,
+      "maxTemporaryBytes": 4294967296,
+      "pendingTasks": 8,
+      "perScannerParallelism": 2,
+      "scannerTimeoutMs": 120000,
+      "workers": 4
+    },
+    "mechanics": {
+      "intervalPrecision": 6,
+      "intervalZ": {
+        "mantissa": 196,
+        "scale": 2
+      },
+      "minDenominator": 4,
+      "replays": 2
+    },
+    "methods": [
+      {
+        "id": "context-discrimination",
+        "version": 2
+      },
+      {
+        "id": "jurisdiction-collision",
+        "version": 3
+      },
+      {
+        "id": "pii-benign",
+        "version": 3
+      },
+      {
+        "id": "type-validation",
+        "version": 2
+      }
+    ],
+    "metrics": [
+      {
+        "id": "benign-suppression-rate",
+        "version": 1
+      },
+      {
+        "id": "context-discrimination-rate",
+        "version": 1
+      },
+      {
+        "id": "jurisdiction-collision-rate",
+        "version": 1
+      },
+      {
+        "id": "measurable-share",
+        "version": 1
+      },
+      {
+        "id": "non-sensitive-flag-rate",
+        "version": 1
+      },
+      {
+        "id": "range-collateral-rate",
+        "version": 1
+      },
+      {
+        "id": "sensitive-miss-rate",
+        "version": 1
+      },
+      {
+        "id": "type-miss-rate",
+        "version": 1
+      },
+      {
+        "id": "wrong-family-rate",
+        "version": 1
+      },
+      {
+        "id": "wrong-jurisdiction-rate",
+        "version": 1
+      }
+    ],
+    "population": {
+      "populationDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae",
+      "populationId": "synthetic-demo-population",
+      "populationVersion": 1,
+      "visibility": "public-synthetic"
+    },
+    "protocol": {
+      "accounting": "pii-v1",
+      "id": "pii-v1",
+      "rules": {
+        "accounting": {
+          "id": "pii-v1-canonical-accounting",
+          "revision": 2
+        },
+        "matching": {
+          "id": "pii-v1-canonical",
+          "revision": 2
+        },
+        "statistics": {
+          "id": "pii-v1-wilson-exact",
+          "revision": 1
+        }
+      },
+      "version": 2
+    },
+    "runClass": "public-synthetic",
+    "scanners": [
+      {
+        "configuration": {
+          "activation": [
+            "pii:global",
+            "pii:us"
+          ],
+          "parameters": [
+            {
+              "key": "contextWindow",
+              "value": 5
+            }
+          ]
+        },
+        "identity": {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "fake-adapter",
+            "adapterVersion": "0.0.1",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "b0e38b8133c3646a1e438e38f45d33b7d0d7c9b7e91936fa10289a2ce9a3c4d0",
+          "configurationDigest": "ec0ea698e39929f6aee9ac0e4cf464267a1ca1902e841bb471e95c7f844f6669",
+          "product": {
+            "kind": "released"
+          },
+          "scannerId": "alpha-scan",
+          "scannerVersion": "1.0.0"
+        }
+      },
+      {
+        "configuration": {
+          "activation": [
+            "pii:global",
+            "pii:us"
+          ],
+          "parameters": [
+            {
+              "key": "contextWindow",
+              "value": 3
+            }
+          ]
+        },
+        "identity": {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "fake-adapter",
+            "adapterVersion": "0.0.1",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "49a6bacd520d98afdc89655cab9f30a65d71d51dcc2dd9ceb4fce29fe926d4bd",
+          "configurationDigest": "28a91ab076e3bb94c9930a167b927c2c0bf892c334a1424bce968df1f1a040f5",
+          "product": {
+            "kind": "released"
+          },
+          "scannerId": "beta-scan",
+          "scannerVersion": "1.0.0"
+        }
+      }
+    ],
+    "scope": {
+      "jurisdictions": [
+        "US"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ]
+    }
+  },
+  "semanticDigest": "f360a806a0d7d6be921f28435e637bd9a47939c69139ae6531db3a68d383c5dd"
+}

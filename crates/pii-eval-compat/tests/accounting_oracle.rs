@@ -468,22 +468,22 @@ fn a3_a_benign_case_with_several_variants_is_one_sample() {
         .overall
         .metric(MetricId::BenignSuppressionRate)
         .unwrap();
-    // One group: any pass row -> numerator (oracle `group.some(event)` on the group).
-    // Known limitation, pinned on purpose: variant b1-b is a false positive yet the
-    // case counts as suppressed. ADR 0005 section 11 (A8) records it and leaves any -> all
-    // to the canonical protocol revision (P7).
-    assert_eq!(m.counts, counts(1, 1, 1, 0, 0, 0, 1));
+    // One group, one sample. Oracle: any pass row -> numerator (`group.some(event)`),
+    // so counts (1, 1, 1, ...). Canonical (A8, ADR 0008): variant b1-b is a false
+    // positive, so the case is NOT suppressed: numerator 0.
+    assert_eq!(m.counts, counts(1, 1, 0, 0, 0, 0, 1));
     assert_eq!(acc.authored.variants, 2);
 }
 
 #[test]
-fn a8_any_row_passing_counts_the_group_for_benign_and_collision() {
+fn a8_all_rows_must_pass_for_benign_and_collision_unlike_the_oracle() {
     // Oracle accounting.ts:281-286: `groupBucket(group, axis, row => status === 'pass')`,
-    // and groupBucket's event is `group.some(event)`. Hand evaluation:
+    // and groupBucket's event is `group.some(event)`. Hand evaluation, ORACLE:
     //   benign d1: variants pass + false-positive -> no review, no not-measured, some pass -> numerator
     //   collision k1: variants pass + wrong-jurisdiction -> some pass -> numerator
-    // The context metric uses "all endpoints pass" instead (accounting.ts:272). The kernel
-    // reproduces the oracle ("any") for revision-2 accounting until P7 decides; see ADR 0005 A8.
+    // CANONICAL (A8, ADR 0008): the context metric already requires all endpoints to pass
+    // (accounting.ts:272); benign and collision now do too, so each case has a failing
+    // row and lands in `other`, not in the numerator.
     let body = snapshot_body(vec![
         case(
             "d1",
@@ -528,15 +528,16 @@ fn a8_any_row_passing_counts_the_group_for_benign_and_collision() {
     ];
     let acc = run(&body, &rows);
     let o = &acc.scanners[0].overall;
+    // Oracle: (1, 1, 1, 0, 0, 1, 2) for both. Canonical: numerator 0.
     assert_eq!(
         o.metric(MetricId::BenignSuppressionRate).unwrap().counts,
-        counts(1, 1, 1, 0, 0, 1, 2)
+        counts(1, 1, 0, 0, 0, 1, 2)
     );
     assert_eq!(
         o.metric(MetricId::JurisdictionCollisionRate)
             .unwrap()
             .counts,
-        counts(1, 1, 1, 0, 0, 1, 2)
+        counts(1, 1, 0, 0, 0, 1, 2)
     );
 }
 

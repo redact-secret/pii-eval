@@ -164,7 +164,8 @@ pub struct RunManifest {
 impl_document!(
     RunManifest,
     RunManifestBody,
-    crate::version::DocumentKind::RunManifest
+    crate::version::DocumentKind::RunManifest,
+    protocol
 );
 
 impl RunManifest {
@@ -181,9 +182,7 @@ impl RunManifest {
 
 impl RunManifestBody {
     pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {
-        if self.protocol != ProtocolIdentity::CURRENT {
-            c.push(ReasonCode::ProtocolBindingMismatch, &path.field("protocol"));
-        }
+        self.protocol.validate(&path.field("protocol"), c);
         if !self.run_class.matches(self.population.visibility) {
             c.push(ReasonCode::RunClassMismatch, &path.field("runClass"));
         }

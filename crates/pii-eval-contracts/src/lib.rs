@@ -2,8 +2,10 @@
 //! documents, the frozen `pii-v1` protocol registry, structural validation,
 //! canonical serialization and the semantic digest.
 //!
-//! Status: schema 1.0 is frozen by P2 (issue #3); see ADR 0002 for the change
-//! rules and ADR 0003 for the canonical serialization. The Rust API of this
+//! Status: schema 1.0 was frozen by P2 (issue #3); schema 1.1 (P7, ADR 0008)
+//! adds protocol revision 2 with per-scanner metrics, and every valid 1.0
+//! document stays valid. See ADR 0002 for the change rules and ADR 0003 for the
+//! canonical serialization. The Rust API of this
 //! crate is internal. The versioned JSON documents and the committed JSON
 //! Schemas under `schemas/` are the consumer contracts.
 //!
@@ -34,8 +36,8 @@ pub use artifact::{
     ArtifactScanner, CaseOutcome, Completeness, FailureCode, MeasurementFailure, MethodCoverage,
     MetricCounts, MetricResult, MetricValue, ObservedSummary, Phase, PhaseTiming, PopulationCounts,
     PublicOutcome, PublicScannerSummary, PublicSyntheticArtifact, PublicSyntheticArtifactBody,
-    PublicSyntheticClass, RunArtifact, RunArtifactBody, RunDiagnostics, serialize_internal,
-    serialize_public_synthetic,
+    PublicSyntheticClass, RunArtifact, RunArtifactBody, RunDiagnostics, ScannerMetrics,
+    serialize_internal, serialize_public_synthetic,
 };
 pub use axes::{
     ActionExpectation, ActionKind, ActionOutcome, AxisStatus, ContextClass, ContextObligation,
@@ -68,13 +70,14 @@ pub use manifest::{
 };
 pub use observation::{
     Finding, InputObservation, ObservationDiagnostics, ObservationSet, ObservationSetBody,
-    ReplayRecord,
+    OffsetUnitName, ReplayRecord, RuntimeProvenance,
 };
 pub use protocol::{
     ACCOUNTING_VERSION, AccountingId, Applicability, BoundDirection, EffectiveNBasis, METHODS,
     METRICS, Mechanics, MethodDefinition, MethodId, MethodRef, MetricDefinition, MetricId,
-    MetricRef, MetricStatus, MetricUnit, PROTOCOL_ID, PROTOCOL_VERSION, ProtocolId,
-    ProtocolIdentity, SampleUnit, WithheldReason, registry_json,
+    MetricRef, MetricStatus, MetricUnit, PROTOCOL_ID, PROTOCOL_VERSION, PROTOCOL_VERSION_LEGACY,
+    ProtocolId, ProtocolIdentity, ProtocolRules, RuleId, RuleRef, SampleUnit, WithheldReason,
+    registry_json,
 };
 pub use reason::{Collector, ContractError, Meta, Path, ReasonCode, Violations};
 pub use scanner::{

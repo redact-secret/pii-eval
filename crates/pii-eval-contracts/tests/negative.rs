@@ -197,7 +197,8 @@ fn probes() -> Vec<Probe> {
         k_snap,
         "minor-newer-than-reader",
         ReasonCode::SchemaMinorTooNew,
-        replace_once(&snap, version_line, "\"schemaVersion\": \"1.1\","),
+        // 1.1 is readable since P7 (ADR 0008); 1.2 is the first newer minor.
+        replace_once(&snap, version_line, "\"schemaVersion\": \"1.2\","),
     );
     raw(
         k_snap,
@@ -786,6 +787,174 @@ fn probes() -> Vec<Probe> {
         },
     );
 
+    // ---- Protocol revision 2 (schema 1.1, ADR 0008). ----
+    let c2 = Fixtures::default_canonical();
+    let man2 = to_pretty_json(&c2.manifest).unwrap();
+    let mut art2_probe = |label: &str, code, change: &dyn Fn(&mut RunArtifact)| {
+        let doc = typed(&c2.artifact, |d| change(d));
+        out.push(doc_probe(
+            k_art,
+            label,
+            code,
+            serialize_internal(&doc).unwrap().into_bytes(),
+        ));
+    };
+    art2_probe(
+        "rev2-declared-as-schema-1-0",
+        ReasonCode::ProtocolBindingMismatch,
+        &|d| d.schema_version = SchemaVersion::V1_0,
+    );
+    art2_probe(
+        "rev2-with-unkeyed-metric-list",
+        ReasonCode::ProtocolBindingMismatch,
+        &|d| d.semantic.metrics = metrics(),
+    );
+    art2_probe(
+        "rev2-rule-in-the-wrong-slot",
+        ReasonCode::ProtocolBindingMismatch,
+        &|d| {
+            let mut rules = ProtocolRules::CANONICAL_V2;
+            rules.matching.id = RuleId::PiiV1WilsonExact;
+            d.semantic.protocol.rules = Some(rules);
+        },
+    );
+    art2_probe(
+        "rev2-without-rules",
+        ReasonCode::ProtocolBindingMismatch,
+        &|d| d.semantic.protocol.rules = None,
+    );
+    art2_probe(
+        "rev2-scanner-without-metrics",
+        ReasonCode::MetricDefinitionMismatch,
+        &|d| {
+            d.semantic.scanner_metrics.pop();
+        },
+    );
+    art2_probe(
+        "rev2-metrics-for-a-scanner-not-in-the-artifact",
+        ReasonCode::UnknownScanner,
+        &|d| d.semantic.scanner_metrics[1].scanner_id = sid("zeta-scan"),
+    );
+    art2_probe(
+        "rev2-scanner-metrics-unsorted",
+        ReasonCode::NonCanonicalOrder,
+        &|d| d.semantic.scanner_metrics.reverse(),
+    );
+    art2_probe(
+        "rev2-scanner-metrics-repeated",
+        ReasonCode::DuplicateIdentity,
+        &|d| d.semantic.scanner_metrics[1].scanner_id = sid("alpha-scan"),
+    );
+    art2_probe(
+        "rev2-scanner-metrics-counts-do-not-add-up",
+        ReasonCode::MetricCountsInconsistent,
+        &|d| d.semantic.scanner_metrics[0].metrics[0].counts.total += 1,
+    );
+    art2_probe(
+        "rev2-scanner-metric-list-empty",
+        ReasonCode::EmptyCollection,
+        &|d| d.semantic.scanner_metrics[0].metrics.clear(),
+    );
+    // Revision 1 keeps its one unkeyed list and its closed failure codes.
+    let mut legacy_probe = |label: &str, code, change: &dyn Fn(&mut RunArtifact)| {
+        let doc = typed(&f.artifact, |d| change(d));
+        out.push(doc_probe(
+            k_art,
+            label,
+            code,
+            serialize_internal(&doc).unwrap().into_bytes(),
+        ));
+    };
+    legacy_probe(
+        "rev1-with-scanner-metrics",
+        ReasonCode::ProtocolBindingMismatch,
+        &|d| {
+            d.semantic.scanner_metrics = c2.artifact.semantic.scanner_metrics.clone();
+        },
+    );
+    legacy_probe(
+        "rev1-with-a-rev2-failure-code",
+        ReasonCode::ProtocolBindingMismatch,
+        &|d| {
+            d.semantic.scanners[1].status = ScannerStatus::Error;
+            d.semantic.failures[0].code = FailureCode::ResourceLimitExceeded;
+        },
+    );
+    legacy_probe(
+        "rev1-with-rule-identities",
+        ReasonCode::ProtocolBindingMismatch,
+        &|d| d.semantic.protocol.rules = Some(ProtocolRules::CANONICAL_V2),
+    );
+    out.push(doc_probe(
+        k_man,
+        "rev2-unknown-rule-id",
+        ReasonCode::SchemaViolation,
+        replace_once(
+            &man2,
+            "\"id\": \"pii-v1-wilson-exact\"",
+            "\"id\": \"pii-v1-wilson-approximate\"",
+        )
+        .into_bytes(),
+    ));
+    let mut man2_probe = |label: &str, code, change: &dyn Fn(&mut RunManifest)| {
+        let doc = typed(&c2.manifest, |d| change(d));
+        out.push(doc_probe(
+            k_man,
+            label,
+            code,
+            to_pretty_json(&doc).unwrap().into_bytes(),
+        ));
+    };
+    man2_probe(
+        "rev2-declared-as-schema-1-0",
+        ReasonCode::ProtocolBindingMismatch,
+        &|d| d.schema_version = SchemaVersion::V1_0,
+    );
+    man2_probe(
+        "rev2-rule-revision-drift",
+        ReasonCode::ProtocolBindingMismatch,
+        &|d| {
+            let mut rules = ProtocolRules::CANONICAL_V2;
+            rules.accounting.revision = 1;
+            d.semantic.protocol.rules = Some(rules);
+        },
+    );
+    let mut obs2_probe = |label: &str, code, change: &dyn Fn(&mut ObservationSet)| {
+        let doc = typed(&c2.obs_alpha, |d| change(d));
+        out.push(doc_probe(
+            k_obs,
+            label,
+            code,
+            to_pretty_json(&doc).unwrap().into_bytes(),
+        ));
+    };
+    obs2_probe(
+        "rev2-declared-as-schema-1-0",
+        ReasonCode::ProtocolBindingMismatch,
+        &|d| d.schema_version = SchemaVersion::V1_0,
+    );
+    let legacy_with_runtime = typed(&f.obs_alpha, |d| {
+        d.diagnostics = c2.obs_alpha.diagnostics.clone();
+    });
+    out.push(doc_probe(
+        k_obs,
+        "rev1-with-runtime-provenance",
+        ReasonCode::DiagnosticsInvalid,
+        to_pretty_json(&legacy_with_runtime).unwrap().into_bytes(),
+    ));
+    let pub2 = c2.artifact.to_public_synthetic().unwrap();
+    let mut pub_unkeyed = pub2.clone();
+    pub_unkeyed.semantic.metrics = metrics();
+    seal(&mut pub_unkeyed).unwrap();
+    out.push(doc_probe(
+        k_pub,
+        "rev2-with-unkeyed-metric-list",
+        ReasonCode::ProtocolBindingMismatch,
+        serialize_public_synthetic(&pub_unkeyed)
+            .unwrap()
+            .into_bytes(),
+    ));
+
     // ---- Cross-document bindings (in code, no committed file). ----
     let mut bind = |name: &str, code: ReasonCode, outcome: Result<(), Violations>| {
         out.push(Probe {
@@ -990,6 +1159,14 @@ fn probes() -> Vec<Probe> {
         "artifact-metrics-differ-from-plan",
         ReasonCode::ProtocolBindingMismatch,
         validate_artifact_against_manifest(&wrong_metrics, &f.manifest),
+    );
+    let c2_missing_metric = typed(&c2.artifact, |d| {
+        d.semantic.scanner_metrics[0].metrics.pop();
+    });
+    bind(
+        "rev2-scanner-lacks-a-planned-metric",
+        ReasonCode::ProtocolBindingMismatch,
+        validate_artifact_against_manifest(&c2_missing_metric, &c2.manifest),
     );
     let invalid_flipped = typed(&f.snapshot, |d| {
         d.semantic.cases[2].variants[0].expectations[0].type_expectation = ExpectedType::Invalid;

@@ -277,6 +277,17 @@
           "$ref": "#/$defs/TimestampUtc",
           "description": "End time."
         },
+        "runtime": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuntimeProvenance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Runtime provenance (protocol revision 2 documents only)."
+        },
         "startedAt": {
           "$ref": "#/$defs/TimestampUtc",
           "description": "Start time."
@@ -351,6 +362,15 @@
         }
       ]
     },
+    "OffsetUnitName": {
+      "description": "Unit the scanner reported offsets in, before the single translation to\nUTF-8 bytes (ADR 0004).",
+      "enum": [
+        "utf8-bytes",
+        "utf16-code-units",
+        "unicode-code-points"
+      ],
+      "type": "string"
+    },
     "ProductIdentity": {
       "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.\n\nDeserialization and the JSON Schema go through [`ProductIdentityWire`]:\nserde ignores extra keys on an internally tagged unit variant, so the wire\nform uses an empty struct variant that `deny_unknown_fields` closes.",
       "oneOf": [
@@ -401,18 +421,29 @@
     },
     "ProtocolIdentity": {
       "additionalProperties": false,
-      "description": "Protocol identity bound into every plan and artifact.",
+      "description": "Protocol identity bound into every plan and artifact.\n\nTwo values are valid: [`ProtocolIdentity::LEGACY_V1`] (revision 1, no\n`rules`, the oracle's semantics) and [`ProtocolIdentity::CANONICAL_V2`]\n(revision 2 with the rule identities it was produced under). Anything else\nis `protocol-binding-mismatch`; a revision-2 document must also declare\nschema 1.1 or later.",
       "properties": {
         "accounting": {
           "$ref": "#/$defs/AccountingId",
-          "description": "Accounting identity."
+          "description": "Accounting family identity."
         },
         "id": {
           "$ref": "#/$defs/ProtocolId",
           "description": "Protocol identifier."
         },
+        "rules": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProtocolRules"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Rule identities; present exactly for revision 2."
+        },
         "version": {
-          "description": "Protocol revision.",
+          "description": "Protocol revision: 1 (legacy) or 2 (canonical).",
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
@@ -422,6 +453,30 @@
         "id",
         "version",
         "accounting"
+      ],
+      "type": "object"
+    },
+    "ProtocolRules": {
+      "additionalProperties": false,
+      "description": "The rules a revision-2 document states it was produced with (ADR 0008). The\nkernel's `MATCHING_RULE_ID`, `ACCOUNTING_RULE_ID` and `STATS_RULE_ID` repeat\nthese values and a kernel test pins the equality.",
+      "properties": {
+        "accounting": {
+          "$ref": "#/$defs/RuleRef",
+          "description": "Accounting rule (ADR 0005, ADR 0008): `pii-v1-canonical-accounting`."
+        },
+        "matching": {
+          "$ref": "#/$defs/RuleRef",
+          "description": "Matching rule (ADR 0004): `pii-v1-canonical`."
+        },
+        "statistics": {
+          "$ref": "#/$defs/RuleRef",
+          "description": "Statistics rule (ADR 0005): `pii-v1-wilson-exact`."
+        }
+      },
+      "required": [
+        "matching",
+        "accounting",
+        "statistics"
       ],
       "type": "object"
     },
@@ -443,6 +498,93 @@
       "required": [
         "count",
         "agreed"
+      ],
+      "type": "object"
+    },
+    "RuleId": {
+      "description": "A rule that revision 2 binds by identity. Each id is valid in exactly one\nslot of [`ProtocolRules`].",
+      "enum": [
+        "pii-v1-canonical",
+        "pii-v1-canonical-accounting",
+        "pii-v1-wilson-exact"
+      ],
+      "type": "string"
+    },
+    "RuleRef": {
+      "additionalProperties": false,
+      "description": "One bound rule: its identity and the revision of the rule text.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/RuleId",
+          "description": "Rule identifier."
+        },
+        "revision": {
+          "description": "Rule revision.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "RuntimeProvenance": {
+      "additionalProperties": false,
+      "description": "What actually ran, as observed at startup and verified against the pins\n(ADR 0006 D5, ADR 0008). It describes the host's runtime, so it lives in the\nnon-semantic diagnostics: it is evidence for reproduction, not part of the\ndigested result. The scanner's own activation identity string is never\ncopied here, only its digest.",
+      "properties": {
+        "activationIdentityDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "SHA-256 of the scanner's activation identity string."
+        },
+        "adapterProtocol": {
+          "description": "Version of the adapter shim protocol (`pii-eval-adapter/<n>`).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "artifactDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Verified digest of the scanner artifact."
+        },
+        "offsetUnit": {
+          "$ref": "#/$defs/OffsetUnitName",
+          "description": "Offset unit the scanner reported."
+        },
+        "runtimeName": {
+          "$ref": "#/$defs/ScannerId",
+          "description": "Runtime name, for example `node`."
+        },
+        "runtimeVersion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionString"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Runtime version without a leading `v`, when it has the `x.y.z` shape."
+        },
+        "scannerVersion": {
+          "$ref": "#/$defs/VersionString",
+          "description": "Scanner version the process reported (equal to the pin)."
+        },
+        "shimDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Verified digest of the shim file."
+        }
+      },
+      "required": [
+        "runtimeName",
+        "scannerVersion",
+        "offsetUnit",
+        "adapterProtocol",
+        "shimDigest",
+        "artifactDigest",
+        "activationIdentityDigest"
       ],
       "type": "object"
     },
@@ -592,7 +734,7 @@
       "type": "string"
     }
   },
-  "$id": "urn:pii-eval:schema:observation-set:1.0",
+  "$id": "urn:pii-eval:schema:observation-set:1.1",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "An observation set document.",

@@ -39,9 +39,9 @@ use crate::range::{RangeError, validate_range};
 /// Identifier of the canonical matching rule.
 pub const MATCHING_RULE_ID: &str = "pii-v1-canonical";
 
-/// Protocol revision this rule belongs to. The contracts still bind revision
-/// 1 (the legacy semantics); revision 2 is *proposed* and is not yet
-/// representable in a document. See ADR 0004, "Contract impact".
+/// Protocol revision this rule belongs to: revision 2, bound in every
+/// revision-2 document by `ProtocolIdentity::CANONICAL_V2` (ADR 0008; ADR 0004
+/// "Contract impact" is resolved there).
 pub const MATCHING_PROTOCOL_REVISION: u32 = 2;
 
 /// Where a range failure was found.
