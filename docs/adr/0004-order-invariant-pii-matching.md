@@ -79,9 +79,12 @@ The result is a function of the **set** of findings and the **set** of
 expectations. Findings are sorted by the contracts' total order (`Finding: Ord`:
 range, family, jurisdiction, sensitivity, action; absent before present, enums
 by wire string) and expectations by occurrence id before any decision, so no
-permutation of the input can change the output. Ranges of every expectation and
-finding are validated against the text first. An invalid range is an error
-(the first in canonical order is reported), never skipped or repaired. Limits:
+permutation of the input can change the output. Every expectation range is validated
+against the text first. Finding ranges are validated next, **unless the
+scanner measured nothing** (status other than `complete`, or ranges
+unsupported): then findings are not read or validated and all axes are
+unmeasured. An invalid range is an error (the first in canonical order is
+reported), never skipped or repaired. Limits:
 at most `MAX_FINDINGS_PER_INPUT` findings, `MAX_EXPECTATIONS_PER_VARIANT`
 expectations, `MAX_TEXT_BYTES` text; occurrence ids must be unique.
 
@@ -96,13 +99,16 @@ its range (half-open, so adjacent ranges do not overlap). One candidate is the
 2. identity evidence: 0 reports the expected family (and, when the case has a
    jurisdiction, the same jurisdiction), 1 reports another family or a
    mismatching or missing jurisdiction, 2 reports no family;
-3. position in canonical finding order (a total tie-break by finding value).
+3. evidence completeness: 3 minus the number of optional fields the finding
+   reports among jurisdiction, sensitivity and action (more reported fields is
+   better), so a finding that reports sensitivity and action is never shadowed
+   by an otherwise equal one that reports none, however they sort;
+4. position in canonical finding order (a total tie-break by finding value).
 
 Geometry decides before identity: a closer wrong-family finding beats a looser
 right-family one. Identity only breaks ties between equally close findings, so
 that two exact findings on one range do not produce a result that depends on
-how family names happen to sort. Residual ties (equal closeness and equal
-evidence) fall to canonical finding order; this is arbitrary but deterministic
+how family names happen to sort. Residual ties (equal closeness, identity evidence and completeness) fall to canonical finding order; this is arbitrary but deterministic
 and scanner-neutral. A finding may be primary for several occurrences: matching
 is per occurrence, with no one-to-one assignment.
 
@@ -166,7 +172,8 @@ Executable evidence: `crates/pii-eval-compat/tests/differences.rs` (ids match).
 | D2 | A contract document stores findings in canonical order, not scanner emission order, so legacy over a stored `ObservationSet` can pick a different "first" than the oracle did. | Parity caveat for P9: replay must carry emission order, or compare against canonical |
 | D3 | A selected finding with no `sensitive` value is `not-measured` (legacy: not flagged, so `miss` or `correct`). | Intentional (absence is not a negative answer) |
 | D4 | No finding under an `undeclared` sensitivity capability is `not-measured` (legacy: `miss`/`correct`). With `supported` it is unchanged. | Intentional (capability-aware) |
-| D5 | Declared capability is honored: unsupported family/jurisdiction/sensitivity or unavailable action gives `not-measured`; legacy ignored capabilities (for example an invalid expectation was classified by overlap alone). | Intentional (contract lattice) |
+| D5 | (see also D11) Declared capability is honored: unsupported family/jurisdiction/sensitivity or unavailable action gives `not-measured`; legacy ignored capabilities (for example an invalid expectation was classified by overlap alone). | Intentional (contract lattice) |
+| D11 | A scanner whose `ranges` capability is unsupported measured nothing: every axis is `not-measured` / `not-applicable` and findings are not read. Legacy has no capability input and measures from the findings given. | Intentional (contract lattice); test `d11_...` |
 | D6 | Empty, inverted, out-of-bounds and mid-character ranges are errors. Legacy matched them. | Intentional (validation) |
 | D7 | Action axis added. | Addition |
 | D8 | Reported-span rows (best occurrence, relation, overlap count) added. | Addition |
@@ -194,6 +201,11 @@ changes here. `FamilyId`, `Finding`, `Expectation`, `ObservedSummary`,
 
 ## 6. Consequences
 
+- Tie-breaking by evidence completeness (3.2, rank 3) is a classified consequence:
+  between two findings of equal closeness and identity, the one reporting more
+  optional fields is primary, which can change sensitivity or action outcomes
+  relative to sorting by value alone. Legacy would have taken whichever came
+  first (D1).
 - Phases P4 to P7 build on `assess_variant`; the offset translation in
   `translate_range` is the only place adapters convert indices.
 - Per-occurrence selection can leave one finding primary for several
@@ -214,3 +226,13 @@ permutation and repetition invariance of the canonical rule, offset round-trip
 through every unit, validation never panicking on arbitrary bytes and offsets,
 legacy "first overlapping finding alone decides", and legacy/canonical agreement
 where U1 says they agree.
+
+## Known limitations
+
+- `RangeError::InvalidUtf8` maps to the contracts' `range-not-on-char-boundary`
+  reason code, which is loose: there is no dedicated reason code and the
+  contracts are frozen (ADR 0002), so none is added. Callers that need to tell
+  the two apart use the `RangeError` variant, not the reason code.
+- Legacy vectors are checked against hand evaluation of the oracle source
+  (`crates/pii-eval-compat/tests/oracle_vectors.rs`), not by running the
+  TypeScript oracle; same-observation replay parity is P9.

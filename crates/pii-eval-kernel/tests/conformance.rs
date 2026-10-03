@@ -863,3 +863,68 @@ fn rows_always_satisfy_the_contract_lattice() {
         }
     }
 }
+
+#[test]
+fn geometry_helpers_are_total_on_unvalidated_ranges() {
+    // Empty and inverted ranges must not panic (no overflow in debug or release).
+    let shapes = [
+        range(5, 3),
+        range(0, 0),
+        range(3, 3),
+        range(0, u64::MAX),
+        range(u64::MAX, 0),
+        range(u64::MAX, u64::MAX),
+        range(0, 10),
+    ];
+    for a in &shapes {
+        for b in &shapes {
+            let _ = relation(a, b);
+            let _ = pii_eval_kernel::overlaps(a, b);
+            let _ = closeness(a, b);
+            let _ = pii_eval_kernel::range_state(a, Some(b));
+        }
+    }
+    // Hand check: expected [5,3) (length saturates to 0) against [0,10):
+    // overlap test 5 < 10 && 0 < 3 holds; reported contains expected (0 <= 5,
+    // 10 >= 3), not equal: overbroad with extra 10 - 0 = 10.
+    assert_eq!(closeness(&range(5, 3), &range(0, 10)), Some((1, 10)));
+}
+
+#[test]
+fn a_finding_reporting_more_fields_is_not_shadowed_by_an_equal_one_reporting_less() {
+    // Two exact findings on [11,27), same family. F1 reports no sensitivity and
+    // no action; F2 reports sensitive=true and action=redact. F1 sorts first
+    // (absent before present), but completeness (3 - 0 = 3 vs 3 - 2 = 1) makes
+    // F2 primary in either input order.
+    let e = [valid("occ-a", 11, 27, EMAIL)];
+    let f1 = with_sensitive(found(11, 27, EMAIL), None);
+    let f2 = with_action(found(11, 27, EMAIL), ActionKind::Redact);
+    for order in [[f1.clone(), f2.clone()], [f2.clone(), f1.clone()]] {
+        let a = assess(A, None, &e, &order, &supported());
+        let row = a.occurrences[0].row;
+        assert_eq!(row.sensitivity_context, SensitivityState::Correct);
+        assert_eq!(
+            row.action,
+            ActionOutcome::Reported {
+                action: ActionKind::Redact
+            }
+        );
+        assert_eq!(a.occurrences[0].observed.finding_count, 2);
+    }
+}
+
+#[test]
+fn unsupported_ranges_leave_every_axis_unmeasured_without_reading_findings() {
+    let e = [valid("occ-a", 11, 27, EMAIL)];
+    let caps = pii_eval_contracts::ScannerCapabilities {
+        ranges: CapabilityState::Unsupported,
+        ..supported()
+    };
+    // Even an invalid finding range is not read.
+    let a = assess(A, None, &e, &[found(0, 9_999, EMAIL)], &caps);
+    let row = a.occurrences[0].row;
+    assert_eq!(row.type_identity, TypeState::NotMeasured);
+    assert_eq!(row.sensitivity_context, SensitivityState::NotMeasured);
+    assert_eq!(row.range, RangeState::NotApplicable);
+    assert_eq!(row.action, ActionOutcome::NotMeasured);
+}

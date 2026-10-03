@@ -330,3 +330,23 @@ fn canonical_never_depends_on_order_where_legacy_does() {
     }
     assert!(legacy_changed > 100, "{legacy_changed}");
 }
+
+#[test]
+fn d11_unsupported_ranges_leave_every_axis_unmeasured() {
+    // Legacy has no capability input and measures from the findings it is
+    // given; canonical treats a scanner that cannot report ranges as having
+    // measured nothing (the contracts' lattice).
+    let case = Case::email(Sensitive);
+    let findings = [found(11, 27, EMAIL)];
+    let l = legacy(&case, &findings);
+    assert_eq!(l.range, RangeState::Exact);
+    let caps = ScannerCapabilities {
+        ranges: CapabilityState::Unsupported,
+        ..supported()
+    };
+    let c = canonical_with(A, &case, &findings, &caps);
+    assert_eq!(c.row.range, RangeState::NotApplicable);
+    assert_eq!(c.row.type_identity, TypeState::NotMeasured);
+    assert_eq!(c.row.sensitivity_context, SensitivityState::NotMeasured);
+    assert_eq!(c.row.action, pii_eval_contracts::ActionOutcome::NotMeasured);
+}

@@ -133,13 +133,17 @@ pub fn range_state(expected: &ByteRange, primary: Option<&ByteRange>) -> RangeSt
 ///
 /// Returns `None` when the ranges do not overlap.
 pub fn closeness(expected: &ByteRange, reported: &ByteRange) -> Option<(u8, u64)> {
-    let len = |r: &ByteRange| r.end - r.start;
+    // Saturating: total on unvalidated (empty or inverted) ranges.
+    let len = |r: &ByteRange| r.end.saturating_sub(r.start);
     Some(match relation(expected, reported)? {
         RangeState::Exact => (0, 0),
-        RangeState::Overbroad => (1, len(reported) - len(expected)),
+        RangeState::Overbroad => (1, len(reported).saturating_sub(len(expected))),
         RangeState::Partial => {
-            let overlap = expected.end.min(reported.end) - expected.start.max(reported.start);
-            (2, len(expected) - overlap)
+            let overlap = expected
+                .end
+                .min(reported.end)
+                .saturating_sub(expected.start.max(reported.start));
+            (2, len(expected).saturating_sub(overlap))
         }
         // `relation` never yields these.
         RangeState::Miss | RangeState::NotApplicable => return None,
@@ -224,6 +228,16 @@ fn identity_rank(e: &Expectation, case_jurisdiction: Option<&JurisdictionCode>, 
         },
         Some(_) => 1,
     }
+}
+
+/// Evidence completeness: 3 minus the number of optional fields (jurisdiction,
+/// sensitivity, action) the finding reports; smaller is more complete. Breaks
+/// ties after identity evidence so a finding that reports more is never
+/// shadowed by an otherwise equal one that reports less.
+fn completeness_rank(f: &Finding) -> u8 {
+    3 - u8::from(f.jurisdiction.is_some())
+        - u8::from(f.sensitive.is_some())
+        - u8::from(f.action.is_some())
 }
 
 fn type_state(
@@ -410,6 +424,7 @@ pub fn assess_variant(
             (
                 c,
                 identity_rank(e, input.case_jurisdiction, &findings[i]),
+                completeness_rank(&findings[i]),
                 i,
             )
         });
