@@ -2,7 +2,7 @@
 
 ## Design status
 
-This is the initial design baseline plus a bootstrap workspace. Requirements below describe intended behavior and must be demonstrated by implementation evidence. Implemented today: the five-crate workspace skeleton, CI, a version-only CLI, and the dependency-isolation guard. Everything else is proposed. Engine implementation, measurement protocol, artifact schema, accounting, methods, and adapters have separate version identities.
+This is the initial design baseline plus a bootstrap workspace. Requirements below describe intended behavior and must be demonstrated by implementation evidence. Implemented today: the five-crate workspace skeleton, CI, a version-only CLI, the dependency-isolation guard, the frozen contracts (P2), and byte-range rules, offset translation, canonical matching and the legacy compatibility mode (P3). Everything else is proposed. Engine implementation, measurement protocol, artifact schema, accounting, methods, and adapters have separate version identities.
 
 ## Ownership and dependencies
 
@@ -54,7 +54,7 @@ Type identity and sensitivity context remain independent outcome axes. Preserve 
 
 Migration range states are `exact`, `overbroad`, `partial`, `miss`, and `not-applicable`. Use validated half-open UTF-8 byte ranges against original input. Reject invalid offsets and ambiguous normalization; adapters translate runtime indices once.
 
-The legacy interpreter selects the first overlapping finding. Before canonical semantics are frozen, explicitly decide ordering, duplicate handling, multiple overlaps, label mappings, and outcome precedence. Reproduce legacy selection only in a declared compatibility mode if needed. A revised selection rule requires a separately versioned protocol and difference report, not a silent Rust refactor.
+The legacy interpreter selects the first overlapping finding. P3 decided ordering, duplicate handling, multiple overlaps, label mappings, and outcome precedence in [ADR 0004](docs/adr/0004-order-invariant-pii-matching.md): the legacy rule is reproduced unchanged as `legacy-first-overlap` in `pii-eval-compat`, and the order-invariant `pii-v1-canonical` rule (proposed protocol revision 2, not yet representable in a contract document) lives in the kernel with a classified difference list. Implemented: range validation and the single adapter offset translation (`utf8-bytes`, `utf16-code-units`, `unicode-code-points`), canonical matching with the four independent axes, and the legacy mode. Accounting, methods, adapters and execution remain proposed. A further selection change requires a separately versioned protocol and difference report, not a silent Rust refactor.
 
 Action evidence has declared capability: reported action, available sanitized output, or unavailable. Never infer actual removal from a finding flag. Output validation must use synthetic data and account for collateral changes.
 
