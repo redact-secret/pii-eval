@@ -1,8 +1,9 @@
 # Toolchain, MSRV and dependency policy
 
-Status: implemented. Since P2 only `pii-eval-contracts` has third-party
-dependencies (table at the end); the other four crates have none. Rules below
-govern future additions.
+Status: implemented. Since P2 `pii-eval-contracts` has third-party
+dependencies (table at the end); since P6 `pii-eval-adapters` also uses
+`serde_json` (see "Adapters, shims and Node in CI"); the other crates have
+none. Rules below govern future additions.
 
 ## Toolchain and MSRV
 
@@ -76,6 +77,36 @@ unaffected, and the MSRV job would have to pass.
 and canonical outcomes can be compared on the same vectors. The kernel and
 contracts still do not reach compat (checked by `dependency_policy.rs`).
 
+## Adapters, shims and Node in CI (P6)
+
+`pii-eval-adapters` now depends on `pii-eval-contracts`, `pii-eval-kernel`
+(offset translation) and `serde_json` (strict parsing of shim output and
+construction of the Rust-to-shim messages). `serde_json` is the version already
+reviewed above, with the same feature set; the crate adds no third-party crate
+to the lockfile, only dependency edges. Process execution uses `std::process`
+and `std::thread` only: an async runtime, HTTP client or process helper crate
+was not needed and stays forbidden, and
+`adapters_use_only_the_reviewed_crates_and_std_for_processes` in
+`crates/pii-eval-cli/tests/dependency_policy.rs` checks the adapters' closure
+against the same allowlist and forbidden fragments. The kernel and contracts
+rules (3 above) are unchanged.
+
+Scanner packages remain outside the workspace (rule 7). The shim
+`crates/pii-eval-adapters/shims/node/redact-secret-core.mjs` has no npm
+dependency: it uses only `node:path` and `node:url` and imports the scanner by
+absolute file URL from a path the adapter verified by digest. Test fakes under
+`crates/pii-eval-adapters/tests/fixtures/` are inert and installed from nothing.
+A real scanner package is only ever installed by a person into a scratch
+directory outside the repository (`npm install --ignore-scripts`, integrity
+compared with the oracle lockfile), for the opt-in test.
+
+CI sets up Node 22 with `actions/setup-node`, pinned by full commit SHA like the
+other actions, and sets `PII_EVAL_REQUIRE_NODE=1` so that adapter tests fail
+rather than skip when Node is missing. No `npm` command runs in CI.
+
+MSRV re-verified after these changes on 2026-10-02:
+`cargo +1.85.0 test --workspace --locked` passes; the floor stays 1.85.
+
 ## Optional checks
 
 `deny.toml` configures `cargo-deny` bans (process/network crates), sources and
@@ -90,7 +121,7 @@ and is outside the current network allowance. Both are proposed follow-ups.
 | Crate | Used by | Why | Version | Reviewed |
 | --- | --- | --- | --- | --- |
 | `serde` (with `derive`) | contracts | Typed (de)serialization of every contract; the derive gives closed, exhaustive types. No std alternative. | =1.0.229 | P2; no I/O, no process or network code |
-| `serde_json` | contracts | JSON parsing and value model for strict parsing, canonical form and schema output. Pinned exactly: parsing and number handling are semantic. `arbitrary_precision` and `preserve_order` are not enabled; the canonical writer sorts keys itself. | =1.0.151 | P2 |
+| `serde_json` | contracts, adapters | JSON parsing and value model for strict parsing, canonical form and schema output. Pinned exactly: parsing and number handling are semantic. `arbitrary_precision` and `preserve_order` are not enabled; the canonical writer sorts keys itself. | =1.0.151 | P2 |
 | `schemars` | contracts | Deterministic JSON Schema generation from the same types, so schemas cannot drift from code (drift test). Pinned exactly: output is committed. Derive and std features only. | =1.2.2 | P2 |
 | `sha2` | contracts | SHA-256 for the semantic digest and input identities; a reviewed RustCrypto implementation is preferred over hand-rolled hashing. Pinned exactly. `alloc` feature only. | =0.11.0 | P2 |
 

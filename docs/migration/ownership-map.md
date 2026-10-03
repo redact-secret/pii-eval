@@ -437,6 +437,14 @@ against the tables above by a test).
   specified in [ADR 0004](../adr/0004-order-invariant-pii-matching.md) with its
   classified difference list. Native label to family mapping stays adapter-side
   (P6).
+- P6 decided the scanner list ([ADR 0006](../adr/0006-scanner-adapter-boundary.md),
+  `pii-eval-adapters::inventory`, checked against the table above by a test):
+  `@redact-secret/core` 0.1.0-beta.12 has a PII-observation adapter ported from
+  `candidate.mjs` (`piiFindingIdentity`, `initialize({ pii })`); `flare-redact`
+  1.6.1 and `@openredaction/core` 1.1.5 are out of scope because the oracle
+  never maps their findings to PII families, ranges or sensitivity;
+  `gitleaks` and `trufflehog` are credential-only. `scanners/families.mjs`
+  stays reference-only.
 - The inventory lists importers by direct import. Dynamic or string-built paths
   (for example package scripts calling `tsx` with computed arguments) were not
   traced; P9 must re-check callers before any cutover.

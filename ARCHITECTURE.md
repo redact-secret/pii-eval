@@ -2,7 +2,7 @@
 
 ## Design status
 
-This is the initial design baseline plus a bootstrap workspace. Requirements below describe intended behavior and must be demonstrated by implementation evidence. Implemented today: the five-crate workspace skeleton, CI, a version-only CLI, the dependency-isolation guard, the frozen contracts (P2), and byte-range rules, offset translation, canonical matching and the legacy compatibility mode (P3). Everything else is proposed. Engine implementation, measurement protocol, artifact schema, accounting, methods, and adapters have separate version identities.
+This is the initial design baseline plus a bootstrap workspace. Requirements below describe intended behavior and must be demonstrated by implementation evidence. Implemented today: the five-crate workspace skeleton, CI, a version-only CLI, the dependency-isolation guard, the frozen contracts (P2), and byte-range rules, offset translation, canonical matching and the legacy compatibility mode (P3). The scanner adapter boundary (P6, [ADR 0006](docs/adr/0006-scanner-adapter-boundary.md)) is implemented for one process adapter and `@redact-secret/core`; worker pools and process-tree control are proposed (P7). Everything else is proposed. Engine implementation, measurement protocol, artifact schema, accounting, methods, and adapters have separate version identities.
 
 ## Ownership and dependencies
 
