@@ -1,0 +1,32 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/pii-eval-contracts",
+    "crates/pii-eval-kernel",
+    "crates/pii-eval-adapters",
+    "crates/pii-eval-cli",
+    "crates/pii-eval-compat",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+# Verified minimum, not inherited from another repository. See docs/dependency-policy.md.
+rust-version = "1.85"
+publish = false
+
+[workspace.dependencies]
+pii-eval-contracts = { path = "crates/pii-eval-contracts" }
+pii-eval-kernel = { path = "crates/pii-eval-kernel" }
+pii-eval-adapters = { path = "crates/pii-eval-adapters" }
+pii-eval-compat = { path = "crates/pii-eval-compat" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.release]
+# Overflow checks stay on: counters are checked integers by convention.
+overflow-checks = true

@@ -1,0 +1,13 @@
+[package]
+name = "pii-eval-adapters"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "pii-eval internal crate (adapters); not a consumer contract."
+
+[lints]
+workspace = true
+
+[dependencies]
+pii-eval-contracts.workspace = true
