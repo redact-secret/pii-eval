@@ -358,3 +358,7 @@ crates stay internal: consumers integrate through artifacts and the CLI.
 ## Update (P7)
 
 [ADR 0008](0008-protocol-revision-2-and-schema-1-1.md) performed the bump listed in section 9 (rule identities, per-scanner metrics, verifier requiring revision 2) and resolved A8: benign and collision cases now count only when ALL rows pass (difference R3). The `MetricScopeAmbiguous` limit of section 8 is gone. Keys A8 above describe the oracle and the revision-1 state.
+
+## Update (P9)
+
+Same-observation parity of the accounting against the oracle's own code is delivered by [ADR 0011](0011-oracle-parity-and-migration-evidence.md): the legacy accounting port (`pii-eval-compat::legacy_accounting`, binary64 and `toFixed` reproduced) equals the oracle on every metric of every scanner and vector and on 660 statistics vectors, and the canonical differences are attributed by switching one quirk at a time: A2 (class: old bug), A3 and A8 (`0008/R3`) and S1 (class: intended versioned revision). A4 is not exercised by the oracle (it throws); A5, A7 and A9 are not compared (see the report).

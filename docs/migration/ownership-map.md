@@ -464,3 +464,9 @@ against the tables above by a test).
   (for example package scripts calling `tsx` with computed arguments) were not
   traced; P9 must re-check callers before any cutover.
 - Evidence files were classified by name and directory, not opened one by one.
+- P9 ran the oracle's methods, interpreter, accounting and statistics code
+  unmodified at the pin on frozen synthetic input and compared the Rust engine
+  with it ([ADR 0011](../adr/0011-oracle-parity-and-migration-evidence.md),
+  [report](oracle-parity-report.md)). It re-checked no importer list and moved no
+  file: the dynamic and string-built callers named above remain for the cutover
+  owner, and `evidence/901/428/*` was not opened.

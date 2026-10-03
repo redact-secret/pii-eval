@@ -240,3 +240,7 @@ where U1 says they agree.
 ## Update (P7)
 
 The contract impact described in section 5 is resolved by [ADR 0008](0008-protocol-revision-2-and-schema-1-1.md): the canonical rule is bound by protocol revision 2 (schema 1.1), and context groups now need at least one frame per class (R5).
+
+## Update (P9)
+
+Same-observation parity against the oracle's own code is delivered by [ADR 0011](0011-oracle-parity-and-migration-evidence.md): `legacy-first-overlap` reproduces the oracle's outcomes with zero differences on the frozen corpus (it was fed the scanner emission order, so D2 is not exercised), and every canonical difference is attributed by counterfactual to D1 (class: old bug), D3 or D6. D4, D5 and D11 stay covered by `crates/pii-eval-compat/tests/differences.rs`.

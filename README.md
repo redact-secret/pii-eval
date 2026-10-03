@@ -6,7 +6,7 @@ A Rust-based, scanner-neutral engine for reproducible PII measurement.
 
 ## Status
 
-**Bootstrap.** This repository starts privately and may be published after its contracts, migration evidence, and security boundaries are ready. The Rust workspace, CI, the contracts, the kernel, the adapters, the bounded executor and the standalone CLI exist; real-scanner parity, performance work, the GitHub App's transport and protected execution do not. The architecture and commands described here are targets unless the table below says implemented. No throughput, accuracy, or production-readiness claim is established by these documents.
+**Bootstrap.** This repository starts privately and may be published after its contracts, migration evidence, and security boundaries are ready. The Rust workspace, CI, the contracts, the kernel, the adapters, the bounded executor and the standalone CLI exist, and migration parity evidence against the pinned oracle exists (opt-in real-scanner check, one platform); the GitHub App core exists without transport, installation or deployment; performance work and protected execution do not. The architecture and commands described here are targets unless the table below says implemented. No throughput, accuracy, or production-readiness claim is established by these documents.
 
 | Item | State |
 | --- | --- |
@@ -20,6 +20,7 @@ A Rust-based, scanner-neutral engine for reproducible PII measurement.
 | Indexed accounting of the ten metrics, exact Wilson statistics and the metric verifier ([ADR 0005](docs/adr/0005-indexed-accounting-and-metric-statistics.md)) | Implemented (kernel library with hand-calculated, independent-vector, differential and oracle-compatibility tests; the accounting rule is proposed protocol revision 2, bound by P7 together with the matching rule) |
 | The seven methods with deterministic variant ids, seeds and provenance, the validators `synthetic-mod10` / `us-ssn-allocation` and the `invalidate-final-digit` operator, explicit unavailable-validator states and the two population views ([ADR 0007](docs/adr/0007-method-generation-and-variant-provenance.md)) | Implemented (kernel library with independent-vector and oracle-compatibility tests; adapters, execution and artifact writing are separate phases) |
 | Protocol revision 2 (canonical rules, schema 1.1, per-scanner metrics, A8 any-to-all, sanitized-output verification, parse-memory measurement) ([ADR 0008](docs/adr/0008-protocol-revision-2-and-schema-1-1.md)) | Implemented (legacy revision 1 stays readable and unchanged; not re-measured) |
+| Migration parity evidence: the Rust engine against the pinned oracle's own output on frozen synthetic input (compatibility protocol with zero differences, every canonical difference classified, zero unexplained), same-pinned-scanner check, handoff for benchmarks ([ADR 0011](docs/adr/0011-oracle-parity-and-migration-evidence.md), [report](docs/migration/oracle-parity-report.md), [handoff](docs/migration/benchmarks-handoff-664.md)) | Implemented (committed oracle export compared in CI; regenerating it and the live real-scanner check are manual; no protected corpus; no cutover decision) |
 | Bounded deterministic execution and artifact writing: worker pool, per-scanner parallelism, deadlines, process-group tree cleanup, sampled memory and scratch limits, fresh process per pass, replay and instability recording, validated atomic writer ([ADR 0009](docs/adr/0009-bounded-execution-and-artifact-writing.md)) | Implemented as a library (`pii-eval-cli`), driven by the CLI; Linux and macOS; Windows tree cleanup not implemented; process control is not a sandbox |
 | Internal GitHub App: `pii-eval-app` service core (webhook HMAC, replay protection, allowlist authorization, bounded queue and workers, stale-head handling, sanitized Checks) behind transport traits ([docs/github-app.md](docs/github-app.md), [ADR 0011](docs/adr/0011-internal-github-app.md)) | Core implemented and tested against fakes; **no HTTP server or GitHub client, nothing registered, installed or deployed**; the CLI does not depend on it |
 | Protected execution via private-custodian | Proposed (owned by that repository). The CLI validates a custodian job context and refuses a protected run without one; the context grants no access ([CLI contract](docs/cli.md)) |
@@ -71,7 +72,7 @@ The CLI has four commands, `run`, `replay`, `validate` and `compare`; their synt
 1. Freeze input, observation, accounting, and compatibility contracts.
 2. Measure the TypeScript baseline and build independent conformance cases.
 3. Implement the Rust kernel and adapters.
-4. Prove same-observation replay parity, then live-scanner parity.
+4. Prove same-observation replay parity, then live-scanner parity (evidence: [ADR 0011](docs/adr/0011-oracle-parity-and-migration-evidence.md)).
 5. Explain every difference and measure performance with correctness checks enabled.
 6. Switch benchmark consumers with explicit rollback and retirement criteria.
 
