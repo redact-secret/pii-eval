@@ -1,0 +1,636 @@
+{
+  "$defs": {
+    "AccountingId": {
+      "description": "Accounting identity enum (one variant today).",
+      "oneOf": [
+        {
+          "const": "pii-v1",
+          "description": "The `pii-v1` accounting rules.",
+          "type": "string"
+        }
+      ]
+    },
+    "ActionCapability": {
+      "description": "What the scanner can say about action.",
+      "enum": [
+        "unavailable",
+        "reported-action",
+        "sanitized-output"
+      ],
+      "type": "string"
+    },
+    "ActionKind": {
+      "description": "Action a scanner reports for a finding, as a neutral kind. Adapter\nvocabulary maps onto these; anything else is `other`.",
+      "enum": [
+        "redact",
+        "preserve",
+        "other"
+      ],
+      "type": "string"
+    },
+    "AdapterIdentity": {
+      "additionalProperties": false,
+      "description": "Adapter identity: how scanner output was normalized into findings.",
+      "properties": {
+        "adapterId": {
+          "$ref": "#/$defs/ScannerId",
+          "description": "Adapter identifier."
+        },
+        "adapterVersion": {
+          "$ref": "#/$defs/VersionString",
+          "description": "Adapter implementation version."
+        },
+        "normalizationVersion": {
+          "description": "Version of the normalization contract the adapter applies.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "adapterId",
+        "adapterVersion",
+        "normalizationVersion"
+      ],
+      "type": "object"
+    },
+    "ByteRange": {
+      "additionalProperties": false,
+      "description": "Half-open byte range `[start, end)` into the UTF-8 bytes of an original input.\n\nThree checks are deliberately separate:\n\n1. [`ByteRange::validate_structure`]: `start < end` (no empty or inverted range);\n2. [`ByteRange::validate_bounds`]: `end <= byte length`;\n3. [`ByteRange::validate_boundaries`]: both ends fall on UTF-8 character\n   boundaries of the text.\n\nEach yields its own reason code, so a length-bounded but mid-character range\nis reported as a boundary failure, not as a bounds failure.",
+      "properties": {
+        "end": {
+          "description": "Exclusive end byte offset.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "description": "Inclusive start byte offset.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "type": "object"
+    },
+    "CapabilityState": {
+      "description": "Whether a scanner declares a capability. `undeclared` is the default\nfor anything not stated and is never treated as `supported`.",
+      "enum": [
+        "supported",
+        "unsupported",
+        "undeclared"
+      ],
+      "type": "string"
+    },
+    "EngineIdentity": {
+      "additionalProperties": false,
+      "description": "Engine implementation identity bound into plans and artifacts.",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/EngineName",
+          "description": "Engine name."
+        },
+        "version": {
+          "$ref": "#/$defs/VersionString",
+          "description": "Engine implementation version."
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "EngineName": {
+      "description": "Engine identity.",
+      "oneOf": [
+        {
+          "const": "pii-eval",
+          "description": "This engine.",
+          "type": "string"
+        }
+      ]
+    },
+    "FamilyCapability": {
+      "additionalProperties": false,
+      "description": "Capability of one family.",
+      "properties": {
+        "family": {
+          "$ref": "#/$defs/FamilyId",
+          "description": "The family."
+        },
+        "state": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Declared state."
+        }
+      },
+      "required": [
+        "family",
+        "state"
+      ],
+      "type": "object"
+    },
+    "FamilyId": {
+      "maxLength": 80,
+      "minLength": 8,
+      "pattern": "^pii:(global|[a-z]{2}):[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "description": "One normalized finding. Every optional field is absent when the scanner did\nnot report it; absence is not a negative answer.",
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActionKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Reported action."
+        },
+        "family": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FamilyId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Reported family (adapter-mapped)."
+        },
+        "jurisdiction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JurisdictionCode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Reported jurisdiction."
+        },
+        "range": {
+          "$ref": "#/$defs/ByteRange",
+          "description": "Reported half-open UTF-8 byte range into the original input."
+        },
+        "sensitive": {
+          "description": "Reported sensitivity classification.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "range"
+      ],
+      "type": "object"
+    },
+    "Id": {
+      "maxLength": 80,
+      "minLength": 2,
+      "pattern": "^[a-z][a-z0-9-]{1,79}$",
+      "type": "string"
+    },
+    "InputObservation": {
+      "additionalProperties": false,
+      "description": "Findings for one input.",
+      "properties": {
+        "findings": {
+          "description": "Findings in canonical order (ascending; duplicates are kept, not merged).",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "type": "array"
+        },
+        "inputDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "SHA-256 of the exact input bytes scanned; must equal the snapshot's text digest."
+        },
+        "sanitizedOutputDigest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sha256Digest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of sanitized output, when the scanner provides it."
+        },
+        "variantId": {
+          "$ref": "#/$defs/Id",
+          "description": "The variant scanned."
+        }
+      },
+      "required": [
+        "variantId",
+        "inputDigest",
+        "findings"
+      ],
+      "type": "object"
+    },
+    "JurisdictionCapability": {
+      "additionalProperties": false,
+      "description": "Capability of one jurisdiction.",
+      "properties": {
+        "jurisdiction": {
+          "$ref": "#/$defs/JurisdictionCode",
+          "description": "The jurisdiction."
+        },
+        "state": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Declared state."
+        }
+      },
+      "required": [
+        "jurisdiction",
+        "state"
+      ],
+      "type": "object"
+    },
+    "JurisdictionCode": {
+      "maxLength": 2,
+      "minLength": 2,
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "ObservationDiagnostics": {
+      "additionalProperties": false,
+      "description": "Non-semantic timing of an observation run. Excluded from the digest.",
+      "properties": {
+        "durationMs": {
+          "description": "Wall-clock duration in milliseconds.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "finishedAt": {
+          "$ref": "#/$defs/TimestampUtc",
+          "description": "End time."
+        },
+        "startedAt": {
+          "$ref": "#/$defs/TimestampUtc",
+          "description": "Start time."
+        }
+      },
+      "required": [
+        "startedAt",
+        "finishedAt",
+        "durationMs"
+      ],
+      "type": "object"
+    },
+    "ObservationSetBody": {
+      "additionalProperties": false,
+      "description": "The semantic content of an observation set.",
+      "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/ScannerCapabilities",
+          "description": "Declared capabilities."
+        },
+        "engine": {
+          "$ref": "#/$defs/EngineIdentity",
+          "description": "Engine that produced the observations."
+        },
+        "inputs": {
+          "description": "Per-input observations, ascending by variant id. Empty unless `status` is `complete`.",
+          "items": {
+            "$ref": "#/$defs/InputObservation"
+          },
+          "type": "array"
+        },
+        "populationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Semantic digest of the corpus snapshot observed."
+        },
+        "protocol": {
+          "$ref": "#/$defs/ProtocolIdentity",
+          "description": "Protocol identity."
+        },
+        "replays": {
+          "$ref": "#/$defs/ReplayRecord",
+          "description": "Replay record."
+        },
+        "scanner": {
+          "$ref": "#/$defs/ScannerIdentity",
+          "description": "Scanner, adapter, product, configuration and activation identities."
+        },
+        "status": {
+          "$ref": "#/$defs/ScannerStatus",
+          "description": "Run outcome."
+        }
+      },
+      "required": [
+        "engine",
+        "protocol",
+        "populationDigest",
+        "scanner",
+        "status",
+        "capabilities",
+        "replays",
+        "inputs"
+      ],
+      "type": "object"
+    },
+    "ObservationSetSchema": {
+      "description": "`schema` value of an observation set.",
+      "oneOf": [
+        {
+          "const": "pii-eval.observation-set",
+          "description": "The only value.",
+          "type": "string"
+        }
+      ]
+    },
+    "ProductIdentity": {
+      "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A released build; the scanner version must be stated.",
+          "properties": {
+            "kind": {
+              "const": "released",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A candidate build, identified by the digest of its artifact.",
+          "properties": {
+            "candidateDigest": {
+              "$ref": "#/$defs/Sha256Digest",
+              "description": "Digest of the candidate artifact."
+            },
+            "kind": {
+              "const": "candidate",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "candidateDigest"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ProtocolId": {
+      "description": "Protocol identifier enum (one variant today, so unknown protocols fail to parse).",
+      "oneOf": [
+        {
+          "const": "pii-v1",
+          "description": "The `pii-v1` protocol.",
+          "type": "string"
+        }
+      ]
+    },
+    "ProtocolIdentity": {
+      "additionalProperties": false,
+      "description": "Protocol identity bound into every plan and artifact.",
+      "properties": {
+        "accounting": {
+          "$ref": "#/$defs/AccountingId",
+          "description": "Accounting identity."
+        },
+        "id": {
+          "$ref": "#/$defs/ProtocolId",
+          "description": "Protocol identifier."
+        },
+        "version": {
+          "description": "Protocol revision.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "accounting"
+      ],
+      "type": "object"
+    },
+    "ReplayRecord": {
+      "additionalProperties": false,
+      "description": "Stability replays of the same input. Replays are a stability check, not\nextra samples.",
+      "properties": {
+        "agreed": {
+          "description": "Whether all replays produced identical normalized findings.",
+          "type": "boolean"
+        },
+        "count": {
+          "description": "Number of replays performed (at least 1).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "count",
+        "agreed"
+      ],
+      "type": "object"
+    },
+    "ScannerCapabilities": {
+      "additionalProperties": false,
+      "description": "What a scanner adapter declares it can report. Missing capability must stay\nvisible downstream as `not-measured`, never as a pass.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/ActionCapability",
+          "description": "Action evidence available."
+        },
+        "families": {
+          "description": "Per-family declarations, ascending by family, unique.",
+          "items": {
+            "$ref": "#/$defs/FamilyCapability"
+          },
+          "type": "array"
+        },
+        "familyClassification": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Reports a family for a finding."
+        },
+        "jurisdictionReporting": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Reports a jurisdiction for a finding."
+        },
+        "jurisdictions": {
+          "description": "Per-jurisdiction declarations, ascending by jurisdiction, unique.",
+          "items": {
+            "$ref": "#/$defs/JurisdictionCapability"
+          },
+          "type": "array"
+        },
+        "ranges": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Reports byte ranges into the original input."
+        },
+        "sensitivityClassification": {
+          "$ref": "#/$defs/CapabilityState",
+          "description": "Reports a sensitivity classification for a finding."
+        }
+      },
+      "required": [
+        "ranges",
+        "familyClassification",
+        "sensitivityClassification",
+        "jurisdictionReporting",
+        "action",
+        "families",
+        "jurisdictions"
+      ],
+      "type": "object"
+    },
+    "ScannerId": {
+      "maxLength": 80,
+      "minLength": 2,
+      "pattern": "^[a-z][a-z0-9.-]{1,79}$",
+      "type": "string"
+    },
+    "ScannerIdentity": {
+      "additionalProperties": false,
+      "description": "Everything that identifies one scanner run configuration.",
+      "properties": {
+        "activationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the activation selectors."
+        },
+        "adapter": {
+          "$ref": "#/$defs/AdapterIdentity",
+          "description": "Adapter identity."
+        },
+        "artifactDigest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sha256Digest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Digest of the scanner binary or package, when pinned."
+        },
+        "configurationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the scanner configuration parameters."
+        },
+        "product": {
+          "$ref": "#/$defs/ProductIdentity",
+          "description": "Released or candidate."
+        },
+        "scannerId": {
+          "$ref": "#/$defs/ScannerId",
+          "description": "Scanner identifier."
+        },
+        "scannerVersion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionString"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Scanner version, when it has one."
+        }
+      },
+      "required": [
+        "scannerId",
+        "adapter",
+        "product",
+        "configurationDigest",
+        "activationDigest"
+      ],
+      "type": "object"
+    },
+    "ScannerStatus": {
+      "description": "Outcome of one scanner run. Anything but `complete` means nothing was\nmeasured for that scanner; it is not a scan with no findings.",
+      "enum": [
+        "complete",
+        "unsupported",
+        "unavailable",
+        "error",
+        "unstable"
+      ],
+      "type": "string"
+    },
+    "SchemaVersion": {
+      "pattern": "^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})$",
+      "type": "string"
+    },
+    "Sha256Digest": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "TimestampUtc": {
+      "maxLength": 24,
+      "minLength": 20,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{3})?Z$",
+      "type": "string"
+    },
+    "VersionString": {
+      "maxLength": 64,
+      "minLength": 5,
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][A-Za-z0-9.-]+)?$",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pii-eval:schema:observation-set:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "An observation set document.",
+  "properties": {
+    "diagnostics": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObservationDiagnostics"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Timing diagnostics, outside the digest."
+    },
+    "schema": {
+      "$ref": "#/$defs/ObservationSetSchema",
+      "description": "Document kind tag."
+    },
+    "schemaVersion": {
+      "$ref": "#/$defs/SchemaVersion",
+      "description": "Schema version."
+    },
+    "semantic": {
+      "$ref": "#/$defs/ObservationSetBody",
+      "description": "The digested body."
+    },
+    "semanticDigest": {
+      "$ref": "#/$defs/Sha256Digest",
+      "description": "Semantic digest of `semantic`."
+    }
+  },
+  "required": [
+    "schema",
+    "schemaVersion",
+    "semanticDigest",
+    "semantic"
+  ],
+  "title": "ObservationSet",
+  "type": "object"
+}

@@ -1,0 +1,713 @@
+{
+  "$defs": {
+    "AccountingId": {
+      "description": "Accounting identity enum (one variant today).",
+      "oneOf": [
+        {
+          "const": "pii-v1",
+          "description": "The `pii-v1` accounting rules.",
+          "type": "string"
+        }
+      ]
+    },
+    "ActivationSelector": {
+      "maxLength": 80,
+      "minLength": 2,
+      "pattern": "^[a-z][a-z0-9:.-]{1,79}$",
+      "type": "string"
+    },
+    "AdapterIdentity": {
+      "additionalProperties": false,
+      "description": "Adapter identity: how scanner output was normalized into findings.",
+      "properties": {
+        "adapterId": {
+          "$ref": "#/$defs/ScannerId",
+          "description": "Adapter identifier."
+        },
+        "adapterVersion": {
+          "$ref": "#/$defs/VersionString",
+          "description": "Adapter implementation version."
+        },
+        "normalizationVersion": {
+          "description": "Version of the normalization contract the adapter applies.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "adapterId",
+        "adapterVersion",
+        "normalizationVersion"
+      ],
+      "type": "object"
+    },
+    "ConfigKey": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,63}$",
+      "type": "string"
+    },
+    "ConfigParameter": {
+      "additionalProperties": false,
+      "description": "One configuration parameter.",
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/ConfigKey",
+          "description": "Parameter name."
+        },
+        "value": {
+          "$ref": "#/$defs/ConfigValue",
+          "description": "Parameter value."
+        }
+      },
+      "required": [
+        "key",
+        "value"
+      ],
+      "type": "object"
+    },
+    "ConfigValue": {
+      "anyOf": [
+        {
+          "description": "Boolean.",
+          "type": "boolean"
+        },
+        {
+          "description": "Integer within +/-(2^53 - 1).",
+          "format": "int64",
+          "type": "integer"
+        },
+        {
+          "description": "Short text, at most 256 bytes. Free text from a corpus never belongs here.",
+          "type": "string"
+        }
+      ],
+      "description": "A scalar configuration value."
+    },
+    "EngineIdentity": {
+      "additionalProperties": false,
+      "description": "Engine implementation identity bound into plans and artifacts.",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/EngineName",
+          "description": "Engine name."
+        },
+        "version": {
+          "$ref": "#/$defs/VersionString",
+          "description": "Engine implementation version."
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "EngineName": {
+      "description": "Engine identity.",
+      "oneOf": [
+        {
+          "const": "pii-eval",
+          "description": "This engine.",
+          "type": "string"
+        }
+      ]
+    },
+    "ExecutionLimits": {
+      "additionalProperties": false,
+      "description": "Explicit bounds for execution. Every field is required: there are no\nimplicit defaults and no unbounded setting.",
+      "properties": {
+        "batchVariants": {
+          "description": "Variants per batch.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxMemoryBytes": {
+          "description": "Memory budget in bytes.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxStderrBytes": {
+          "description": "Captured stderr bound in bytes.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxStdoutBytes": {
+          "description": "Captured stdout bound in bytes.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxTemporaryBytes": {
+          "description": "Temporary storage budget in bytes.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pendingTasks": {
+          "description": "Pending tasks queued across workers.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "perScannerParallelism": {
+          "description": "Concurrent executions per scanner.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "scannerTimeoutMs": {
+          "description": "Per-scanner timeout in milliseconds.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "workers": {
+          "description": "Worker count.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "workers",
+        "perScannerParallelism",
+        "pendingTasks",
+        "batchVariants",
+        "scannerTimeoutMs",
+        "maxStdoutBytes",
+        "maxStderrBytes",
+        "maxMemoryBytes",
+        "maxTemporaryBytes"
+      ],
+      "type": "object"
+    },
+    "Id": {
+      "maxLength": 80,
+      "minLength": 2,
+      "pattern": "^[a-z][a-z0-9-]{1,79}$",
+      "type": "string"
+    },
+    "JurisdictionCode": {
+      "maxLength": 2,
+      "minLength": 2,
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "LanguageTag": {
+      "maxLength": 35,
+      "minLength": 2,
+      "pattern": "^[a-z]{2,8}(-[a-z0-9]{2,8})*$",
+      "type": "string"
+    },
+    "Mechanics": {
+      "additionalProperties": false,
+      "description": "Neutral accounting mechanics. They are part of protocol and configuration\nidentity and are always recorded in the plan.",
+      "properties": {
+        "intervalPrecision": {
+          "description": "Decimal places of published values, 1 to 12.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "intervalZ": {
+          "$ref": "#/$defs/ScaledDecimal",
+          "description": "Wilson interval z value; positive."
+        },
+        "minDenominator": {
+          "description": "Smallest effective N for which a value is published (at least 1).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "replays": {
+          "description": "Stability replays per scanner and input (at least 2). Not extra samples.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "minDenominator",
+        "replays",
+        "intervalZ",
+        "intervalPrecision"
+      ],
+      "type": "object"
+    },
+    "MethodId": {
+      "description": "The seven preserved methods.",
+      "enum": [
+        "type-validation",
+        "context-discrimination",
+        "pii-benign",
+        "jurisdiction-collision",
+        "mutation",
+        "reference-differential",
+        "schema-only"
+      ],
+      "type": "string"
+    },
+    "MethodRef": {
+      "additionalProperties": false,
+      "description": "A method selected by a plan, with the version the plan expects.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/MethodId",
+          "description": "Method identifier."
+        },
+        "version": {
+          "description": "Method version; must equal the frozen version.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    },
+    "MetricId": {
+      "description": "The ten preserved `pii-v1` metrics.",
+      "enum": [
+        "type-miss-rate",
+        "wrong-family-rate",
+        "wrong-jurisdiction-rate",
+        "sensitive-miss-rate",
+        "non-sensitive-flag-rate",
+        "context-discrimination-rate",
+        "benign-suppression-rate",
+        "jurisdiction-collision-rate",
+        "range-collateral-rate",
+        "measurable-share"
+      ],
+      "type": "string"
+    },
+    "MetricRef": {
+      "additionalProperties": false,
+      "description": "A metric selected by a plan, with the version the plan expects.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/MetricId",
+          "description": "Metric identifier."
+        },
+        "version": {
+          "description": "Metric version; must equal the frozen version.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    },
+    "PopulationBinding": {
+      "additionalProperties": false,
+      "description": "The one population a run measures, by identity and digest.",
+      "properties": {
+        "populationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Semantic digest of the corpus snapshot."
+        },
+        "populationId": {
+          "$ref": "#/$defs/Id",
+          "description": "Population identifier."
+        },
+        "populationVersion": {
+          "description": "Population revision.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "populationId",
+        "populationVersion",
+        "populationDigest"
+      ],
+      "type": "object"
+    },
+    "ProductIdentity": {
+      "description": "Product identity of the thing under test. Independent of the population's\nvisibility: a public-synthetic run of a candidate is candidate evidence.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "A released build; the scanner version must be stated.",
+          "properties": {
+            "kind": {
+              "const": "released",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A candidate build, identified by the digest of its artifact.",
+          "properties": {
+            "candidateDigest": {
+              "$ref": "#/$defs/Sha256Digest",
+              "description": "Digest of the candidate artifact."
+            },
+            "kind": {
+              "const": "candidate",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "candidateDigest"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ProtocolId": {
+      "description": "Protocol identifier enum (one variant today, so unknown protocols fail to parse).",
+      "oneOf": [
+        {
+          "const": "pii-v1",
+          "description": "The `pii-v1` protocol.",
+          "type": "string"
+        }
+      ]
+    },
+    "ProtocolIdentity": {
+      "additionalProperties": false,
+      "description": "Protocol identity bound into every plan and artifact.",
+      "properties": {
+        "accounting": {
+          "$ref": "#/$defs/AccountingId",
+          "description": "Accounting identity."
+        },
+        "id": {
+          "$ref": "#/$defs/ProtocolId",
+          "description": "Protocol identifier."
+        },
+        "version": {
+          "description": "Protocol revision.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "accounting"
+      ],
+      "type": "object"
+    },
+    "RunClass": {
+      "description": "Class of the run. Must equal the visibility of the population it measures.\nA protected run's internal artifact is never public; protected publication\nis a custodian decision, not an engine one.",
+      "enum": [
+        "public-synthetic",
+        "protected"
+      ],
+      "type": "string"
+    },
+    "RunManifestBody": {
+      "additionalProperties": false,
+      "description": "The semantic content of a run manifest.",
+      "properties": {
+        "engine": {
+          "$ref": "#/$defs/EngineIdentity",
+          "description": "Engine implementation identity."
+        },
+        "limits": {
+          "$ref": "#/$defs/ExecutionLimits",
+          "description": "Execution limits."
+        },
+        "mechanics": {
+          "$ref": "#/$defs/Mechanics",
+          "description": "Neutral accounting mechanics (part of protocol and configuration identity)."
+        },
+        "methods": {
+          "description": "Methods run, ascending by id, each at its frozen version.",
+          "items": {
+            "$ref": "#/$defs/MethodRef"
+          },
+          "type": "array"
+        },
+        "metrics": {
+          "description": "Metrics computed, ascending by id, each at its frozen version.",
+          "items": {
+            "$ref": "#/$defs/MetricRef"
+          },
+          "type": "array"
+        },
+        "population": {
+          "$ref": "#/$defs/PopulationBinding",
+          "description": "The population measured."
+        },
+        "protocol": {
+          "$ref": "#/$defs/ProtocolIdentity",
+          "description": "Protocol identity."
+        },
+        "runClass": {
+          "$ref": "#/$defs/RunClass",
+          "description": "Run class."
+        },
+        "scanners": {
+          "description": "Scanners, ascending by scanner id.",
+          "items": {
+            "$ref": "#/$defs/ScannerPlan"
+          },
+          "type": "array"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope",
+          "description": "Language and jurisdiction scope."
+        },
+        "seedDerivation": {
+          "$ref": "#/$defs/Seed",
+          "description": "Seed-derivation rule for derived variants."
+        }
+      },
+      "required": [
+        "engine",
+        "protocol",
+        "runClass",
+        "population",
+        "scope",
+        "methods",
+        "metrics",
+        "mechanics",
+        "seedDerivation",
+        "limits",
+        "scanners"
+      ],
+      "type": "object"
+    },
+    "RunManifestSchema": {
+      "description": "`schema` value of a run manifest.",
+      "oneOf": [
+        {
+          "const": "pii-eval.run-manifest",
+          "description": "The only value.",
+          "type": "string"
+        }
+      ]
+    },
+    "ScaledDecimal": {
+      "additionalProperties": false,
+      "description": "`mantissa / 10^scale`, always non-negative.\n\nNormalized form: the mantissa has no trailing decimal zero unless the scale\nis zero, so every value has exactly one representation (`1.96` is\n`{mantissa: 196, scale: 2}`; `0` is `{mantissa: 0, scale: 0}`).",
+      "properties": {
+        "mantissa": {
+          "description": "Unsigned integer mantissa, at most 2^53 - 1.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "scale": {
+          "description": "Number of decimal places, at most 12.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mantissa",
+        "scale"
+      ],
+      "type": "object"
+    },
+    "ScannerConfiguration": {
+      "additionalProperties": false,
+      "description": "Replay-safe scanner configuration and activation.",
+      "properties": {
+        "activation": {
+          "description": "Activation selectors (the enable set), ascending, unique.",
+          "items": {
+            "$ref": "#/$defs/ActivationSelector"
+          },
+          "type": "array"
+        },
+        "parameters": {
+          "description": "Parameters, ascending by key, unique.",
+          "items": {
+            "$ref": "#/$defs/ConfigParameter"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "parameters",
+        "activation"
+      ],
+      "type": "object"
+    },
+    "ScannerId": {
+      "maxLength": 80,
+      "minLength": 2,
+      "pattern": "^[a-z][a-z0-9.-]{1,79}$",
+      "type": "string"
+    },
+    "ScannerIdentity": {
+      "additionalProperties": false,
+      "description": "Everything that identifies one scanner run configuration.",
+      "properties": {
+        "activationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the activation selectors."
+        },
+        "adapter": {
+          "$ref": "#/$defs/AdapterIdentity",
+          "description": "Adapter identity."
+        },
+        "artifactDigest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sha256Digest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Digest of the scanner binary or package, when pinned."
+        },
+        "configurationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the scanner configuration parameters."
+        },
+        "product": {
+          "$ref": "#/$defs/ProductIdentity",
+          "description": "Released or candidate."
+        },
+        "scannerId": {
+          "$ref": "#/$defs/ScannerId",
+          "description": "Scanner identifier."
+        },
+        "scannerVersion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionString"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Scanner version, when it has one."
+        }
+      },
+      "required": [
+        "scannerId",
+        "adapter",
+        "product",
+        "configurationDigest",
+        "activationDigest"
+      ],
+      "type": "object"
+    },
+    "ScannerPlan": {
+      "additionalProperties": false,
+      "description": "One scanner in a run plan: identity plus the configuration it was derived from.",
+      "properties": {
+        "configuration": {
+          "$ref": "#/$defs/ScannerConfiguration",
+          "description": "The configuration whose digests the identity binds."
+        },
+        "identity": {
+          "$ref": "#/$defs/ScannerIdentity",
+          "description": "Bound identity."
+        }
+      },
+      "required": [
+        "identity",
+        "configuration"
+      ],
+      "type": "object"
+    },
+    "SchemaVersion": {
+      "pattern": "^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})$",
+      "type": "string"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "description": "Language and jurisdiction scope of the run.",
+      "properties": {
+        "jurisdictions": {
+          "description": "Jurisdictions in scope, ascending, unique. Empty means global cases only.",
+          "items": {
+            "$ref": "#/$defs/JurisdictionCode"
+          },
+          "type": "array"
+        },
+        "languages": {
+          "description": "Languages in scope, ascending, unique, non-empty.",
+          "items": {
+            "$ref": "#/$defs/LanguageTag"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "languages",
+        "jurisdictions"
+      ],
+      "type": "object"
+    },
+    "Seed": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._-]{1,64}$",
+      "type": "string"
+    },
+    "Sha256Digest": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "VersionString": {
+      "maxLength": 64,
+      "minLength": 5,
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][A-Za-z0-9.-]+)?$",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pii-eval:schema:run-manifest:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A run manifest document. Its `semanticDigest` is the plan digest.",
+  "properties": {
+    "schema": {
+      "$ref": "#/$defs/RunManifestSchema",
+      "description": "Document kind tag."
+    },
+    "schemaVersion": {
+      "$ref": "#/$defs/SchemaVersion",
+      "description": "Schema version."
+    },
+    "semantic": {
+      "$ref": "#/$defs/RunManifestBody",
+      "description": "The digested body."
+    },
+    "semanticDigest": {
+      "$ref": "#/$defs/Sha256Digest",
+      "description": "Semantic digest of `semantic`."
+    }
+  },
+  "required": [
+    "schema",
+    "schemaVersion",
+    "semanticDigest",
+    "semantic"
+  ],
+  "title": "RunManifest",
+  "type": "object"
+}

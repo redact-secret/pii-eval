@@ -1,0 +1,666 @@
+{
+  "diagnostics": {
+    "durationMs": 2000,
+    "finishedAt": "2026-10-02T09:00:02.000Z",
+    "phases": [
+      {
+        "durationMs": 1250,
+        "phase": "scan"
+      },
+      {
+        "durationMs": 2000,
+        "phase": "total"
+      }
+    ],
+    "startedAt": "2026-10-02T09:00:00.000Z"
+  },
+  "schema": "pii-eval.run-artifact",
+  "schemaVersion": "1.0",
+  "semantic": {
+    "completeness": "complete",
+    "engine": {
+      "name": "pii-eval",
+      "version": "0.0.0"
+    },
+    "failures": [
+      {
+        "affectedInputs": 6,
+        "code": "unsupported",
+        "scannerId": "beta-scan"
+      }
+    ],
+    "manifestDigest": "9bf14bf232bafe39f8a176da88ad70e71535bed5f8a7fd7d244f83810bc64fb6",
+    "mechanics": {
+      "intervalPrecision": 6,
+      "intervalZ": {
+        "mantissa": 196,
+        "scale": 2
+      },
+      "minDenominator": 4,
+      "replays": 2
+    },
+    "methodCoverage": [
+      {
+        "cases": 1,
+        "method": {
+          "id": "context-discrimination",
+          "version": 2
+        },
+        "variants": 3
+      },
+      {
+        "cases": 1,
+        "method": {
+          "id": "jurisdiction-collision",
+          "version": 3
+        },
+        "variants": 1
+      },
+      {
+        "cases": 1,
+        "method": {
+          "id": "type-validation",
+          "version": 2
+        },
+        "variants": 2
+      }
+    ],
+    "metrics": [
+      {
+        "counts": {
+          "eligible": 5,
+          "measured": 4,
+          "notApplicable": 1,
+          "notMeasured": 0,
+          "numerator": 1,
+          "total": 6,
+          "unresolved": 1
+        },
+        "effectiveN": 5,
+        "metric": {
+          "id": "benign-suppression-rate",
+          "version": 1
+        },
+        "status": "partial",
+        "value": {
+          "bound": {
+            "mantissa": 5,
+            "scale": 1
+          },
+          "point": {
+            "mantissa": 25,
+            "scale": 2
+          },
+          "state": "measured"
+        }
+      },
+      {
+        "counts": {
+          "eligible": 5,
+          "measured": 4,
+          "notApplicable": 1,
+          "notMeasured": 0,
+          "numerator": 1,
+          "total": 6,
+          "unresolved": 1
+        },
+        "effectiveN": 4,
+        "metric": {
+          "id": "context-discrimination-rate",
+          "version": 1
+        },
+        "status": "partial",
+        "value": {
+          "bound": {
+            "mantissa": 5,
+            "scale": 1
+          },
+          "point": {
+            "mantissa": 25,
+            "scale": 2
+          },
+          "state": "measured"
+        }
+      },
+      {
+        "counts": {
+          "eligible": 2,
+          "measured": 2,
+          "notApplicable": 4,
+          "notMeasured": 0,
+          "numerator": 1,
+          "total": 6,
+          "unresolved": 0
+        },
+        "effectiveN": 2,
+        "metric": {
+          "id": "jurisdiction-collision-rate",
+          "version": 1
+        },
+        "status": "measured",
+        "value": {
+          "reason": "insufficient-evidence",
+          "state": "withheld"
+        }
+      },
+      {
+        "counts": {
+          "eligible": 5,
+          "measured": 4,
+          "notApplicable": 1,
+          "notMeasured": 0,
+          "numerator": 1,
+          "total": 6,
+          "unresolved": 1
+        },
+        "effectiveN": 5,
+        "metric": {
+          "id": "measurable-share",
+          "version": 1
+        },
+        "status": "partial",
+        "value": {
+          "bound": {
+            "mantissa": 5,
+            "scale": 1
+          },
+          "point": {
+            "mantissa": 2,
+            "scale": 1
+          },
+          "state": "measured"
+        }
+      },
+      {
+        "counts": {
+          "eligible": 5,
+          "measured": 4,
+          "notApplicable": 1,
+          "notMeasured": 0,
+          "numerator": 1,
+          "total": 6,
+          "unresolved": 1
+        },
+        "effectiveN": 4,
+        "metric": {
+          "id": "non-sensitive-flag-rate",
+          "version": 1
+        },
+        "status": "partial",
+        "value": {
+          "bound": {
+            "mantissa": 5,
+            "scale": 1
+          },
+          "point": {
+            "mantissa": 25,
+            "scale": 2
+          },
+          "state": "measured"
+        }
+      },
+      {
+        "counts": {
+          "eligible": 5,
+          "measured": 4,
+          "notApplicable": 1,
+          "notMeasured": 0,
+          "numerator": 1,
+          "total": 6,
+          "unresolved": 1
+        },
+        "effectiveN": 4,
+        "metric": {
+          "id": "range-collateral-rate",
+          "version": 1
+        },
+        "status": "partial",
+        "value": {
+          "bound": {
+            "mantissa": 5,
+            "scale": 1
+          },
+          "point": {
+            "mantissa": 25,
+            "scale": 2
+          },
+          "state": "measured"
+        }
+      },
+      {
+        "counts": {
+          "eligible": 5,
+          "measured": 4,
+          "notApplicable": 1,
+          "notMeasured": 0,
+          "numerator": 1,
+          "total": 6,
+          "unresolved": 1
+        },
+        "effectiveN": 4,
+        "metric": {
+          "id": "sensitive-miss-rate",
+          "version": 1
+        },
+        "status": "partial",
+        "value": {
+          "bound": {
+            "mantissa": 5,
+            "scale": 1
+          },
+          "point": {
+            "mantissa": 25,
+            "scale": 2
+          },
+          "state": "measured"
+        }
+      },
+      {
+        "counts": {
+          "eligible": 5,
+          "measured": 4,
+          "notApplicable": 1,
+          "notMeasured": 0,
+          "numerator": 1,
+          "total": 6,
+          "unresolved": 1
+        },
+        "effectiveN": 4,
+        "metric": {
+          "id": "type-miss-rate",
+          "version": 1
+        },
+        "status": "partial",
+        "value": {
+          "bound": {
+            "mantissa": 5,
+            "scale": 1
+          },
+          "point": {
+            "mantissa": 25,
+            "scale": 2
+          },
+          "state": "measured"
+        }
+      },
+      {
+        "counts": {
+          "eligible": 5,
+          "measured": 4,
+          "notApplicable": 1,
+          "notMeasured": 0,
+          "numerator": 1,
+          "total": 6,
+          "unresolved": 1
+        },
+        "effectiveN": 4,
+        "metric": {
+          "id": "wrong-family-rate",
+          "version": 1
+        },
+        "status": "partial",
+        "value": {
+          "bound": {
+            "mantissa": 5,
+            "scale": 1
+          },
+          "point": {
+            "mantissa": 25,
+            "scale": 2
+          },
+          "state": "measured"
+        }
+      },
+      {
+        "counts": {
+          "eligible": 0,
+          "measured": 0,
+          "notApplicable": 6,
+          "notMeasured": 0,
+          "numerator": 0,
+          "total": 6,
+          "unresolved": 0
+        },
+        "effectiveN": 0,
+        "metric": {
+          "id": "wrong-jurisdiction-rate",
+          "version": 1
+        },
+        "status": "not-applicable",
+        "value": {
+          "reason": "zero-denominator",
+          "state": "withheld"
+        }
+      }
+    ],
+    "outcomes": [
+      {
+        "action": {
+          "action": "redact",
+          "state": "reported"
+        },
+        "caseId": "collision-us-ssn-demo",
+        "method": "jurisdiction-collision",
+        "observed": {
+          "families": [
+            "pii:us:ssn"
+          ],
+          "findingCount": 1,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "correct",
+        "typeIdentity": "correct",
+        "variantId": "collision-us-ssn-demo-authored"
+      },
+      {
+        "action": {
+          "action": "redact",
+          "state": "reported"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "observed": {
+          "families": [
+            "pii:global:email"
+          ],
+          "findingCount": 1,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "correct",
+        "variantId": "context-email-ko-demo-neutral"
+      },
+      {
+        "action": {
+          "action": "redact",
+          "state": "reported"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "observed": {
+          "families": [
+            "pii:global:email"
+          ],
+          "findingCount": 1,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "correct",
+        "typeIdentity": "correct",
+        "variantId": "context-email-ko-demo-non-sensitive"
+      },
+      {
+        "action": {
+          "action": "redact",
+          "state": "reported"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "observed": {
+          "families": [
+            "pii:global:email"
+          ],
+          "findingCount": 1,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "correct",
+        "typeIdentity": "correct",
+        "variantId": "context-email-ko-demo-sensitive"
+      },
+      {
+        "action": {
+          "action": "redact",
+          "state": "reported"
+        },
+        "caseId": "type-card-demo",
+        "method": "type-validation",
+        "observed": {
+          "families": [
+            "pii:global:payment-card"
+          ],
+          "findingCount": 1,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "overbroad",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "correct",
+        "typeIdentity": "correct",
+        "variantId": "type-card-demo-authored"
+      },
+      {
+        "action": {
+          "state": "no-action-reported"
+        },
+        "caseId": "type-card-demo",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "alpha-scan",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct",
+        "variantId": "type-card-demo-mutated"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "collision-us-ssn-demo",
+        "method": "jurisdiction-collision",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "collision-us-ssn-demo-authored"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "context-email-ko-demo-neutral"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "context-email-ko-demo-non-sensitive"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "context-email-ko-demo-sensitive"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "type-card-demo",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "type-card-demo-authored"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "type-card-demo",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "not-applicable",
+        "scannerId": "beta-scan",
+        "sensitivityContext": "not-measured",
+        "typeIdentity": "not-measured",
+        "variantId": "type-card-demo-mutated"
+      }
+    ],
+    "population": {
+      "populationDigest": "c95f8a7a22761ba7b3d21dc9b8351294faea52b141b5bc50c6e1cf1a0f0ceabb",
+      "populationId": "synthetic-demo-population",
+      "populationVersion": 1
+    },
+    "populationCounts": {
+      "authoredCases": 3,
+      "occurrences": 6,
+      "variants": 6
+    },
+    "protocol": {
+      "accounting": "pii-v1",
+      "id": "pii-v1",
+      "version": 1
+    },
+    "runClass": "public-synthetic",
+    "scanners": [
+      {
+        "capabilities": {
+          "action": "reported-action",
+          "families": [
+            {
+              "family": "pii:global:email",
+              "state": "supported"
+            },
+            {
+              "family": "pii:global:payment-card",
+              "state": "supported"
+            },
+            {
+              "family": "pii:us:ssn",
+              "state": "supported"
+            }
+          ],
+          "familyClassification": "supported",
+          "jurisdictionReporting": "undeclared",
+          "jurisdictions": [],
+          "ranges": "supported",
+          "sensitivityClassification": "supported"
+        },
+        "identity": {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "synthetic-adapter",
+            "adapterVersion": "0.1.0",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "b0e38b8133c3646a1e438e38f45d33b7d0d7c9b7e91936fa10289a2ce9a3c4d0",
+          "configurationDigest": "bed1b41c1734ddf25cbf068e862e4ad8eb1d5ee8d165d649cbc93e7adaf6267f",
+          "product": {
+            "kind": "released"
+          },
+          "scannerId": "alpha-scan",
+          "scannerVersion": "1.0.0"
+        },
+        "observationDigest": "20201bfb344842e793e9eb5d09c04da00b5108525d33db139e0c3d168c148404",
+        "replays": {
+          "agreed": true,
+          "count": 2
+        },
+        "status": "complete"
+      },
+      {
+        "capabilities": {
+          "action": "unavailable",
+          "families": [],
+          "familyClassification": "unsupported",
+          "jurisdictionReporting": "unsupported",
+          "jurisdictions": [],
+          "ranges": "unsupported",
+          "sensitivityClassification": "unsupported"
+        },
+        "identity": {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "synthetic-adapter",
+            "adapterVersion": "0.1.0",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "49a6bacd520d98afdc89655cab9f30a65d71d51dcc2dd9ceb4fce29fe926d4bd",
+          "configurationDigest": "e2ace7d861cfb7fde1adffa0bfdbac8da85b249905705e7c5d37336c638b714c",
+          "product": {
+            "candidateDigest": "6d45bd615a27fb34990be40c68c6b3429b99dae2d877af54cbf0a73ffc843ff1",
+            "kind": "candidate"
+          },
+          "scannerId": "beta-scan"
+        },
+        "observationDigest": "af174d667dfe610ee1574c86be3e92bcd43ab03feb4da183dd5945bac9067502",
+        "replays": {
+          "agreed": true,
+          "count": 2
+        },
+        "status": "unsupported"
+      }
+    ]
+  },
+  "semanticDigest": "a71457f25ba95e47823fe08b390aaeebe46457473926f63eedbe8a6f0f679f3e"
+}

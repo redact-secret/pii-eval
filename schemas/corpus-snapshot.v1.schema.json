@@ -1,0 +1,535 @@
+{
+  "$defs": {
+    "ActionExpectation": {
+      "description": "Authored expectation about the action a scanner should report.",
+      "enum": [
+        "redact",
+        "preserve",
+        "not-specified"
+      ],
+      "type": "string"
+    },
+    "ByteRange": {
+      "additionalProperties": false,
+      "description": "Half-open byte range `[start, end)` into the UTF-8 bytes of an original input.\n\nThree checks are deliberately separate:\n\n1. [`ByteRange::validate_structure`]: `start < end` (no empty or inverted range);\n2. [`ByteRange::validate_bounds`]: `end <= byte length`;\n3. [`ByteRange::validate_boundaries`]: both ends fall on UTF-8 character\n   boundaries of the text.\n\nEach yields its own reason code, so a length-bounded but mid-character range\nis reported as a boundary failure, not as a bounds failure.",
+      "properties": {
+        "end": {
+          "description": "Exclusive end byte offset.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "description": "Inclusive start byte offset.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "type": "object"
+    },
+    "Case": {
+      "additionalProperties": false,
+      "description": "One authored case: the sampling unit (together with its method).",
+      "properties": {
+        "caseId": {
+          "$ref": "#/$defs/Id",
+          "description": "Authored case identifier."
+        },
+        "collision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Collision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Collision declaration; required for, and only for, `jurisdiction-collision`."
+        },
+        "jurisdiction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JurisdictionCode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Jurisdiction, or absent for a global case."
+        },
+        "language": {
+          "$ref": "#/$defs/LanguageTag",
+          "description": "Language of the case text."
+        },
+        "lineage": {
+          "$ref": "#/$defs/Lineage",
+          "description": "Source lineage."
+        },
+        "method": {
+          "$ref": "#/$defs/MethodId",
+          "description": "Method this case belongs to. Case/method grouping is the sample identity."
+        },
+        "variants": {
+          "description": "Variants, ascending by variant id.",
+          "items": {
+            "$ref": "#/$defs/Variant"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "caseId",
+        "method",
+        "lineage",
+        "language",
+        "variants"
+      ],
+      "type": "object"
+    },
+    "Collision": {
+      "additionalProperties": false,
+      "description": "Declaration for a jurisdiction-collision case.",
+      "properties": {
+        "competingFamilies": {
+          "description": "Families that collide with the target, ascending, unique, excluding the target.",
+          "items": {
+            "$ref": "#/$defs/FamilyId"
+          },
+          "type": "array"
+        },
+        "targetFamily": {
+          "$ref": "#/$defs/FamilyId",
+          "description": "The family the case targets."
+        }
+      },
+      "required": [
+        "targetFamily",
+        "competingFamilies"
+      ],
+      "type": "object"
+    },
+    "ContextClass": {
+      "description": "Authored context frame of a variant, used for context-discrimination trios.",
+      "enum": [
+        "sensitive",
+        "neutral",
+        "non-sensitive"
+      ],
+      "type": "string"
+    },
+    "ContextObligation": {
+      "description": "Whether context is needed to classify the occurrence as sensitive.",
+      "enum": [
+        "none",
+        "reinforcing",
+        "required-for-sensitive-classification"
+      ],
+      "type": "string"
+    },
+    "CorpusSnapshotBody": {
+      "additionalProperties": false,
+      "description": "The semantic content of a corpus snapshot.",
+      "properties": {
+        "cases": {
+          "description": "Cases, ascending by case id.",
+          "items": {
+            "$ref": "#/$defs/Case"
+          },
+          "type": "array"
+        },
+        "generation": {
+          "$ref": "#/$defs/GenerationRules",
+          "description": "Generation rules."
+        },
+        "population": {
+          "$ref": "#/$defs/Population",
+          "description": "Population identity."
+        }
+      },
+      "required": [
+        "population",
+        "generation",
+        "cases"
+      ],
+      "type": "object"
+    },
+    "CorpusSnapshotSchema": {
+      "description": "`schema` value of a corpus snapshot.",
+      "oneOf": [
+        {
+          "const": "pii-eval.corpus-snapshot",
+          "description": "The only value.",
+          "type": "string"
+        }
+      ]
+    },
+    "Derivation": {
+      "additionalProperties": false,
+      "description": "How a variant came to be.",
+      "properties": {
+        "operator": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OperatorRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The operator, required for derived and review-required variants and\nforbidden for authored ones."
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Seed"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The seed used, when the operator is seeded."
+        },
+        "strategy": {
+          "$ref": "#/$defs/Strategy",
+          "description": "Authored, derived, or review-required."
+        }
+      },
+      "required": [
+        "strategy"
+      ],
+      "type": "object"
+    },
+    "Expectation": {
+      "additionalProperties": false,
+      "description": "One authored expected occurrence inside a variant's text. The four axes are\nseparate fields and none is derived from another.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/ActionExpectation",
+          "description": "Action axis: the action a scanner is expected to report."
+        },
+        "contextClass": {
+          "$ref": "#/$defs/ContextClass",
+          "description": "Context frame of this variant."
+        },
+        "contextObligation": {
+          "$ref": "#/$defs/ContextObligation",
+          "description": "Whether context is needed for a sensitive classification."
+        },
+        "family": {
+          "$ref": "#/$defs/FamilyId",
+          "description": "Expected family. Its scope must agree with the case jurisdiction."
+        },
+        "occurrenceId": {
+          "$ref": "#/$defs/Id",
+          "description": "Identifier unique within the variant."
+        },
+        "range": {
+          "$ref": "#/$defs/ByteRange",
+          "description": "Expected byte range in the variant text."
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/SensitivityExpectation",
+          "description": "Sensitivity axis."
+        },
+        "typeExpectation": {
+          "$ref": "#/$defs/ExpectedType",
+          "description": "Type axis: is the occurrence a valid or invalid instance of the family."
+        },
+        "validator": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ValidatorRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Validator behind the type expectation, when there is one."
+        }
+      },
+      "required": [
+        "occurrenceId",
+        "range",
+        "family",
+        "typeExpectation",
+        "sensitivity",
+        "contextClass",
+        "contextObligation",
+        "action"
+      ],
+      "type": "object"
+    },
+    "ExpectedType": {
+      "description": "Whether the authored occurrence is a valid or an invalid instance of its family.",
+      "enum": [
+        "valid",
+        "invalid"
+      ],
+      "type": "string"
+    },
+    "FamilyId": {
+      "maxLength": 80,
+      "minLength": 8,
+      "pattern": "^pii:(global|[a-z]{2}):[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "GenerationRules": {
+      "additionalProperties": false,
+      "description": "Deterministic generation rules for derived variants.",
+      "properties": {
+        "generator": {
+          "$ref": "#/$defs/Id",
+          "description": "Generator identifier."
+        },
+        "generatorVersion": {
+          "description": "Generator version.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "seedDerivation": {
+          "$ref": "#/$defs/Seed",
+          "description": "Seed-derivation rule identifier."
+        }
+      },
+      "required": [
+        "generator",
+        "generatorVersion",
+        "seedDerivation"
+      ],
+      "type": "object"
+    },
+    "Id": {
+      "maxLength": 80,
+      "minLength": 2,
+      "pattern": "^[a-z][a-z0-9-]{1,79}$",
+      "type": "string"
+    },
+    "JurisdictionCode": {
+      "maxLength": 2,
+      "minLength": 2,
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "LanguageTag": {
+      "maxLength": 35,
+      "minLength": 2,
+      "pattern": "^[a-z]{2,8}(-[a-z0-9]{2,8})*$",
+      "type": "string"
+    },
+    "Lineage": {
+      "additionalProperties": false,
+      "description": "Source lineage of an authored case.",
+      "properties": {
+        "sourceDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the source material."
+        },
+        "sourceId": {
+          "$ref": "#/$defs/Id",
+          "description": "Source identifier."
+        }
+      },
+      "required": [
+        "sourceId",
+        "sourceDigest"
+      ],
+      "type": "object"
+    },
+    "MethodId": {
+      "description": "The seven preserved methods.",
+      "enum": [
+        "type-validation",
+        "context-discrimination",
+        "pii-benign",
+        "jurisdiction-collision",
+        "mutation",
+        "reference-differential",
+        "schema-only"
+      ],
+      "type": "string"
+    },
+    "OperatorRef": {
+      "additionalProperties": false,
+      "description": "Operator that derived a variant.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id",
+          "description": "Operator identifier."
+        },
+        "version": {
+          "description": "Operator version.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    },
+    "Population": {
+      "additionalProperties": false,
+      "description": "Population identity. The snapshot's semantic digest is the content commitment.",
+      "properties": {
+        "populationId": {
+          "$ref": "#/$defs/Id",
+          "description": "Population identifier, assigned by the corpus author."
+        },
+        "populationVersion": {
+          "description": "Population revision, assigned by the corpus author.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "description": "Visibility class."
+        }
+      },
+      "required": [
+        "populationId",
+        "populationVersion",
+        "visibility"
+      ],
+      "type": "object"
+    },
+    "SchemaVersion": {
+      "pattern": "^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})$",
+      "type": "string"
+    },
+    "Seed": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._-]{1,64}$",
+      "type": "string"
+    },
+    "SensitivityExpectation": {
+      "description": "Authored sensitivity of an occurrence in its context.",
+      "enum": [
+        "sensitive",
+        "non-sensitive",
+        "not-established"
+      ],
+      "type": "string"
+    },
+    "Sha256Digest": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "Strategy": {
+      "description": "How a variant was produced.",
+      "enum": [
+        "authored",
+        "derived",
+        "review-required"
+      ],
+      "type": "string"
+    },
+    "ValidatorRef": {
+      "additionalProperties": false,
+      "description": "Validator that established the authored type expectation.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id",
+          "description": "Validator identifier."
+        },
+        "version": {
+          "description": "Validator version.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    },
+    "Variant": {
+      "additionalProperties": false,
+      "description": "One concrete input text with its expectations.",
+      "properties": {
+        "derivation": {
+          "$ref": "#/$defs/Derivation",
+          "description": "Derivation."
+        },
+        "expectations": {
+          "description": "Expected occurrences, ascending by occurrence id.",
+          "items": {
+            "$ref": "#/$defs/Expectation"
+          },
+          "type": "array"
+        },
+        "text": {
+          "description": "The exact input text. Coordinates are half-open UTF-8 byte offsets into it.",
+          "type": "string"
+        },
+        "textDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "SHA-256 of the UTF-8 bytes of `text`; observations bind to it."
+        },
+        "variantId": {
+          "$ref": "#/$defs/Id",
+          "description": "Identifier unique across the whole snapshot."
+        }
+      },
+      "required": [
+        "variantId",
+        "derivation",
+        "text",
+        "textDigest",
+        "expectations"
+      ],
+      "type": "object"
+    },
+    "Visibility": {
+      "description": "Who may see the population. Independent of product identity: a\n`public-synthetic` population can be run against a candidate.",
+      "enum": [
+        "public-synthetic",
+        "protected"
+      ],
+      "type": "string"
+    }
+  },
+  "$id": "urn:pii-eval:schema:corpus-snapshot:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A corpus snapshot document. Its `semanticDigest` is the population digest\nthat manifests, observations and artifacts bind to.",
+  "properties": {
+    "schema": {
+      "$ref": "#/$defs/CorpusSnapshotSchema",
+      "description": "Document kind tag."
+    },
+    "schemaVersion": {
+      "$ref": "#/$defs/SchemaVersion",
+      "description": "Schema version."
+    },
+    "semantic": {
+      "$ref": "#/$defs/CorpusSnapshotBody",
+      "description": "The digested body."
+    },
+    "semanticDigest": {
+      "$ref": "#/$defs/Sha256Digest",
+      "description": "Semantic digest of `semantic`."
+    }
+  },
+  "required": [
+    "schema",
+    "schemaVersion",
+    "semanticDigest",
+    "semantic"
+  ],
+  "title": "CorpusSnapshot",
+  "type": "object"
+}

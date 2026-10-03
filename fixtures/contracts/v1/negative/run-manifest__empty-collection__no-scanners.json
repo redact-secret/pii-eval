@@ -1,0 +1,109 @@
+{
+  "schema": "pii-eval.run-manifest",
+  "schemaVersion": "1.0",
+  "semantic": {
+    "engine": {
+      "name": "pii-eval",
+      "version": "0.0.0"
+    },
+    "limits": {
+      "batchVariants": 128,
+      "maxMemoryBytes": 1073741824,
+      "maxStderrBytes": 1048576,
+      "maxStdoutBytes": 1048576,
+      "maxTemporaryBytes": 268435456,
+      "pendingTasks": 64,
+      "perScannerParallelism": 2,
+      "scannerTimeoutMs": 30000,
+      "workers": 4
+    },
+    "mechanics": {
+      "intervalPrecision": 6,
+      "intervalZ": {
+        "mantissa": 196,
+        "scale": 2
+      },
+      "minDenominator": 4,
+      "replays": 2
+    },
+    "methods": [
+      {
+        "id": "context-discrimination",
+        "version": 2
+      },
+      {
+        "id": "jurisdiction-collision",
+        "version": 3
+      },
+      {
+        "id": "type-validation",
+        "version": 2
+      }
+    ],
+    "metrics": [
+      {
+        "id": "benign-suppression-rate",
+        "version": 1
+      },
+      {
+        "id": "context-discrimination-rate",
+        "version": 1
+      },
+      {
+        "id": "jurisdiction-collision-rate",
+        "version": 1
+      },
+      {
+        "id": "measurable-share",
+        "version": 1
+      },
+      {
+        "id": "non-sensitive-flag-rate",
+        "version": 1
+      },
+      {
+        "id": "range-collateral-rate",
+        "version": 1
+      },
+      {
+        "id": "sensitive-miss-rate",
+        "version": 1
+      },
+      {
+        "id": "type-miss-rate",
+        "version": 1
+      },
+      {
+        "id": "wrong-family-rate",
+        "version": 1
+      },
+      {
+        "id": "wrong-jurisdiction-rate",
+        "version": 1
+      }
+    ],
+    "population": {
+      "populationDigest": "c95f8a7a22761ba7b3d21dc9b8351294faea52b141b5bc50c6e1cf1a0f0ceabb",
+      "populationId": "synthetic-demo-population",
+      "populationVersion": 1
+    },
+    "protocol": {
+      "accounting": "pii-v1",
+      "id": "pii-v1",
+      "version": 1
+    },
+    "runClass": "public-synthetic",
+    "scanners": [],
+    "scope": {
+      "jurisdictions": [
+        "US"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ]
+    },
+    "seedDerivation": "seed-v1"
+  },
+  "semanticDigest": "4342174a410e309ad4ea45ee7492829345b5580871e1fc2e76a74d22c3cd95f0"
+}

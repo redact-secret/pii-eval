@@ -1,0 +1,236 @@
+{
+  "defaultMechanics": {
+    "intervalPrecision": 6,
+    "intervalZ": {
+      "mantissa": 196,
+      "scale": 2
+    },
+    "minDenominator": 4,
+    "replays": 2
+  },
+  "identityRules": {
+    "replaysAreSamples": false,
+    "sampleIdentity": "authored case within a method",
+    "variantsAreIndependentSamples": false
+  },
+  "legacy": {
+    "engineVersion": "1.0.0",
+    "observationAccountingVersion": "pii-observation-v1",
+    "observationEvaluationProfile": "pii-schema-v1",
+    "oracleCommit": "4b846967346505baca11e0b98cab1475fbce6773"
+  },
+  "methods": [
+    {
+      "id": "type-validation",
+      "legacySource": "benchmarks/evaluation/domains/pii/methods/type-validation.ts",
+      "version": 2
+    },
+    {
+      "id": "context-discrimination",
+      "legacySource": "benchmarks/evaluation/domains/pii/methods/context-discrimination.ts",
+      "version": 2
+    },
+    {
+      "id": "pii-benign",
+      "legacySource": "benchmarks/evaluation/domains/pii/methods/benign.ts",
+      "version": 3
+    },
+    {
+      "id": "jurisdiction-collision",
+      "legacySource": "benchmarks/evaluation/domains/pii/methods/jurisdiction-collision.ts",
+      "version": 3
+    },
+    {
+      "id": "mutation",
+      "legacySource": "benchmarks/evaluation/domains/pii/methods/mutation.ts",
+      "version": 1
+    },
+    {
+      "id": "reference-differential",
+      "legacySource": "benchmarks/evaluation/domains/pii/methods/reference-differential.ts",
+      "version": 1
+    },
+    {
+      "id": "schema-only",
+      "legacySource": "benchmarks/evaluation/domains/pii/methods/schema-only.ts",
+      "version": 1
+    }
+  ],
+  "metrics": [
+    {
+      "applicability": "required",
+      "denominator": "resolved type assertions for authored valid types",
+      "direction": "upper",
+      "effectiveN": "measured",
+      "id": "type-miss-rate",
+      "numerator": "type state is miss",
+      "population": "scanner-source × authored valid-type occurrence",
+      "restrictedToMethod": null,
+      "sampleUnit": "authored-case-method",
+      "unit": "proportion",
+      "version": 1,
+      "withheldReasons": [
+        "zero-denominator",
+        "insufficient-evidence"
+      ]
+    },
+    {
+      "applicability": "required",
+      "denominator": "resolved type assertions for authored valid types",
+      "direction": "upper",
+      "effectiveN": "measured",
+      "id": "wrong-family-rate",
+      "numerator": "type state is wrong-family",
+      "population": "scanner-source × authored valid-type occurrence",
+      "restrictedToMethod": null,
+      "sampleUnit": "authored-case-method",
+      "unit": "proportion",
+      "version": 1,
+      "withheldReasons": [
+        "zero-denominator",
+        "insufficient-evidence"
+      ]
+    },
+    {
+      "applicability": "jurisdictional",
+      "denominator": "resolved jurisdictional type assertions",
+      "direction": "upper",
+      "effectiveN": "measured",
+      "id": "wrong-jurisdiction-rate",
+      "numerator": "type state is wrong-jurisdiction",
+      "population": "scanner-source × authored jurisdictional valid-type occurrence",
+      "restrictedToMethod": null,
+      "sampleUnit": "authored-case-method",
+      "unit": "proportion",
+      "version": 1,
+      "withheldReasons": [
+        "zero-denominator",
+        "insufficient-evidence"
+      ]
+    },
+    {
+      "applicability": "required",
+      "denominator": "resolved sensitivity assertions for authored sensitive occurrences",
+      "direction": "upper",
+      "effectiveN": "measured",
+      "id": "sensitive-miss-rate",
+      "numerator": "sensitivity state is miss",
+      "population": "scanner-source × authored sensitive occurrence",
+      "restrictedToMethod": null,
+      "sampleUnit": "authored-case-method",
+      "unit": "proportion",
+      "version": 1,
+      "withheldReasons": [
+        "zero-denominator",
+        "insufficient-evidence"
+      ]
+    },
+    {
+      "applicability": "required",
+      "denominator": "resolved sensitivity assertions for authored non-sensitive occurrences",
+      "direction": "upper",
+      "effectiveN": "measured",
+      "id": "non-sensitive-flag-rate",
+      "numerator": "sensitivity state is false-positive",
+      "population": "scanner-source × authored non-sensitive occurrence",
+      "restrictedToMethod": null,
+      "sampleUnit": "authored-case-method",
+      "unit": "proportion",
+      "version": 1,
+      "withheldReasons": [
+        "zero-denominator",
+        "insufficient-evidence"
+      ]
+    },
+    {
+      "applicability": "required",
+      "denominator": "resolved complete context trios",
+      "direction": "lower",
+      "effectiveN": "measured",
+      "id": "context-discrimination-rate",
+      "numerator": "both sensitive and non-sensitive endpoints pass",
+      "population": "complete scanner-source × authored context trios",
+      "restrictedToMethod": "context-discrimination",
+      "sampleUnit": "context-trio",
+      "unit": "proportion",
+      "version": 1,
+      "withheldReasons": [
+        "zero-denominator",
+        "insufficient-evidence"
+      ]
+    },
+    {
+      "applicability": "required",
+      "denominator": "resolved authored benign cases",
+      "direction": "lower",
+      "effectiveN": "measured",
+      "id": "benign-suppression-rate",
+      "numerator": "non-sensitive assertion passes",
+      "population": "scanner-source × distinct authored benign case",
+      "restrictedToMethod": "pii-benign",
+      "sampleUnit": "authored-case-method",
+      "unit": "proportion",
+      "version": 1,
+      "withheldReasons": [
+        "zero-denominator",
+        "insufficient-evidence"
+      ]
+    },
+    {
+      "applicability": "jurisdictional",
+      "denominator": "resolved collision type assertions",
+      "direction": "lower",
+      "effectiveN": "measured",
+      "id": "jurisdiction-collision-rate",
+      "numerator": "target family and jurisdiction assertion passes",
+      "population": "scanner-source × authored jurisdiction collision case",
+      "restrictedToMethod": "jurisdiction-collision",
+      "sampleUnit": "authored-case-method",
+      "unit": "proportion",
+      "version": 1,
+      "withheldReasons": [
+        "zero-denominator",
+        "insufficient-evidence"
+      ]
+    },
+    {
+      "applicability": "reported-spans",
+      "denominator": "exact, overbroad, or partial reported spans",
+      "direction": "upper",
+      "effectiveN": "measured",
+      "id": "range-collateral-rate",
+      "numerator": "range is overbroad or partial",
+      "population": "scanner-source × reported span for authored valid type",
+      "restrictedToMethod": null,
+      "sampleUnit": "authored-case-method",
+      "unit": "proportion",
+      "version": 1,
+      "withheldReasons": [
+        "zero-denominator",
+        "insufficient-evidence"
+      ]
+    },
+    {
+      "applicability": "required",
+      "denominator": "all eligible authored axes including unresolved axes",
+      "direction": "lower",
+      "effectiveN": "eligible",
+      "id": "measurable-share",
+      "numerator": "resolved pass or fail assertions",
+      "population": "all scanner-source × authored axis assertions",
+      "restrictedToMethod": null,
+      "sampleUnit": "axis-assertion",
+      "unit": "proportion",
+      "version": 1,
+      "withheldReasons": [
+        "zero-denominator",
+        "insufficient-evidence"
+      ]
+    }
+  ],
+  "protocol": {
+    "accounting": "pii-v1",
+    "id": "pii-v1",
+    "version": 1
+  }
+}

@@ -1,0 +1,184 @@
+{
+  "schema": "pii-eval.run-manifest",
+  "schemaVersion": "1.0",
+  "semantic": {
+    "engine": {
+      "name": "pii-eval",
+      "version": "0.0.0"
+    },
+    "limits": {
+      "batchVariants": 128,
+      "maxMemoryBytes": 1073741824,
+      "maxStderrBytes": 1048576,
+      "maxStdoutBytes": 1048576,
+      "maxTemporaryBytes": 268435456,
+      "pendingTasks": 64,
+      "perScannerParallelism": 2,
+      "scannerTimeoutMs": 30000,
+      "workers": 4.0
+    },
+    "mechanics": {
+      "intervalPrecision": 6,
+      "intervalZ": {
+        "mantissa": 196,
+        "scale": 2
+      },
+      "minDenominator": 4,
+      "replays": 2
+    },
+    "methods": [
+      {
+        "id": "context-discrimination",
+        "version": 2
+      },
+      {
+        "id": "jurisdiction-collision",
+        "version": 3
+      },
+      {
+        "id": "type-validation",
+        "version": 2
+      }
+    ],
+    "metrics": [
+      {
+        "id": "benign-suppression-rate",
+        "version": 1
+      },
+      {
+        "id": "context-discrimination-rate",
+        "version": 1
+      },
+      {
+        "id": "jurisdiction-collision-rate",
+        "version": 1
+      },
+      {
+        "id": "measurable-share",
+        "version": 1
+      },
+      {
+        "id": "non-sensitive-flag-rate",
+        "version": 1
+      },
+      {
+        "id": "range-collateral-rate",
+        "version": 1
+      },
+      {
+        "id": "sensitive-miss-rate",
+        "version": 1
+      },
+      {
+        "id": "type-miss-rate",
+        "version": 1
+      },
+      {
+        "id": "wrong-family-rate",
+        "version": 1
+      },
+      {
+        "id": "wrong-jurisdiction-rate",
+        "version": 1
+      }
+    ],
+    "population": {
+      "populationDigest": "c95f8a7a22761ba7b3d21dc9b8351294faea52b141b5bc50c6e1cf1a0f0ceabb",
+      "populationId": "synthetic-demo-population",
+      "populationVersion": 1
+    },
+    "protocol": {
+      "accounting": "pii-v1",
+      "id": "pii-v1",
+      "version": 1
+    },
+    "runClass": "public-synthetic",
+    "scanners": [
+      {
+        "configuration": {
+          "activation": [
+            "pii:global",
+            "pii:us"
+          ],
+          "parameters": [
+            {
+              "key": "contextWindow",
+              "value": 5
+            },
+            {
+              "key": "mode",
+              "value": "default"
+            },
+            {
+              "key": "strict",
+              "value": true
+            }
+          ]
+        },
+        "identity": {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "synthetic-adapter",
+            "adapterVersion": "0.1.0",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "b0e38b8133c3646a1e438e38f45d33b7d0d7c9b7e91936fa10289a2ce9a3c4d0",
+          "configurationDigest": "bed1b41c1734ddf25cbf068e862e4ad8eb1d5ee8d165d649cbc93e7adaf6267f",
+          "product": {
+            "kind": "released"
+          },
+          "scannerId": "alpha-scan",
+          "scannerVersion": "1.0.0"
+        }
+      },
+      {
+        "configuration": {
+          "activation": [
+            "pii:global",
+            "pii:us"
+          ],
+          "parameters": [
+            {
+              "key": "contextWindow",
+              "value": 3
+            },
+            {
+              "key": "mode",
+              "value": "default"
+            },
+            {
+              "key": "strict",
+              "value": true
+            }
+          ]
+        },
+        "identity": {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "synthetic-adapter",
+            "adapterVersion": "0.1.0",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "49a6bacd520d98afdc89655cab9f30a65d71d51dcc2dd9ceb4fce29fe926d4bd",
+          "configurationDigest": "e2ace7d861cfb7fde1adffa0bfdbac8da85b249905705e7c5d37336c638b714c",
+          "product": {
+            "candidateDigest": "6d45bd615a27fb34990be40c68c6b3429b99dae2d877af54cbf0a73ffc843ff1",
+            "kind": "candidate"
+          },
+          "scannerId": "beta-scan"
+        }
+      }
+    ],
+    "scope": {
+      "jurisdictions": [
+        "US"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ]
+    },
+    "seedDerivation": "seed-v1"
+  },
+  "semanticDigest": "9bf14bf232bafe39f8a176da88ad70e71535bed5f8a7fd7d244f83810bc64fb6"
+}
