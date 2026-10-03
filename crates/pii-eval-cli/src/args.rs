@@ -23,6 +23,15 @@ pub enum Command {
     Validate(ValidateArgs),
     /// `compare`.
     Compare(CompareArgs),
+    /// `worker-job --job FILE`, or the exact alias `--job FILE`.
+    WorkerJob(WorkerJobArgs),
+}
+
+/// `pii-eval worker-job --job FILE` (alias: `pii-eval --job FILE`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkerJobArgs {
+    /// The custodian job document.
+    pub job: String,
 }
 
 /// `pii-eval run --config FILE [--out DIR] [--node PATH] [--job-context FILE]`
@@ -165,6 +174,18 @@ pub fn parse(args: &[String]) -> Result<Command, Failure> {
         "--version" | "--help" | "-h" | "help" => {
             Err(Failure::usage(reason::UNEXPECTED_ARGUMENT, "positional"))
         }
+        // The exact shape the custodian starts: `/stage/engine --job /job/job.json`.
+        // Nothing else is an alias (not `--job=FILE`, not extra arguments).
+        "--job" => match rest {
+            [job] => Ok(Command::WorkerJob(WorkerJobArgs { job: job.clone() })),
+            _ => Err(Failure::usage(reason::UNEXPECTED_ARGUMENT, "positional")),
+        },
+        "worker-job" => {
+            let mut o = parse_opts(rest, &[("job", false)], 0)?;
+            Ok(Command::WorkerJob(WorkerJobArgs {
+                job: o.required("job")?,
+            }))
+        }
         "run" => {
             let mut o = parse_opts(
                 rest,
@@ -274,6 +295,7 @@ usage:
   pii-eval validate FILE [--kind KIND] [--snapshot FILE] [--manifest FILE]
                     [--job-context FILE]
   pii-eval compare  --base FILE --other FILE [--snapshot FILE] [--job-context FILE]
+  pii-eval worker-job --job FILE        (also: pii-eval --job FILE)
   pii-eval --version | --help
 stdout: one JSON summary line (pii-eval-summary/1); stderr: diagnostics.
 exit codes and syntax: docs/cli.md";

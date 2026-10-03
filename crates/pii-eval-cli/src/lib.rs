@@ -15,6 +15,7 @@ pub mod cmd_compare;
 pub mod cmd_replay;
 pub mod cmd_run;
 pub mod cmd_validate;
+pub mod cmd_worker;
 pub mod config;
 pub mod exec;
 pub mod files;
@@ -24,6 +25,7 @@ pub mod scanners;
 pub mod signals;
 pub mod status;
 pub mod summary;
+pub mod worker;
 pub mod write;
 
 use pii_eval_contracts::{CrateIdentity, ENGINE_NAME, ENGINE_VERSION, Role, WORKSPACE_STAGE};
@@ -39,7 +41,18 @@ pub const IDENTITY: CrateIdentity =
 
 /// The single line printed for `--version`.
 pub fn version_line() -> String {
-    format!("{ENGINE_NAME} {ENGINE_VERSION} ({WORKSPACE_STAGE})")
+    #[cfg(feature = "worker-test-adapters")]
+    {
+        // A build that can run the worker test adapters says so (docs/worker-job.md).
+        format!(
+            "{ENGINE_NAME} {ENGINE_VERSION} ({WORKSPACE_STAGE}; {})",
+            worker::test_adapters::feature_name()
+        )
+    }
+    #[cfg(not(feature = "worker-test-adapters"))]
+    {
+        format!("{ENGINE_NAME} {ENGINE_VERSION} ({WORKSPACE_STAGE})")
+    }
 }
 
 /// Run one invocation. `cancel` is called only for `run`, so the signal
@@ -70,9 +83,28 @@ pub fn execute(args: &[String], cancel: impl FnOnce() -> Result<CancelToken, Fai
             Some("run"),
             cancel().and_then(|token| cmd_run::run(&a, &token)),
         ),
+        Command::WorkerJob(a) => render_worker_result(cmd_worker::worker_job(&a, cancel)),
         Command::Replay(a) => render(Some("replay"), cmd_replay::replay(&a)),
         Command::Validate(a) => render(Some("validate"), cmd_validate::validate(&a)),
         Command::Compare(a) => render(Some("compare"), cmd_compare::compare(&a)),
+    }
+}
+
+/// The rendering of a worker-job outcome: the result document alone on stdout
+/// (no newline), or, for a refusal, NOTHING on stdout and one
+/// fixed-vocabulary line on stderr.
+pub fn render_worker_result(result: Result<worker::launch::WorkerOutput, Failure>) -> Rendered {
+    match result {
+        Ok(out) => Rendered {
+            exit: Exit::Success,
+            stdout: out.result,
+            stderr: String::new(),
+        },
+        Err(failure) => Rendered {
+            exit: failure.exit,
+            stdout: String::new(),
+            stderr: format!("{}\n", failure.human()),
+        },
     }
 }
 

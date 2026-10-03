@@ -10,6 +10,12 @@ description = "pii-eval internal crate (CLI); not a consumer contract."
 [lints]
 workspace = true
 
+[features]
+# TEST ONLY (docs/worker-job.md): compiles the worker test adapters, the only way
+# to run a worker job end to end. OFF by default and never enabled by the engine
+# artifact build; CI fails the build if the release binary contains the marker.
+worker-test-adapters = []
+
 [dependencies]
 pii-eval-contracts.workspace = true
 pii-eval-kernel.workspace = true
