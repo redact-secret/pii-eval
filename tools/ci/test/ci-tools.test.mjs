@@ -398,6 +398,16 @@ describe('summary-line', () => {
   it('caps the length', () => {
     assert.equal(safeLine(JSON.stringify({ big: 'x'.repeat(5000) })), '{"truncated":true}');
   });
+  it('reads only the head of a huge file', () => {
+    const f = join(tmp('huge'), 'raw');
+    writeFileSync(f, `{"ok":true}\n${'x'.repeat(5 * 1024 * 1024)}`);
+    const t0 = Date.now();
+    const r = spawnSync('node', [join(TOOLS, 'summary-line.mjs'), f], { encoding: 'utf8' });
+    assert.equal(r.stdout, '{"ok":true}\n');
+    assert.ok(Date.now() - t0 < 5000);
+    writeFileSync(f, 'y'.repeat(5 * 1024 * 1024));
+    assert.equal(spawnSync('node', [join(TOOLS, 'summary-line.mjs'), f], { encoding: 'utf8' }).stdout, '{"unreadable":true}\n');
+  });
   it('the command line prints the safe line and exits 0 even for a missing file', () => {
     const f = join(tmp('sl'), 'raw');
     writeFileSync(f, '::stop-commands::x\n');

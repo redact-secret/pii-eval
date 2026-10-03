@@ -124,6 +124,12 @@ describe('stricter rules', () => {
     assert.match(checkWorkflow('t', body('      - run: echo "X=1" >> "$GITHUB_ENV"\n')).join('\n'), /GITHUB_ENV/);
     assert.match(checkWorkflow('t', body('      - run: |\n          echo /x >> "$GITHUB_PATH"\n')).join('\n'), /GITHUB_ENV or GITHUB_PATH/);
   });
+  it('flags tee and bare-variable writes too, but not a mere mention', () => {
+    assert.match(checkWorkflow('t', body('      - run: echo X=1 | tee -a "$GITHUB_ENV"\n')).join('\n'), /GITHUB_ENV or GITHUB_PATH/);
+    assert.match(checkWorkflow('t', body('      - run: echo X=1 >> $GITHUB_ENV\n')).join('\n'), /GITHUB_ENV or GITHUB_PATH/);
+    assert.match(checkWorkflow('t', body('      - run: echo X=1 >> ${GITHUB_PATH}\n')).join('\n'), /GITHUB_ENV or GITHUB_PATH/);
+    assert.deepEqual(checkWorkflow('t', body('      - run: |\n          # GITHUB_ENV is unset for the child\n          env -u GITHUB_ENV -u GITHUB_PATH true\n')), []);
+  });
   it('still allows GITHUB_OUTPUT and GITHUB_STEP_SUMMARY', () => {
     assert.deepEqual(checkWorkflow('t', body('      - run: |\n          echo "a=b" >> "$GITHUB_OUTPUT"\n          echo x >> "$GITHUB_STEP_SUMMARY"\n')), []);
   });

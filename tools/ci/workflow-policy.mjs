@@ -22,6 +22,10 @@
 import { readFileSync } from 'node:fs';
 import { isMain } from './main-guard.mjs';
 
+// A write to a runner command file: a redirection or tee into it. Mentioning the
+// name (for example `env -u GITHUB_ENV`, which removes it from a child) is fine.
+const COMMAND_FILE_WRITE = /(?:>>?\s*|\btee\b[^|;&\n]*?)["']?\$\{?GITHUB_(?:ENV|PATH)\b/;
+
 const FORBIDDEN_TOKEN =
   /\binputs\b|github\.event|github\.head_ref|github\.base_ref|github\.ref|github\.actor|github\.triggering_actor|\bsteps\b|\bneeds\b|\bmatrix\b|\bvars\b|\bsecrets\b|toJSON\s*\(/i;
 
@@ -93,7 +97,7 @@ export function checkWorkflow(name, text) {
       } else {
         scriptIndent = -1;
         for (const p of expressionProblems(inline)) problems.push(`${name}:${n}: ${p}`);
-        if (/GITHUB_(ENV|PATH)\b/.test(inline)) problems.push(`${name}:${n}: script writes GITHUB_ENV or GITHUB_PATH`);
+        if (COMMAND_FILE_WRITE.test(inline)) problems.push(`${name}:${n}: script writes GITHUB_ENV or GITHUB_PATH`);
       }
       return;
     }
@@ -101,7 +105,7 @@ export function checkWorkflow(name, text) {
       if (raw.trim() === '') return;
       if (indent > scriptIndent) {
         for (const p of expressionProblems(raw)) problems.push(`${name}:${n}: ${p}`);
-        if (/GITHUB_(ENV|PATH)\b/.test(raw)) problems.push(`${name}:${n}: script writes GITHUB_ENV or GITHUB_PATH`);
+        if (COMMAND_FILE_WRITE.test(raw)) problems.push(`${name}:${n}: script writes GITHUB_ENV or GITHUB_PATH`);
         return;
       }
       scriptIndent = -1;

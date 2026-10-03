@@ -10,10 +10,24 @@
 // hostile or broken program cannot inject workflow commands (`::...::` at the
 // start of a line), break out of a fenced code block in the summary, or flood
 // the log through what this prints.
-import { readFileSync } from 'node:fs';
+import { closeSync, openSync, readSync } from 'node:fs';
 import { isMain } from './main-guard.mjs';
 
 export const MAX = 4000;
+// Only the head of the file is read: the program that wrote it is untrusted and may
+// have written without limit.
+export const READ_LIMIT = 64 * 1024;
+
+export function readHead(path) {
+  const fd = openSync(path, 'r');
+  try {
+    const buf = Buffer.alloc(READ_LIMIT);
+    const n = readSync(fd, buf, 0, READ_LIMIT, 0);
+    return buf.subarray(0, n).toString('utf8');
+  } finally {
+    closeSync(fd);
+  }
+}
 
 export function safeLine(text) {
   const first = String(text).split('\n', 1)[0];
@@ -35,7 +49,7 @@ if (isMain(import.meta.url)) {
   }
   let text = '';
   try {
-    text = readFileSync(process.argv[2], 'utf8');
+    text = readHead(process.argv[2]);
   } catch {
     text = '';
   }

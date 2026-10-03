@@ -86,9 +86,15 @@ Two independent things guard a use of the artifact. Do not confuse them.
 Neither proves the commit is trustworthy, who built it, or that the build is
 reproducible: the artifact is neither signed nor attested. Compare semantic digests
 of runs, not binaries (`docs/cli.md`). The engine is a program from an artifact: while
-`evaluate.yml` runs it, workflow commands are switched off (`::stop-commands::`), its
-output goes to files, and only a re-serialized JSON line (`summary-line.mjs`: one
-object, backticks escaped, length capped) and a prefixed stderr excerpt are printed.
+`evaluate.yml` runs it, workflow commands are switched off (`::stop-commands::`), the
+runner's command files (`GITHUB_ENV`, `GITHUB_PATH`, `GITHUB_OUTPUT`, `GITHUB_STATE`,
+`GITHUB_STEP_SUMMARY`) are unset for it, a single file may not exceed 512 MiB, it has
+20 minutes, its output goes to files, and only a re-serialized JSON line
+(`summary-line.mjs`: the first 64 KiB read, one object, backticks escaped, length
+capped) and a stderr excerpt reduced to printable ASCII are printed. **This is not a
+sandbox:** the engine runs as the runner user and can read what that user can read.
+That is acceptable for an engine built from this repository on `main`, and is the
+reason the default refuses anything else.
 
 ## Using the artifact from another workflow or action
 
@@ -174,6 +180,11 @@ were **not verified here**, and none of this is configured.
   writes); its tests include inputs that must fail.
 - Artifacts are readable by everyone with read access to the repository for as long
   as they are retained. They contain the binary and its build information only.
+- The run record decision is made by `resolve-engine.mjs` as it exists in the ref
+  `evaluate.yml` was dispatched from. Dispatch from `main` (the examples do):
+  a dispatch from a pull request branch uses that branch's copy of the guard, which
+  is arbitrary code that already runs with this workflow's permissions. Whoever can
+  dispatch has write access to the repository.
 - A pull request can edit the workflows and `tools/ci` it runs with. What it cannot
   do, by default, is have its binary used by `evaluate.yml` on `main`: the run
   record decides (above). The override exists on purpose and says so.

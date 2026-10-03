@@ -174,14 +174,24 @@ jobs:
           engine="$RUNNER_TEMP/engine-download/pii-eval"
           out="$RUNNER_TEMP/run-output"
           mkdir -p "$out"
+          # Not a sandbox: the engine is a program of this repository's own build and
+          # runs as the runner user. What this does: workflow commands are off while
+          # it runs, it cannot write the runner's command files (GITHUB_ENV, GITHUB_PATH,
+          # GITHUB_OUTPUT, GITHUB_STATE, GITHUB_STEP_SUMMARY: they are unset for it),
+          # one file may not exceed 512 MiB, it has 20 minutes, and its stderr is
+          # printed as printable ASCII only (a lone carriage return or an escape
+          # sequence cannot start a workflow command).
           untrusted() {
             local o="$1" e="$2" token rc=0
             shift 2
             token=$(node -e 'process.stdout.write(require("crypto").randomBytes(16).toString("hex"))')
             echo "::stop-commands::$token"
-            "$@" > "$o" 2> "$e" || rc=$?
+            (
+              ulimit -f 524288
+              exec timeout 1200 env -u GITHUB_ENV -u GITHUB_PATH -u GITHUB_OUTPUT -u GITHUB_STATE -u GITHUB_STEP_SUMMARY "$@"
+            ) > "$o" 2> "$e" || rc=$?
             echo "::$token::"
-            head -c 2000 "$e" | sed 's/^/stderr| /'
+            head -c 2000 "$e" | LC_ALL=C tr -c '\040-\176\n' '?' | sed 's/^/stderr| /'
             return "$rc"
           }
           rc=0
