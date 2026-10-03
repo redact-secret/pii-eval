@@ -19,7 +19,7 @@
 // exit status is non-zero: a measurement without a real sandbox proves nothing.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import { join } from 'node:path';
@@ -136,6 +136,14 @@ export async function main(argv) {
     if (!existsSync(join(stage, f))) throw new Error(`missing ${f} in the stage directory`);
     chmodSync(join(stage, f), 0o755);
   }
+  // A MEASUREMENT-ONLY wrapper: the engine's adapter starts Node with fixed arguments, so to learn
+  // what `--jitless` would buy the whole engine run without changing the engine, the engine is pointed
+  // at a file named `node` that execs the pinned runtime with that flag. Nothing is loosened; the
+  // wrapper only changes how the unmodified runtime is started. Whether to adopt such a flag is a
+  // separate decision (docs/custodian-isolation-node.md).
+  mkdirSync(join(stage, 'jitless'), { recursive: true });
+  writeFileSync(join(stage, 'jitless', 'node'), '#!/bin/sh\nexec /stage/node --jitless "$@"\n', { mode: 0o755 });
+  chmodSync(join(stage, 'jitless', 'node'), 0o755);
   writeFileSync(CANARY_FILE, 'canary-content\n', { mode: 0o600 });
   const roots = detectSystemRoots();
   const run = makeRunner({ bwrap, stage, repo: a.repo, roots });
@@ -163,6 +171,7 @@ export async function main(argv) {
   const nodeJitless = new Map();
   const engineVersion = new Map();
   const engineRun = new Map();
+  const engineRunJitless = new Map();
   const rows = [];
   for (const mem of sizes) {
     const lim = run('/usr/bin/cat', ['/proc/self/limits'], { memMiB: mem });
@@ -174,11 +183,17 @@ export async function main(argv) {
       memMiB: mem,
       quotas: { wallMs: 60000, cpuSeconds: 120 },
     });
+    const e3 = run('/stage/engine', ['run', '--config', '/repo/examples/quickstart/run-config.json', '--node', '/stage/jitless/node', '--out', '/scratch/out'], {
+      memMiB: mem,
+      quotas: { wallMs: 60000, cpuSeconds: 120 },
+    });
     nodeStart.set(mem, ok(n1));
     nodeJitless.set(mem, ok(n2));
     engineVersion.set(mem, ok(e1));
     const engineOk = ok(e2) && /"name":"success"/.test(e2.stdout);
     engineRun.set(mem, engineOk);
+    const jitlessOk = ok(e3) && /"name":"success"/.test(e3.stdout);
+    engineRunJitless.set(mem, jitlessOk);
     rows.push({
       memMiB: mem,
       limitApplied: limit !== null && limit.soft === mem * MIB && limit.hard === mem * MIB,
@@ -186,6 +201,7 @@ export async function main(argv) {
       nodeJitless: brief(n2),
       engineVersion: brief(e1),
       engineQuickstartRun: { ...brief(e2), ok: engineOk },
+      engineQuickstartRunNodeJitless: { ...brief(e3), ok: jitlessOk },
     });
   }
   const big = Math.max(...sizes);
@@ -199,6 +215,7 @@ export async function main(argv) {
     nodeJitlessMiB: floorOf(sizes, nodeJitless),
     engineVersionMiB: floorOf(sizes, engineVersion),
     engineQuickstartRunMiB: floorOf(sizes, engineRun),
+    engineQuickstartRunNodeJitlessMiB: floorOf(sizes, engineRunJitless),
   };
   const everyLimitApplied = rows.every((r) => r.limitApplied);
   const result = {
@@ -214,6 +231,7 @@ export async function main(argv) {
       memMiB: CUSTODIAN_NORMAL_MEM_MIB,
       nodeStarts: nodeStart.get(CUSTODIAN_NORMAL_MEM_MIB) ?? null,
       engineQuickstartRuns: engineRun.get(CUSTODIAN_NORMAL_MEM_MIB) ?? null,
+      engineQuickstartRunsWithNodeJitless: engineRunJitless.get(CUSTODIAN_NORMAL_MEM_MIB) ?? null,
     },
     matrix: rows,
   };
@@ -231,11 +249,11 @@ export function summaryMarkdown(r) {
     `Host: ${r.host.kernel}, ${r.host.bwrap}, Node ${r.host.node.version}. Replica of private-custodian@${r.replicaOf.commit.slice(0, 8)}; synthetic data only.`,
     `Controls (limits applied, no capabilities, no egress, no host files, scrubbed environment, writable scratch): **${r.controls.pass ? 'pass' : 'FAIL'}**.`,
     '',
-    '| address space | limit applied | node starts | node --jitless | engine --version | engine quickstart run |',
-    '| --- | --- | --- | --- | --- | --- |',
-    ...r.matrix.map((m) => `| ${m.memMiB} MiB | ${m.limitApplied ? 'yes' : '**NO**'} | ${cell(m.nodeStart)} | ${cell(m.nodeJitless)} | ${cell(m.engineVersion)} | ${cell(m.engineQuickstartRun)} |`),
+    '| address space | limit applied | node starts | node --jitless | engine --version | engine quickstart run | same, node started with --jitless |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
+    ...r.matrix.map((m) => `| ${m.memMiB} MiB | ${m.limitApplied ? 'yes' : '**NO**'} | ${cell(m.nodeStart)} | ${cell(m.nodeJitless)} | ${cell(m.engineVersion)} | ${cell(m.engineQuickstartRun)} | ${m.engineQuickstartRunNodeJitless ? cell(m.engineQuickstartRunNodeJitless) : 'n/a'} |`),
     '',
-    `Floors (smallest size from which every larger size passes): node ${r.floors.nodeStartMiB.floor} MiB, node --jitless ${r.floors.nodeJitlessMiB.floor} MiB, engine quickstart run ${r.floors.engineQuickstartRunMiB.floor} MiB.`,
+    `Floors (smallest size from which every larger size passes): node ${r.floors.nodeStartMiB.floor} MiB, node --jitless ${r.floors.nodeJitlessMiB.floor} MiB, engine quickstart run ${r.floors.engineQuickstartRunMiB.floor} MiB, engine quickstart run with node --jitless ${r.floors.engineQuickstartRunNodeJitlessMiB ? r.floors.engineQuickstartRunNodeJitlessMiB.floor : 'n/a'} MiB.`,
     `The custodian's own "normal" test limit is ${r.custodianNormalMemory.memMiB} MiB: node starts = ${r.custodianNormalMemory.nodeStarts}, engine quickstart runs = ${r.custodianNormalMemory.engineQuickstartRuns}.`,
     '',
   ];

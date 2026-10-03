@@ -72,12 +72,13 @@ describe('summary', () => {
       host: { kernel: 'Linux 6.8', bwrap: 'bubblewrap 0.9.0', node: { version: 'v22.0.0' } },
       replicaOf: { commit: '142db34dd4bc02903f47cba951a054351bb55fde' },
       controls: { pass: true },
-      matrix: [{ memMiB: 256, limitApplied: true, nodeStart: b(false), nodeJitless: b(false), engineVersion: b(true), engineQuickstartRun: b(false) }, { memMiB: 1024, limitApplied: true, nodeStart: b(true), nodeJitless: b(true), engineVersion: b(true), engineQuickstartRun: b(true) }],
-      floors: { nodeStartMiB: { floor: 1024 }, nodeJitlessMiB: { floor: 1024 }, engineQuickstartRunMiB: { floor: 1024 } },
+      matrix: [{ memMiB: 256, limitApplied: true, nodeStart: b(false), nodeJitless: b(false), engineVersion: b(true), engineQuickstartRun: b(false), engineQuickstartRunNodeJitless: b(false) }, { memMiB: 1024, limitApplied: true, nodeStart: b(true), nodeJitless: b(true), engineVersion: b(true), engineQuickstartRun: b(true), engineQuickstartRunNodeJitless: b(true) }],
+      floors: { nodeStartMiB: { floor: 1024 }, nodeJitlessMiB: { floor: 320 }, engineQuickstartRunMiB: { floor: 1024 }, engineQuickstartRunNodeJitlessMiB: { floor: 512 } },
       custodianNormalMemory: { memMiB: 512, nodeStarts: false, engineQuickstartRuns: false },
     });
     assert.match(md, /\| 256 MiB \| yes \| \*\*fail\*\* \(exit 1\) \|/);
-    assert.match(md, /\| 1024 MiB \| yes \| ok \| ok \| ok \| ok \|/);
+    assert.match(md, /\| 1024 MiB \| yes \| ok \| ok \| ok \| ok \| ok \|/);
+    assert.match(md, /node --jitless 512 MiB/);
     assert.match(md, /Floors .*node 1024 MiB/);
     assert.match(md, /142db34d/);
   });
