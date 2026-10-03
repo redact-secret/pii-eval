@@ -2,17 +2,17 @@
 
 ## Scope and status
 
-These conventions govern the intended Rust implementation. They do not assert that a workspace, CLI, schema, or test suite already exists. The current TypeScript engine is a reference, not a dependency on benchmark internals.
+These conventions govern the Rust implementation. A bootstrap workspace, CI, and a smoke test suite exist; CLI workflows, schemas, conformance, and parity suites do not. Conventions that name those are targets until implemented. The current TypeScript engine is a reference, not a dependency on benchmark internals.
 
 ## Rust and dependencies
 
-- Use Rust edition 2024. Select and pin the toolchain/MSRV before scaffolding; verify actual dependency compatibility rather than copying another repository's MSRV.
+- Use Rust edition 2024 with the toolchain pinned in `rust-toolchain.toml` (1.98.1) and the verified MSRV in `Cargo.toml` (1.85). Dependency and MSRV rules are in [docs/dependency-policy.md](docs/dependency-policy.md); re-verify the MSRV whenever dependencies change.
 - Use Cargo workspace boundaries in ARCHITECTURE.md. Keep contracts/kernel independent of process and product policy.
 - Commit lockfiles for released CLI/workspace builds and use locked dependency resolution in CI.
 - Forbid unsafe code in first-party crates initially. Any change requires an ADR and a concrete measured need; downstream dependencies remain subject to separate review.
 - Prefer typed enums, checked counters, explicit errors, and exhaustive matching over free-form JSON and panic-based validation.
 
-Once implemented, baseline checks are formatting, Clippy, locked workspace tests, schema drift, independent conformance, compatibility parity, and relevant integration tests. Do not document non-existent npm scripts or CLI flags as runnable commands.
+Baseline checks that exist today: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, and `cargo test --workspace --locked` (includes the smoke test and the dependency-policy guard). Checks still to be added with their implementations: schema drift, independent conformance, compatibility parity, and integration tests. Public-API stability is not promised: workspace crates are internal, not consumer contracts, and no crate is shared with `credential-eval`. Architecture decisions are recorded under `docs/adr/`. Do not document non-existent npm scripts or CLI flags as runnable commands.
 
 ## Identity and data
 

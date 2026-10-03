@@ -1,0 +1,4 @@
+synthetic-fixture: true
+purpose: bootstrap smoke only; carries no expectations and no scanner results
+contact (reserved invalid TLD, RFC 2606): person@example.invalid
+non-ascii line: 안녕하세요 🙂 end
