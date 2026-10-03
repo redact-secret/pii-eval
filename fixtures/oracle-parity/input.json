@@ -1,0 +1,2109 @@
+{
+ "accountingVectors": [
+  {
+   "cases": [
+    {
+     "id": "t1",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "miss",
+       "sensitivity": "sensitive",
+       "sensitivityState": "miss",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "miss"
+      }
+     ]
+    },
+    {
+     "id": "t2",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    },
+    {
+     "id": "t3",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "partial",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "wrong-family"
+      }
+     ]
+    },
+    {
+     "id": "t4",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "overbroad",
+       "sensitivity": "non-sensitive",
+       "sensitivityState": "false-positive",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    },
+    {
+     "controlClass": "placeholder",
+     "id": "b1",
+     "method": "pii-benign",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "miss",
+       "sensitivity": "non-sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "invalid",
+       "typeState": "invalid-correct"
+      }
+     ]
+    },
+    {
+     "controlClass": "reserved",
+     "id": "b2",
+     "method": "pii-benign",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "non-sensitive",
+       "sensitivityState": "false-positive",
+       "slot": "v1",
+       "type": "invalid",
+       "typeState": "invalid-accepted"
+      }
+     ]
+    }
+   ],
+   "id": "uniform",
+   "note": "six single-variant cases: every bucket rule, withheld states from small effective N",
+   "scanner": "complete"
+  },
+  {
+   "cases": [
+    {
+     "id": "j1",
+     "method": "type-validation",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    },
+    {
+     "id": "j2",
+     "method": "type-validation",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "wrong-jurisdiction"
+      }
+     ]
+    },
+    {
+     "id": "j3",
+     "method": "type-validation",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "partial",
+       "sensitivity": "sensitive",
+       "sensitivityState": "miss",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "wrong-family"
+      }
+     ]
+    },
+    {
+     "id": "j4",
+     "method": "type-validation",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "overbroad",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    },
+    {
+     "collision": true,
+     "id": "k1",
+     "method": "jurisdiction-collision",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    },
+    {
+     "collision": true,
+     "id": "k2",
+     "method": "jurisdiction-collision",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "wrong-jurisdiction"
+      }
+     ]
+    },
+    {
+     "collision": true,
+     "id": "k3",
+     "method": "jurisdiction-collision",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "miss",
+       "sensitivity": "sensitive",
+       "sensitivityState": "miss",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "wrong-family"
+      }
+     ]
+    },
+    {
+     "collision": true,
+     "id": "k4",
+     "method": "jurisdiction-collision",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    }
+   ],
+   "id": "jurisdiction-rates",
+   "note": "jurisdictional cases: wrong-jurisdiction and collision populations",
+   "scanner": "complete"
+  },
+  {
+   "cases": [
+    {
+     "id": "m1",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "miss",
+       "sensitivity": "non-sensitive",
+       "sensitivityState": "correct",
+       "slot": "a-invalid",
+       "type": "invalid",
+       "typeState": "invalid-correct"
+      },
+      {
+       "contextClass": "neutral",
+       "range": "miss",
+       "sensitivity": "sensitive",
+       "sensitivityState": "miss",
+       "slot": "b-valid",
+       "type": "valid",
+       "typeState": "miss"
+      }
+     ]
+    },
+    {
+     "id": "m2",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "a-valid",
+       "type": "valid",
+       "typeState": "correct"
+      },
+      {
+       "contextClass": "neutral",
+       "range": "overbroad",
+       "sensitivity": "non-sensitive",
+       "sensitivityState": "false-positive",
+       "slot": "b-invalid",
+       "type": "invalid",
+       "typeState": "invalid-accepted"
+      }
+     ]
+    },
+    {
+     "id": "m3",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "a-valid",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    },
+    {
+     "id": "m4",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "miss",
+       "sensitivity": "sensitive",
+       "sensitivityState": "miss",
+       "slot": "a-valid",
+       "type": "valid",
+       "typeState": "miss"
+      }
+     ]
+    },
+    {
+     "id": "m5",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "partial",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "a-valid",
+       "type": "valid",
+       "typeState": "wrong-family"
+      }
+     ]
+    }
+   ],
+   "id": "a2-invalid-variant-sorts-first",
+   "note": "A2: a valid group whose first variant (by id) is invalid is not applicable to the valid-type metrics in the oracle",
+   "scanner": "complete"
+  },
+  {
+   "cases": [
+    {
+     "id": "n1",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "a-valid",
+       "type": "valid",
+       "typeState": "correct"
+      },
+      {
+       "contextClass": "neutral",
+       "range": "miss",
+       "sensitivity": "non-sensitive",
+       "sensitivityState": "correct",
+       "slot": "b-invalid",
+       "type": "invalid",
+       "typeState": "not-measured"
+      }
+     ]
+    },
+    {
+     "id": "n2",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "miss",
+       "sensitivity": "sensitive",
+       "sensitivityState": "miss",
+       "slot": "a-valid",
+       "type": "valid",
+       "typeState": "miss"
+      }
+     ]
+    },
+    {
+     "id": "n3",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "a-valid",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    },
+    {
+     "id": "n4",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "a-valid",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    }
+   ],
+   "id": "a2-not-measured-invalid-variant",
+   "note": "A2: a not-measured invalid variant turns a valid group not-measured in the oracle",
+   "scanner": "complete"
+  },
+  {
+   "cases": [
+    {
+     "controlClass": "placeholder",
+     "id": "p1",
+     "method": "pii-benign",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "miss",
+       "sensitivity": "non-sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "invalid",
+       "typeState": "invalid-correct"
+      },
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "non-sensitive",
+       "sensitivityState": "false-positive",
+       "slot": "v2",
+       "type": "invalid",
+       "typeState": "invalid-correct"
+      }
+     ]
+    }
+   ],
+   "id": "a3-benign-two-variants",
+   "note": "A3: the oracle throws on a benign case with several variants",
+   "scanner": "complete"
+  },
+  {
+   "cases": [
+    {
+     "collision": true,
+     "id": "q1",
+     "method": "jurisdiction-collision",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      },
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v2",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    },
+    {
+     "collision": true,
+     "id": "q2",
+     "method": "jurisdiction-collision",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      },
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v2",
+       "type": "valid",
+       "typeState": "wrong-jurisdiction"
+      }
+     ]
+    },
+    {
+     "collision": true,
+     "id": "q3",
+     "method": "jurisdiction-collision",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "wrong-family"
+      },
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v2",
+       "type": "valid",
+       "typeState": "wrong-jurisdiction"
+      }
+     ]
+    },
+    {
+     "collision": true,
+     "id": "q4",
+     "method": "jurisdiction-collision",
+     "scope": "jurisdiction:US",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      },
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v2",
+       "type": "valid",
+       "typeState": "correct"
+      },
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v3",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    }
+   ],
+   "id": "a8-collision-any-versus-all",
+   "note": "A8: a collision case counts when ANY row passes in the oracle; ALL rows in the canonical accounting",
+   "scanner": "complete"
+  },
+  {
+   "cases": [
+    {
+     "id": "u1",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "not-established",
+       "sensitivityState": "unresolved",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    },
+    {
+     "id": "u2",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "miss",
+       "sensitivity": "not-established",
+       "sensitivityState": "unresolved",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "miss"
+      }
+     ]
+    },
+    {
+     "id": "u3",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "sensitive",
+       "sensitivityState": "not-measured",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "not-measured"
+      }
+     ]
+    },
+    {
+     "id": "u4",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "not-applicable",
+       "sensitivity": "sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    },
+    {
+     "id": "u5",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "non-sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "correct"
+      }
+     ]
+    },
+    {
+     "id": "u6",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "overbroad",
+       "sensitivity": "sensitive",
+       "sensitivityState": "miss",
+       "slot": "v1",
+       "type": "valid",
+       "typeState": "wrong-family"
+      }
+     ]
+    }
+   ],
+   "id": "unresolved-and-not-measured",
+   "note": "review-required sensitivity (not-established), not-measured axes and a not-applicable range of a complete scanner",
+   "scanner": "complete"
+  },
+  {
+   "cases": [
+    {
+     "id": "z1",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "miss",
+       "sensitivity": "non-sensitive",
+       "sensitivityState": "correct",
+       "slot": "v1",
+       "type": "invalid",
+       "typeState": "invalid-correct"
+      }
+     ]
+    },
+    {
+     "id": "z2",
+     "method": "type-validation",
+     "scope": "global",
+     "variants": [
+      {
+       "contextClass": "neutral",
+       "range": "exact",
+       "sensitivity": "non-sensitive",
+       "sensitivityState": "false-positive",
+       "slot": "v1",
+       "type": "invalid",
+       "typeState": "invalid-accepted"
+      }
+     ]
+    }
+   ],
+   "id": "all-not-applicable",
+   "note": "a population with no valid type, no sensitive occurrence and no jurisdiction: zero denominators",
+   "scanner": "complete"
+  }
+ ],
+ "cases": [
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:email",
+   "id": "so-email-1",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "schema-only",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "so-email-1: contact=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/so-email-1",
+   "sensitivity": "non-sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "person@example.invalid"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "so-ssn-1",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "schema-only",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "so-ssn-1: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/so-ssn-1",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "111111111"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:email",
+   "id": "so-ko-mid",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "ko",
+   "method": "schema-only",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "so-ko-mid: 연락처=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/so-ko-mid",
+   "sensitivity": "non-sensitive",
+   "suffix": " 끝",
+   "type": "valid",
+   "validator": null,
+   "value": "person@example.invalid"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:email",
+   "id": "so-email-2",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "schema-only",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "so-email-2: mail=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/so-email-2",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "person@example.invalid"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:iban",
+   "id": "so-iban-1",
+   "identityDomain": "iban",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "schema-only",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "so-iban-1: iban ",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/so-iban-1",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "DE89370400440532013000"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "so-ssn-dash",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "schema-only",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "so-ssn-dash: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/so-ssn-dash",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "123-45-6789"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-syn-valid-1",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "tv-syn-valid-1: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/tv-syn-valid-1",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-1236"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-syn-valid-2",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "tv-syn-valid-2: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/tv-syn-valid-2",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-2248"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-syn-valid-3",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "tv-syn-valid-3: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/tv-syn-valid-3",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-5555"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-syn-invalid-1",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "tv-syn-invalid-1: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/tv-syn-invalid-1",
+   "sensitivity": "non-sensitive",
+   "suffix": " tail",
+   "type": "invalid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-1237"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-syn-invalid-2",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "tv-syn-invalid-2: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/tv-syn-invalid-2",
+   "sensitivity": "non-sensitive",
+   "suffix": " tail",
+   "type": "invalid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-9999"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "tv-ssn-valid-1",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "tv-ssn-valid-1: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/tv-ssn-valid-1",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": "us-ssn-allocation",
+   "value": "111111111"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "tv-ssn-valid-2",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "tv-ssn-valid-2: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/tv-ssn-valid-2",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": "us-ssn-allocation",
+   "value": "123456789"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "tv-ssn-invalid-1",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "tv-ssn-invalid-1: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/tv-ssn-invalid-1",
+   "sensitivity": "non-sensitive",
+   "suffix": "",
+   "type": "invalid",
+   "validator": "us-ssn-allocation",
+   "value": "666123456"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "tv-ssn-invalid-2",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "tv-ssn-invalid-2: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/tv-ssn-invalid-2",
+   "sensitivity": "non-sensitive",
+   "suffix": "",
+   "type": "invalid",
+   "validator": "us-ssn-allocation",
+   "value": "123450000"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-unavailable",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "type-validation",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "tv-unavailable: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/tv-unavailable",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": "unavailable-test",
+   "value": "SYNTHETIC-1236"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "neutral",
+   "contextGroup": "en-email-core",
+   "family": "pii:global:email",
+   "id": "en-email-core",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "context-discrimination",
+   "obligation": "required-for-sensitive-classification",
+   "operator": null,
+   "prefix": "en-email-core: value=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/en-email-core",
+   "sensitivity": "not-established",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "subject@example.invalid"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "neutral",
+   "contextGroup": "ko-email-core",
+   "family": "pii:global:email",
+   "id": "ko-email-core",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "ko",
+   "method": "context-discrimination",
+   "obligation": "required-for-sensitive-classification",
+   "operator": null,
+   "prefix": "ko-email-core: 값=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/ko-email-core",
+   "sensitivity": "not-established",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "subject@example.invalid"
+  },
+  {
+   "accountingClass": "reserved",
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "pb-reserved",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "pii-benign",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "pb-reserved: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/pb-reserved",
+   "sensitivity": "non-sensitive",
+   "suffix": "",
+   "type": "invalid",
+   "validator": "us-ssn-allocation",
+   "value": "000000000"
+  },
+  {
+   "accountingClass": "documentation",
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:email",
+   "id": "pb-documentation",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "pii-benign",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "pb-documentation: mail=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/pb-documentation",
+   "sensitivity": "non-sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "person@example.invalid"
+  },
+  {
+   "accountingClass": "test-value",
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "pb-test-value",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "pii-benign",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "pb-test-value: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/pb-test-value",
+   "sensitivity": "non-sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "SYNTHETIC-0000"
+  },
+  {
+   "accountingClass": "public-operational",
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:email",
+   "id": "pb-public-operational",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "pii-benign",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "pb-public-operational: mail=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/pb-public-operational",
+   "sensitivity": "non-sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "postmaster@example.invalid"
+  },
+  {
+   "accountingClass": "placeholder",
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "pb-placeholder",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "pii-benign",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "pb-placeholder: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/pb-placeholder",
+   "sensitivity": "non-sensitive",
+   "suffix": "",
+   "type": "invalid",
+   "validator": null,
+   "value": "SYNTHETIC-0001"
+  },
+  {
+   "accountingClass": "context-negative",
+   "competing": null,
+   "contextClass": "non-sensitive",
+   "contextGroup": null,
+   "family": "pii:global:email",
+   "id": "pb-context-negative",
+   "identityDomain": "email",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "pii-benign",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "pb-context-negative: example ",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/pb-context-negative",
+   "sensitivity": "non-sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "sample@example.invalid"
+  },
+  {
+   "accountingClass": null,
+   "competing": [
+    "pii:kr:national-id",
+    "pii:global:synthetic-reference"
+   ],
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "jc-ssn-1",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "jc-ssn-1: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/jc-ssn-1",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": "us-ssn-allocation",
+   "value": "111111111"
+  },
+  {
+   "accountingClass": null,
+   "competing": [
+    "pii:kr:national-id",
+    "pii:global:synthetic-reference"
+   ],
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "jc-ssn-2",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "jc-ssn-2: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/jc-ssn-2",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": "us-ssn-allocation",
+   "value": "222222222"
+  },
+  {
+   "accountingClass": null,
+   "competing": [
+    "pii:kr:national-id",
+    "pii:global:synthetic-reference"
+   ],
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "jc-ssn-3",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "jc-ssn-3: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/jc-ssn-3",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": "us-ssn-allocation",
+   "value": "333333333"
+  },
+  {
+   "accountingClass": null,
+   "competing": [
+    "pii:us:ssn"
+   ],
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "jc-syn-1",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "jc-syn-1: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/jc-syn-1",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-1236"
+  },
+  {
+   "accountingClass": null,
+   "competing": [
+    "pii:us:ssn"
+   ],
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "jc-syn-2",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "jc-syn-2: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/jc-syn-2",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": "synthetic-mod10",
+   "value": "SYNTHETIC-2248"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "neutral",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "mu-syn-1",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "mutation",
+   "obligation": "none",
+   "operator": "invalidate-final-digit",
+   "prefix": "mu-syn-1: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/mu-syn-1",
+   "sensitivity": "not-established",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "SYNTHETIC-1236"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "mu-syn-wrap",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "mutation",
+   "obligation": "none",
+   "operator": "invalidate-final-digit",
+   "prefix": "mu-syn-wrap: ref=",
+   "reference": null,
+   "scope": "global",
+   "seed": "parity-seed/mu-syn-wrap",
+   "sensitivity": "sensitive",
+   "suffix": " tail",
+   "type": "valid",
+   "validator": null,
+   "value": "SYNTHETIC-1239"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "neutral",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "mu-ssn-1",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "ko",
+   "method": "mutation",
+   "obligation": "none",
+   "operator": "invalidate-final-digit",
+   "prefix": "mu-ssn-1: 번호=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/mu-ssn-1",
+   "sensitivity": "not-established",
+   "suffix": "",
+   "type": "valid",
+   "validator": "us-ssn-allocation",
+   "value": "111111119"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "mu-ssn-2",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "mutation",
+   "obligation": "none",
+   "operator": "invalidate-final-digit",
+   "prefix": "mu-ssn-2: ssn=",
+   "reference": null,
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/mu-ssn-2",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "123456789"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "rd-agree",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "reference-differential",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "rd-agree: ref=",
+   "reference": {
+    "id": "synthetic-mod10",
+    "version": 1
+   },
+   "scope": "global",
+   "seed": "parity-seed/rd-agree",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "SYNTHETIC-1236"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "rd-disagree",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "reference-differential",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "rd-disagree: ref=",
+   "reference": {
+    "id": "synthetic-mod10",
+    "version": 1
+   },
+   "scope": "global",
+   "seed": "parity-seed/rd-disagree",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "SYNTHETIC-1237"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:global:synthetic-reference",
+   "id": "rd-unavailable",
+   "identityDomain": "payment-card",
+   "jurisdiction": null,
+   "language": "en",
+   "method": "reference-differential",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "rd-unavailable: ref=",
+   "reference": {
+    "id": "unavailable-test",
+    "version": 1
+   },
+   "scope": "global",
+   "seed": "parity-seed/rd-unavailable",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "SYNTHETIC-1236"
+  },
+  {
+   "accountingClass": null,
+   "competing": null,
+   "contextClass": "sensitive",
+   "contextGroup": null,
+   "family": "pii:us:ssn",
+   "id": "rd-ssn",
+   "identityDomain": "national-id",
+   "jurisdiction": "US",
+   "language": "en",
+   "method": "reference-differential",
+   "obligation": "none",
+   "operator": null,
+   "prefix": "rd-ssn: ssn=",
+   "reference": {
+    "id": "us-ssn-allocation",
+    "version": 1
+   },
+   "scope": "jurisdiction:US",
+   "seed": "parity-seed/rd-ssn",
+   "sensitivity": "sensitive",
+   "suffix": "",
+   "type": "valid",
+   "validator": null,
+   "value": "111111111"
+  }
+ ],
+ "note": "Synthetic only. Authored by tools/oracle-parity/make-input.mjs; never edited to match an engine.",
+ "population": {
+  "id": "parity-synthetic",
+  "version": 1,
+  "visibility": "public-synthetic"
+ },
+ "scanners": [
+  {
+   "id": "parity-baseline",
+   "recipe": {
+    "all": {
+     "cycle": [
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ]
+     ]
+    }
+   },
+   "status": "complete"
+  },
+  {
+   "id": "parity-mixed",
+   "recipe": {
+    "all": {
+     "cycle": [
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ],
+      [],
+      [
+       {
+        "de": 3,
+        "ds": -2,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ],
+      [
+       {
+        "de": -3,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": true
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "pii:kr:national-id",
+        "jurisdiction": "KR",
+        "sensitive": true
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "sensitive": "$expected"
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "sensitive": "$expected"
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": true
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction"
+       }
+      ]
+     ]
+    }
+   },
+   "status": "complete"
+  },
+  {
+   "id": "parity-multi",
+   "recipe": {
+    "all": {
+     "cycle": [
+      [
+       {
+        "de": 4,
+        "ds": -4,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       },
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 4,
+        "ds": -4,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": false
+       }
+      ],
+      [
+       {
+        "de": -3,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 2,
+        "ds": -2,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction"
+       },
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "pii:global:phone",
+        "jurisdiction": null,
+        "sensitive": true
+       },
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ],
+      [
+       {
+        "de": 1,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 3,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ],
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction"
+       }
+      ],
+      [
+       {
+        "de": -3,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       },
+       {
+        "de": 0,
+        "ds": 3,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ],
+      [
+       {
+        "de": 1,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": false
+       },
+       {
+        "de": 1,
+        "ds": -1,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ]
+     ]
+    }
+   },
+   "status": "complete"
+  },
+  {
+   "id": "parity-nosens",
+   "recipe": {
+    "all": {
+     "cycle": [
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction"
+       }
+      ]
+     ]
+    }
+   },
+   "status": "complete"
+  },
+  {
+   "id": "parity-midchar",
+   "recipe": {
+    "all": {
+     "cycle": [
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ]
+     ]
+    },
+    "cases": {
+     "so-ko-mid": {
+      "cycle": [
+       [
+        {
+         "de": 0,
+         "ds": -2,
+         "family": "$family",
+         "jurisdiction": "$jurisdiction",
+         "raw": true,
+         "sensitive": "$expected"
+        }
+       ]
+      ]
+     }
+    }
+   },
+   "status": "complete"
+  },
+  {
+   "id": "parity-unsupported",
+   "recipe": {},
+   "status": "unsupported"
+  },
+  {
+   "id": "parity-error",
+   "recipe": {},
+   "status": "error"
+  },
+  {
+   "id": "parity-unavailable",
+   "recipe": {},
+   "status": "unavailable"
+  },
+  {
+   "id": "parity-unstable",
+   "recipe": {
+    "all": {
+     "cycle": [
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ]
+     ]
+    }
+   },
+   "status": "unstable"
+  },
+  {
+   "id": "parity-badrange",
+   "recipe": {
+    "all": {
+     "cycle": [
+      [
+       {
+        "de": 0,
+        "ds": 0,
+        "family": "$family",
+        "jurisdiction": "$jurisdiction",
+        "sensitive": "$expected"
+       }
+      ]
+     ]
+    },
+    "cases": {
+     "tv-syn-valid-1": {
+      "cycle": [
+       [
+        {
+         "de": -14,
+         "ds": 0,
+         "family": "$family",
+         "jurisdiction": "$jurisdiction",
+         "sensitive": "$expected"
+        }
+       ]
+      ]
+     }
+    }
+   },
+   "status": "complete"
+  }
+ ],
+ "schema": "pii-eval-parity-input/1",
+ "statistics": {
+  "grid": {
+   "maxDenominator": 24,
+   "mechanics": {
+    "intervalPrecision": 6,
+    "intervalZ": "1.96",
+    "minDenominator": 4
+   }
+  },
+  "single": [
+   {
+    "denominator": 20,
+    "direction": "upper",
+    "intervalPrecision": 1,
+    "intervalZ": "1.96",
+    "numerator": 3
+   },
+   {
+    "denominator": 20,
+    "direction": "upper",
+    "intervalPrecision": 1,
+    "intervalZ": "1.96",
+    "numerator": 7
+   },
+   {
+    "denominator": 128,
+    "direction": "upper",
+    "intervalPrecision": 6,
+    "intervalZ": "1.96",
+    "numerator": 1
+   },
+   {
+    "denominator": 128,
+    "direction": "lower",
+    "intervalPrecision": 6,
+    "intervalZ": "1.96",
+    "numerator": 1
+   },
+   {
+    "denominator": 128,
+    "direction": "upper",
+    "intervalPrecision": 6,
+    "intervalZ": "1.96",
+    "numerator": 127
+   },
+   {
+    "denominator": 1000,
+    "direction": "upper",
+    "intervalPrecision": 12,
+    "intervalZ": "1.96",
+    "numerator": 0
+   },
+   {
+    "denominator": 1000,
+    "direction": "lower",
+    "intervalPrecision": 12,
+    "intervalZ": "1.96",
+    "numerator": 1000
+   },
+   {
+    "denominator": 1000000000,
+    "direction": "upper",
+    "intervalPrecision": 12,
+    "intervalZ": "1.96",
+    "numerator": 500000000
+   },
+   {
+    "denominator": 1000000000000,
+    "direction": "upper",
+    "intervalPrecision": 12,
+    "intervalZ": "1.96",
+    "numerator": 1
+   },
+   {
+    "denominator": 8,
+    "direction": "lower",
+    "intervalPrecision": 3,
+    "intervalZ": "1",
+    "numerator": 3
+   },
+   {
+    "denominator": 4,
+    "direction": "upper",
+    "intervalPrecision": 2,
+    "intervalZ": "2.5",
+    "numerator": 1
+   },
+   {
+    "denominator": 8,
+    "direction": "upper",
+    "intervalPrecision": 2,
+    "intervalZ": "1.96",
+    "numerator": 5
+   }
+  ]
+ }
+}

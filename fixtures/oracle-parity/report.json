@@ -1,0 +1,1259 @@
+{
+  "census": {
+    "byClass": {
+      "compatibility": 85,
+      "intended-versioned-revision": 85,
+      "new-bug": 0,
+      "old-bug": 32,
+      "unexplained": 0,
+      "unresolved": 0
+    },
+    "byId": {
+      "0004/D1": {
+        "class": "old-bug",
+        "differences": 34,
+        "what": "the first overlapping finding decides every axis, so the oracle result depends on scanner emission order; the canonical matcher selects by closeness and identity (fix delivered by protocol revision 2)"
+      },
+      "0004/D3": {
+        "class": "intended-versioned-revision",
+        "differences": 70,
+        "what": "a selected finding with no sensitivity value is not-measured; legacy reads it as not flagged"
+      },
+      "0004/D6": {
+        "class": "intended-versioned-revision",
+        "differences": 2,
+        "what": "a range that is not valid on the text (empty, out of bounds, inside a character) is refused; legacy and the oracle match or reject it by their own rules"
+      },
+      "0005/A2": {
+        "class": "old-bug",
+        "differences": 5,
+        "what": "the oracle takes eligibility for the valid-type metrics from the first variant of a case (after a locale-dependent sort) and judges every variant; the canonical rule judges the valid-type occurrences"
+      },
+      "0005/A3": {
+        "class": "intended-versioned-revision",
+        "differences": 10,
+        "what": "a benign case with several variants throws in the oracle; the canonical rule counts one sample"
+      },
+      "0005/S1": {
+        "class": "intended-versioned-revision",
+        "differences": 2,
+        "what": "the oracle rounds binary64 with toFixed; the canonical rule rounds the exact rational half up; they differ only at ties and near-ties"
+      },
+      "0007/D1": {
+        "class": "compatibility",
+        "differences": 54,
+        "what": "variant ids are snapshot-unique digests of case and slot; the slot (the oracle's variant id) is compared equal"
+      },
+      "0007/D4": {
+        "class": "compatibility",
+        "differences": 31,
+        "what": "an authored variant records no operator and no seed in the contract; a held variant records the review-hold operator"
+      },
+      "0008/R3": {
+        "class": "intended-versioned-revision",
+        "differences": 2,
+        "what": "benign and collision cases count when ALL rows pass (oracle: any row; ADR 0005 A8)"
+      }
+    },
+    "compatibilityLayerDifferences": 0,
+    "unexplained": 0
+  },
+  "compared": {
+    "accounting-canonical": 90,
+    "accounting-compat": 181,
+    "accounting-rule": 180,
+    "outcome": 541,
+    "outcome-compat": 540,
+    "population": 20,
+    "statistics": 660,
+    "statistics-compat": 660,
+    "variant": 54
+  },
+  "differences": [
+    {
+      "aspect": "context-discrimination-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=2 measured=2 numerator=0 unresolved=0 notMeasured=0 notApplicable=0 total=2 effectiveN=2 insufficient-evidence",
+          "rust": "status=not-measured eligible=2 measured=0 numerator=0 unresolved=0 notMeasured=2 notApplicable=0 total=2 effectiveN=0 null",
+          "scanner": "parity-multi",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D1",
+        "0004/D3"
+      ],
+      "idsKey": "0004/D1+0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "jurisdiction-collision-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=5 measured=5 numerator=4 unresolved=0 notMeasured=0 notApplicable=32 total=37 effectiveN=5 point=800000 bound=375528 n=5",
+          "rust": "status=measured eligible=5 measured=5 numerator=5 unresolved=0 notMeasured=0 notApplicable=32 total=37 effectiveN=5 point=1000000 bound=565509 n=5",
+          "scanner": "parity-multi",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D1",
+        "0004/D3"
+      ],
+      "idsKey": "0004/D1+0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "measurable-share",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "status=partial eligible=74 measured=68 numerator=68 unresolved=4 notMeasured=2 notApplicable=0 total=74 effectiveN=74 point=918919 bound=834179 n=74",
+          "rust": "status=partial eligible=74 measured=65 numerator=65 unresolved=4 notMeasured=5 notApplicable=0 total=74 effectiveN=74 point=878378 bound=784732 n=74",
+          "scanner": "parity-multi",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D1",
+        "0004/D3"
+      ],
+      "idsKey": "0004/D1+0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "non-sensitive-flag-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=14 measured=14 numerator=2 unresolved=0 notMeasured=0 notApplicable=23 total=37 effectiveN=14 point=142857 bound=399419 n=14",
+          "rust": "status=measured eligible=14 measured=14 numerator=0 unresolved=0 notMeasured=0 notApplicable=23 total=37 effectiveN=14 point=0 bound=215317 n=14",
+          "scanner": "parity-multi",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D1",
+        "0004/D3"
+      ],
+      "idsKey": "0004/D1+0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "range-collateral-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=27 measured=27 numerator=16 unresolved=0 notMeasured=0 notApplicable=10 total=37 effectiveN=27 point=592593 bound=754855 n=27",
+          "rust": "status=measured eligible=27 measured=27 numerator=13 unresolved=0 notMeasured=0 notApplicable=10 total=37 effectiveN=27 point=481481 bound=660147 n=27",
+          "scanner": "parity-multi",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D1",
+        "0004/D3"
+      ],
+      "idsKey": "0004/D1+0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "sensitive-miss-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=23 measured=23 numerator=11 unresolved=0 notMeasured=0 notApplicable=14 total=37 effectiveN=23 point=478261 bound=670376 n=23",
+          "rust": "status=partial eligible=23 measured=18 numerator=2 unresolved=0 notMeasured=5 notApplicable=14 total=37 effectiveN=18 point=111111 bound=328002 n=18",
+          "scanner": "parity-multi",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D1",
+        "0004/D3"
+      ],
+      "idsKey": "0004/D1+0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "wrong-family-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "status=partial eligible=27 measured=25 numerator=6 unresolved=0 notMeasured=2 notApplicable=10 total=37 effectiveN=25 point=240000 bound=434301 n=25",
+          "rust": "status=partial eligible=27 measured=25 numerator=0 unresolved=0 notMeasured=2 notApplicable=10 total=37 effectiveN=25 point=0 bound=133196 n=25",
+          "scanner": "parity-multi",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D1",
+        "0004/D3"
+      ],
+      "idsKey": "0004/D1+0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "benign-suppression-rate",
+      "class": "intended-versioned-revision",
+      "count": 2,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=6 measured=6 numerator=5 unresolved=0 notMeasured=0 notApplicable=31 total=37 effectiveN=6 point=833333 bound=436491 n=6",
+          "rust": "status=partial eligible=6 measured=5 numerator=4 unresolved=0 notMeasured=1 notApplicable=31 total=37 effectiveN=5 point=800000 bound=375528 n=5",
+          "scanner": "parity-mixed",
+          "subject": "(scanner)"
+        },
+        {
+          "oracle": "status=measured eligible=6 measured=6 numerator=6 unresolved=0 notMeasured=0 notApplicable=31 total=37 effectiveN=6 point=1000000 bound=609657 n=6",
+          "rust": "status=not-measured eligible=6 measured=0 numerator=0 unresolved=0 notMeasured=6 notApplicable=31 total=37 effectiveN=0 null",
+          "scanner": "parity-nosens",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D3"
+      ],
+      "idsKey": "0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "context-discrimination-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=2 measured=2 numerator=0 unresolved=0 notMeasured=0 notApplicable=0 total=2 effectiveN=2 insufficient-evidence",
+          "rust": "status=not-measured eligible=2 measured=0 numerator=0 unresolved=0 notMeasured=2 notApplicable=0 total=2 effectiveN=0 null",
+          "scanner": "parity-nosens",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D3"
+      ],
+      "idsKey": "0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "measurable-share",
+      "class": "intended-versioned-revision",
+      "count": 2,
+      "examples": [
+        {
+          "oracle": "status=partial eligible=74 measured=63 numerator=63 unresolved=4 notMeasured=7 notApplicable=0 total=74 effectiveN=74 point=851351 bound=753103 n=74",
+          "rust": "status=partial eligible=74 measured=60 numerator=60 unresolved=4 notMeasured=10 notApplicable=0 total=74 effectiveN=74 point=810811 bound=707122 n=74",
+          "scanner": "parity-mixed",
+          "subject": "(scanner)"
+        },
+        {
+          "oracle": "status=partial eligible=74 measured=68 numerator=68 unresolved=4 notMeasured=2 notApplicable=0 total=74 effectiveN=74 point=918919 bound=834179 n=74",
+          "rust": "status=partial eligible=74 measured=35 numerator=35 unresolved=4 notMeasured=35 notApplicable=0 total=74 effectiveN=74 point=472973 bound=363385 n=74",
+          "scanner": "parity-nosens",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D3"
+      ],
+      "idsKey": "0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "non-sensitive-flag-rate",
+      "class": "intended-versioned-revision",
+      "count": 2,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=14 measured=14 numerator=6 unresolved=0 notMeasured=0 notApplicable=23 total=37 effectiveN=14 point=428571 bound=674097 n=14",
+          "rust": "status=partial eligible=14 measured=13 numerator=6 unresolved=0 notMeasured=1 notApplicable=23 total=37 effectiveN=13 point=461538 bound=708566 n=13",
+          "scanner": "parity-mixed",
+          "subject": "(scanner)"
+        },
+        {
+          "oracle": "status=measured eligible=14 measured=14 numerator=0 unresolved=0 notMeasured=0 notApplicable=23 total=37 effectiveN=14 point=0 bound=215317 n=14",
+          "rust": "status=not-measured eligible=14 measured=0 numerator=0 unresolved=0 notMeasured=14 notApplicable=23 total=37 effectiveN=0 null",
+          "scanner": "parity-nosens",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D3"
+      ],
+      "idsKey": "0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "sensitive-miss-rate",
+      "class": "intended-versioned-revision",
+      "count": 2,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=23 measured=23 numerator=8 unresolved=0 notMeasured=0 notApplicable=14 total=37 effectiveN=23 point=347826 bound=551100 n=23",
+          "rust": "status=partial eligible=23 measured=21 numerator=6 unresolved=0 notMeasured=2 notApplicable=14 total=37 effectiveN=21 point=285714 bound=499568 n=21",
+          "scanner": "parity-mixed",
+          "subject": "(scanner)"
+        },
+        {
+          "oracle": "status=measured eligible=23 measured=23 numerator=23 unresolved=0 notMeasured=0 notApplicable=14 total=37 effectiveN=23 point=1000000 bound=1000000 n=23",
+          "rust": "status=not-measured eligible=23 measured=0 numerator=0 unresolved=0 notMeasured=23 notApplicable=14 total=37 effectiveN=0 null",
+          "scanner": "parity-nosens",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D3"
+      ],
+      "idsKey": "0004/D3",
+      "layer": "accounting-canonical"
+    },
+    {
+      "aspect": "range-collateral-rate",
+      "class": "old-bug",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=3 measured=3 numerator=2 unresolved=0 notMeasured=0 notApplicable=2 total=5 effectiveN=3 insufficient-evidence",
+          "rust": "status=measured eligible=3 measured=3 numerator=1 unresolved=0 notMeasured=0 notApplicable=2 total=5 effectiveN=3 insufficient-evidence",
+          "scanner": "vector-scanner",
+          "subject": "a2-invalid-variant-sorts-first"
+        }
+      ],
+      "ids": [
+        "0005/A2"
+      ],
+      "idsKey": "0005/A2",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "type-miss-rate",
+      "class": "old-bug",
+      "count": 2,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=4 measured=4 numerator=1 unresolved=0 notMeasured=0 notApplicable=1 total=5 effectiveN=4 point=250000 bound=699364 n=4",
+          "rust": "status=measured eligible=5 measured=5 numerator=2 unresolved=0 notMeasured=0 notApplicable=0 total=5 effectiveN=5 point=400000 bound=769280 n=5",
+          "scanner": "vector-scanner",
+          "subject": "a2-invalid-variant-sorts-first"
+        },
+        {
+          "oracle": "status=partial eligible=4 measured=3 numerator=1 unresolved=0 notMeasured=1 notApplicable=0 total=4 effectiveN=3 insufficient-evidence",
+          "rust": "status=measured eligible=4 measured=4 numerator=1 unresolved=0 notMeasured=0 notApplicable=0 total=4 effectiveN=4 point=250000 bound=699364 n=4",
+          "scanner": "vector-scanner",
+          "subject": "a2-not-measured-invalid-variant"
+        }
+      ],
+      "ids": [
+        "0005/A2"
+      ],
+      "idsKey": "0005/A2",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "wrong-family-rate",
+      "class": "old-bug",
+      "count": 2,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=4 measured=4 numerator=1 unresolved=0 notMeasured=0 notApplicable=1 total=5 effectiveN=4 point=250000 bound=699364 n=4",
+          "rust": "status=measured eligible=5 measured=5 numerator=1 unresolved=0 notMeasured=0 notApplicable=0 total=5 effectiveN=5 point=200000 bound=624472 n=5",
+          "scanner": "vector-scanner",
+          "subject": "a2-invalid-variant-sorts-first"
+        },
+        {
+          "oracle": "status=partial eligible=4 measured=3 numerator=0 unresolved=0 notMeasured=1 notApplicable=0 total=4 effectiveN=3 insufficient-evidence",
+          "rust": "status=measured eligible=4 measured=4 numerator=0 unresolved=0 notMeasured=0 notApplicable=0 total=4 effectiveN=4 point=0 bound=489900 n=4",
+          "scanner": "vector-scanner",
+          "subject": "a2-not-measured-invalid-variant"
+        }
+      ],
+      "ids": [
+        "0005/A2"
+      ],
+      "idsKey": "0005/A2",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "context-discrimination-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "throws",
+          "rust": "status=not-applicable eligible=0 measured=0 numerator=0 unresolved=0 notMeasured=0 notApplicable=0 total=0 effectiveN=0 null",
+          "scanner": "vector-scanner",
+          "subject": "a3-benign-two-variants"
+        }
+      ],
+      "ids": [
+        "0005/A3"
+      ],
+      "idsKey": "0005/A3",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "jurisdiction-collision-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "throws",
+          "rust": "status=not-applicable eligible=0 measured=0 numerator=0 unresolved=0 notMeasured=0 notApplicable=1 total=1 effectiveN=0 null",
+          "scanner": "vector-scanner",
+          "subject": "a3-benign-two-variants"
+        }
+      ],
+      "ids": [
+        "0005/A3"
+      ],
+      "idsKey": "0005/A3",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "measurable-share",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "throws",
+          "rust": "status=measured eligible=2 measured=2 numerator=2 unresolved=0 notMeasured=0 notApplicable=0 total=2 effectiveN=2 insufficient-evidence",
+          "scanner": "vector-scanner",
+          "subject": "a3-benign-two-variants"
+        }
+      ],
+      "ids": [
+        "0005/A3"
+      ],
+      "idsKey": "0005/A3",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "non-sensitive-flag-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "throws",
+          "rust": "status=measured eligible=1 measured=1 numerator=1 unresolved=0 notMeasured=0 notApplicable=0 total=1 effectiveN=1 insufficient-evidence",
+          "scanner": "vector-scanner",
+          "subject": "a3-benign-two-variants"
+        }
+      ],
+      "ids": [
+        "0005/A3"
+      ],
+      "idsKey": "0005/A3",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "range-collateral-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "throws",
+          "rust": "status=not-applicable eligible=0 measured=0 numerator=0 unresolved=0 notMeasured=0 notApplicable=1 total=1 effectiveN=0 null",
+          "scanner": "vector-scanner",
+          "subject": "a3-benign-two-variants"
+        }
+      ],
+      "ids": [
+        "0005/A3"
+      ],
+      "idsKey": "0005/A3",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "sensitive-miss-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "throws",
+          "rust": "status=not-applicable eligible=0 measured=0 numerator=0 unresolved=0 notMeasured=0 notApplicable=1 total=1 effectiveN=0 null",
+          "scanner": "vector-scanner",
+          "subject": "a3-benign-two-variants"
+        }
+      ],
+      "ids": [
+        "0005/A3"
+      ],
+      "idsKey": "0005/A3",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "type-miss-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "throws",
+          "rust": "status=not-applicable eligible=0 measured=0 numerator=0 unresolved=0 notMeasured=0 notApplicable=1 total=1 effectiveN=0 null",
+          "scanner": "vector-scanner",
+          "subject": "a3-benign-two-variants"
+        }
+      ],
+      "ids": [
+        "0005/A3"
+      ],
+      "idsKey": "0005/A3",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "wrong-family-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "throws",
+          "rust": "status=not-applicable eligible=0 measured=0 numerator=0 unresolved=0 notMeasured=0 notApplicable=1 total=1 effectiveN=0 null",
+          "scanner": "vector-scanner",
+          "subject": "a3-benign-two-variants"
+        }
+      ],
+      "ids": [
+        "0005/A3"
+      ],
+      "idsKey": "0005/A3",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "wrong-jurisdiction-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "throws",
+          "rust": "status=not-applicable eligible=0 measured=0 numerator=0 unresolved=0 notMeasured=0 notApplicable=1 total=1 effectiveN=0 null",
+          "scanner": "vector-scanner",
+          "subject": "a3-benign-two-variants"
+        }
+      ],
+      "ids": [
+        "0005/A3"
+      ],
+      "idsKey": "0005/A3",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "benign-suppression-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "throws",
+          "rust": "status=measured eligible=1 measured=1 numerator=0 unresolved=0 notMeasured=0 notApplicable=0 total=1 effectiveN=1 insufficient-evidence",
+          "scanner": "vector-scanner",
+          "subject": "a3-benign-two-variants"
+        }
+      ],
+      "ids": [
+        "0005/A3",
+        "0008/R3"
+      ],
+      "idsKey": "0005/A3+0008/R3",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "jurisdiction-collision-rate",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "status=measured eligible=4 measured=4 numerator=3 unresolved=0 notMeasured=0 notApplicable=0 total=4 effectiveN=4 point=750000 bound=300636 n=4",
+          "rust": "status=measured eligible=4 measured=4 numerator=2 unresolved=0 notMeasured=0 notApplicable=0 total=4 effectiveN=4 point=500000 bound=150036 n=4",
+          "scanner": "vector-scanner",
+          "subject": "a8-collision-any-versus-all"
+        }
+      ],
+      "ids": [
+        "0008/R3"
+      ],
+      "idsKey": "0008/R3",
+      "layer": "accounting-rule"
+    },
+    {
+      "aspect": "range",
+      "class": "old-bug",
+      "count": 12,
+      "examples": [
+        {
+          "oracle": "overbroad",
+          "rust": "exact",
+          "scanner": "parity-multi",
+          "subject": "en-email-core/en-ambiguous"
+        },
+        {
+          "oracle": "partial",
+          "rust": "overbroad",
+          "scanner": "parity-multi",
+          "subject": "en-email-core/en-case-equals"
+        }
+      ],
+      "ids": [
+        "0004/D1"
+      ],
+      "idsKey": "0004/D1",
+      "layer": "outcome"
+    },
+    {
+      "aspect": "sensitivity",
+      "class": "old-bug",
+      "count": 7,
+      "examples": [
+        {
+          "oracle": "miss",
+          "rust": "correct",
+          "scanner": "parity-multi",
+          "subject": "en-email-core/en-natural-label"
+        },
+        {
+          "oracle": "false-positive",
+          "rust": "correct",
+          "scanner": "parity-multi",
+          "subject": "en-email-core/en-negative"
+        }
+      ],
+      "ids": [
+        "0004/D1"
+      ],
+      "idsKey": "0004/D1",
+      "layer": "outcome"
+    },
+    {
+      "aspect": "type",
+      "class": "old-bug",
+      "count": 8,
+      "examples": [
+        {
+          "oracle": "wrong-family",
+          "rust": "correct",
+          "scanner": "parity-multi",
+          "subject": "en-email-core/en-ambiguous"
+        },
+        {
+          "oracle": "wrong-family",
+          "rust": "correct",
+          "scanner": "parity-multi",
+          "subject": "en-email-core/en-negative"
+        }
+      ],
+      "ids": [
+        "0004/D1"
+      ],
+      "idsKey": "0004/D1",
+      "layer": "outcome"
+    },
+    {
+      "aspect": "sensitivity",
+      "class": "intended-versioned-revision",
+      "count": 54,
+      "examples": [
+        {
+          "oracle": "miss",
+          "rust": "not-measured",
+          "scanner": "parity-mixed",
+          "subject": "jc-ssn-3/collision"
+        },
+        {
+          "oracle": "correct",
+          "rust": "not-measured",
+          "scanner": "parity-mixed",
+          "subject": "pb-reserved/reserved"
+        }
+      ],
+      "ids": [
+        "0004/D3"
+      ],
+      "idsKey": "0004/D3",
+      "layer": "outcome"
+    },
+    {
+      "aspect": "range-validation",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "accepted",
+          "rust": "refused",
+          "scanner": "parity-midchar",
+          "subject": "so-ko-mid/authored"
+        }
+      ],
+      "ids": [
+        "0004/D6"
+      ],
+      "idsKey": "0004/D6",
+      "layer": "outcome"
+    },
+    {
+      "aspect": "scanner-status",
+      "class": "intended-versioned-revision",
+      "count": 1,
+      "examples": [
+        {
+          "oracle": "error (finding rejected at the runtime boundary)",
+          "rust": "complete (finding refused by the matcher)",
+          "scanner": "parity-badrange",
+          "subject": "(scanner)"
+        }
+      ],
+      "ids": [
+        "0004/D6"
+      ],
+      "idsKey": "0004/D6",
+      "layer": "outcome"
+    },
+    {
+      "aspect": "rate",
+      "class": "intended-versioned-revision",
+      "count": 2,
+      "examples": [
+        {
+          "oracle": "Value { point: 1, bound: 4, n: 20 }",
+          "rust": "Value { point: 2, bound: 4, n: 20 }",
+          "scanner": "-",
+          "subject": "3/20 upper z=1.96 p=1"
+        },
+        {
+          "oracle": "Value { point: 3, bound: 6, n: 20 }",
+          "rust": "Value { point: 4, bound: 6, n: 20 }",
+          "scanner": "-",
+          "subject": "7/20 upper z=1.96 p=1"
+        }
+      ],
+      "ids": [
+        "0005/S1"
+      ],
+      "idsKey": "0005/S1",
+      "layer": "statistics"
+    },
+    {
+      "aspect": "variant-id",
+      "class": "compatibility",
+      "count": 54,
+      "examples": [
+        {
+          "oracle": "en-ambiguous",
+          "rust": "slot-digest",
+          "scanner": "-",
+          "subject": "en-email-core/en-ambiguous"
+        },
+        {
+          "oracle": "en-benign-prose",
+          "rust": "slot-digest",
+          "scanner": "-",
+          "subject": "en-email-core/en-benign-prose"
+        }
+      ],
+      "ids": [
+        "0007/D1"
+      ],
+      "idsKey": "0007/D1",
+      "layer": "variant"
+    },
+    {
+      "aspect": "operator",
+      "class": "compatibility",
+      "count": 31,
+      "examples": [
+        {
+          "oracle": "authored",
+          "rust": "none",
+          "scanner": "-",
+          "subject": "jc-ssn-1/collision"
+        },
+        {
+          "oracle": "authored",
+          "rust": "none",
+          "scanner": "-",
+          "subject": "jc-ssn-2/collision"
+        }
+      ],
+      "ids": [
+        "0007/D4"
+      ],
+      "idsKey": "0007/D4",
+      "layer": "variant"
+    }
+  ],
+  "identities": {
+    "canonicalProtocol": {
+      "accounting": "pii-v1-canonical-accounting",
+      "accountingRevision": 2,
+      "matching": "pii-v1-canonical",
+      "revision": 2,
+      "statistics": "pii-v1-wilson-exact",
+      "statisticsRevision": 1
+    },
+    "compatibilityProtocol": {
+      "accounting": "legacy-accounting",
+      "matching": "legacy-first-overlap",
+      "revision": 1
+    },
+    "engine": {
+      "name": "pii-eval",
+      "protocol": "pii-v1",
+      "version": "0.0.0"
+    },
+    "inputSha256": "f4ed904849e028c415490d852d0e655b8fc0b2331264b758c1922d641fd44333",
+    "methods": [
+      {
+        "id": "type-validation",
+        "version": 2
+      },
+      {
+        "id": "context-discrimination",
+        "version": 2
+      },
+      {
+        "id": "pii-benign",
+        "version": 3
+      },
+      {
+        "id": "jurisdiction-collision",
+        "version": 3
+      },
+      {
+        "id": "mutation",
+        "version": 1
+      },
+      {
+        "id": "reference-differential",
+        "version": 1
+      },
+      {
+        "id": "schema-only",
+        "version": 1
+      }
+    ],
+    "metrics": [
+      "type-miss-rate",
+      "wrong-family-rate",
+      "wrong-jurisdiction-rate",
+      "sensitive-miss-rate",
+      "non-sensitive-flag-rate",
+      "context-discrimination-rate",
+      "benign-suppression-rate",
+      "jurisdiction-collision-rate",
+      "range-collateral-rate",
+      "measurable-share"
+    ],
+    "oracle": {
+      "adaptations": [
+        "ajv replaced by a stub that accepts every document",
+        "benign-collision-evidence.ts replaced by a stub (no entries)",
+        "json imports without attributes loaded as JSON modules"
+      ],
+      "commit": "4b846967346505baca11e0b98cab1475fbce6773",
+      "engineVersion": "1.0.0",
+      "filesTreeDigest": "6f35613cc5a6a827f19609d8c3d22a56362c0f7f526553f17cc1bc4e9ec8a83b",
+      "icu": "77.1",
+      "node": "v22.16.0",
+      "repository": "redact-secret/redact-secret-benchmarks"
+    },
+    "oracleExportSha256": "338a3f466a4c9157a557c2084b83a466d5dea39893f2a79dc54c117301036082",
+    "scriptDigests": {
+      "export-oracle.mjs": "e6bff5a6077e522ad940d03f7bc584c77e260fda7307c499e396a999604c6e5a",
+      "hooks.mjs": "b5a10a422d2308a4e0abca4ebd1361236f9e631c652343cbea2422310fb1fecc",
+      "lib.mjs": "24994db96f9d8e603cde57a5569cff5d1a0aaedea8ec6b7bc5e664ec288b1319",
+      "make-input.mjs": "531e2853ed0b617d528432154427fe92bd221d2f821e13c861c8bb1ab184e5f0",
+      "oracle-files.json": "b7ed86ef8475e306a48ac8421e4457b7265c49fa8dd944b5286425cf7ebb4fa5",
+      "register.mjs": "7230fe6a5be2850444efacff27740a4028b23e3bc64007a3ebaa87911abcde91",
+      "stubs/ajv.mjs": "f952150cc59a324468de14a2b03deb84e549b321fc169d6499433f427fc7feb9",
+      "stubs/benign-collision-evidence.mjs": "1303f90078c68a1f291a8b2e2e0c840453c05217468a14212a940cb7d7c3966d"
+    }
+  },
+  "layers": [
+    {
+      "byClass": {
+        "intended-versioned-revision": 16
+      },
+      "compared": 90,
+      "differences": 16,
+      "layer": "accounting-canonical"
+    },
+    {
+      "byClass": {},
+      "compared": 181,
+      "differences": 0,
+      "layer": "accounting-compat"
+    },
+    {
+      "byClass": {
+        "intended-versioned-revision": 11,
+        "old-bug": 5
+      },
+      "compared": 180,
+      "differences": 16,
+      "layer": "accounting-rule"
+    },
+    {
+      "byClass": {
+        "intended-versioned-revision": 56,
+        "old-bug": 27
+      },
+      "compared": 541,
+      "differences": 83,
+      "layer": "outcome"
+    },
+    {
+      "byClass": {},
+      "compared": 540,
+      "differences": 0,
+      "layer": "outcome-compat"
+    },
+    {
+      "byClass": {},
+      "compared": 20,
+      "differences": 0,
+      "layer": "population"
+    },
+    {
+      "byClass": {
+        "intended-versioned-revision": 2
+      },
+      "compared": 660,
+      "differences": 2,
+      "layer": "statistics"
+    },
+    {
+      "byClass": {},
+      "compared": 660,
+      "differences": 0,
+      "layer": "statistics-compat"
+    },
+    {
+      "byClass": {
+        "compatibility": 85
+      },
+      "compared": 54,
+      "differences": 85,
+      "layer": "variant"
+    }
+  ],
+  "mode": "same-observation (identical frozen observations fed to the oracle and to the Rust engine)",
+  "notCompared": [
+    {
+      "item": "0004/D2",
+      "reason": "A stored ObservationSet carries findings in canonical order, so legacy over a stored set can pick another first finding than the oracle did. The parity corpus feeds the legacy mode the emission order the oracle saw; replay of stored sets for a legacy comparison needs the emission order carried (open item for benchmarks #664)."
+    },
+    {
+      "item": "0004/D4, D5, D11",
+      "reason": "Capability-aware differences need a scanner that declares less than full support. The parity scanners declare every capability the legacy protocol assumes, so these are covered by crates/pii-eval-compat/tests/differences.rs and crates/pii-eval-kernel/tests/conformance.rs, not by the oracle export."
+    },
+    {
+      "item": "0005/A5, A7",
+      "reason": "The oracle's evidence, benignByControlClass, evidenceByClass, contextByLanguage and contextRoster projections are not carried by schema 1.x and are not compared; the ten metrics, their counts, effective N, statuses, intervals and withheld states are."
+    },
+    {
+      "item": "0005/A9",
+      "reason": "Equal by construction (case jurisdiction is the oracle's scope); covered by crates/pii-eval-compat/tests/accounting_oracle.rs."
+    },
+    {
+      "item": "0007/D2, D3, D5-D9",
+      "reason": "Method refusals, unknown validators and references, seeds under pii-seed-v1 and the evidence-corpus checks are covered by crates/pii-eval-kernel/tests/methods_oracle.rs; the parity corpus carries no evidence entry and uses the legacy seed rule."
+    },
+    {
+      "item": "population identity",
+      "reason": "The oracle accounting carries no population identity beyond sourceCaseCount and rowCount (and an unresolved input commitment); only those counts are compared. The Rust population binding (id, version, visibility, semantic digest) is verified by the engine end-to-end check."
+    },
+    {
+      "item": "action axis",
+      "reason": "The oracle has no action axis (ADR 0004 D7); it is not compared."
+    },
+    {
+      "item": "protected corpora",
+      "reason": "No protected corpus was run. Protected parity is only through approved receipts under the custodian contract (private-custodian), out of scope here."
+    },
+    {
+      "item": "real scanner",
+      "reason": "The live Rust run over the real package is opt-in and not part of CI (it needs the registry and a platform addon); its committed synthetic observation is compared in CI (section above). One platform (the export's) and one pinned version were observed."
+    }
+  ],
+  "population": {
+    "accountingVectors": 8,
+    "cases": 37,
+    "id": "parity-synthetic",
+    "scanners": 10,
+    "variants": 54,
+    "version": 1,
+    "visibility": "public-synthetic"
+  },
+  "realScanner": {
+    "adapter": "the oracle scanners/candidate.mjs loadCandidate with the wrapper of scripts/observe-pii-populations.mjs (family prefix pii: only)",
+    "differencesByLayer": {},
+    "install": "npm ci --ignore-scripts from a lockfile of the oracle lockfile @redact-secret entries (real-scanner/make-lock.mjs)",
+    "lockSha256": "ab397166dd0d8a9413223d699e24e8063f3e2ab046083b58e59713b853c75392",
+    "metrics": [
+      {
+        "equal": true,
+        "ids": [],
+        "metric": "benign-suppression-rate",
+        "oracle": "status=measured eligible=6 measured=6 numerator=6 unresolved=0 notMeasured=0 notApplicable=31 total=37 effectiveN=6 point=1000000 bound=609657 n=6",
+        "rust": "status=measured eligible=6 measured=6 numerator=6 unresolved=0 notMeasured=0 notApplicable=31 total=37 effectiveN=6 point=1000000 bound=609657 n=6"
+      },
+      {
+        "equal": true,
+        "ids": [],
+        "metric": "context-discrimination-rate",
+        "oracle": "status=measured eligible=2 measured=2 numerator=0 unresolved=0 notMeasured=0 notApplicable=0 total=2 effectiveN=2 insufficient-evidence",
+        "rust": "status=measured eligible=2 measured=2 numerator=0 unresolved=0 notMeasured=0 notApplicable=0 total=2 effectiveN=2 insufficient-evidence"
+      },
+      {
+        "equal": true,
+        "ids": [],
+        "metric": "jurisdiction-collision-rate",
+        "oracle": "status=measured eligible=5 measured=5 numerator=3 unresolved=0 notMeasured=0 notApplicable=32 total=37 effectiveN=5 point=600000 bound=230720 n=5",
+        "rust": "status=measured eligible=5 measured=5 numerator=3 unresolved=0 notMeasured=0 notApplicable=32 total=37 effectiveN=5 point=600000 bound=230720 n=5"
+      },
+      {
+        "equal": true,
+        "ids": [],
+        "metric": "measurable-share",
+        "oracle": "status=partial eligible=74 measured=68 numerator=68 unresolved=4 notMeasured=2 notApplicable=0 total=74 effectiveN=74 point=918919 bound=834179 n=74",
+        "rust": "status=partial eligible=74 measured=68 numerator=68 unresolved=4 notMeasured=2 notApplicable=0 total=74 effectiveN=74 point=918919 bound=834179 n=74"
+      },
+      {
+        "equal": true,
+        "ids": [],
+        "metric": "non-sensitive-flag-rate",
+        "oracle": "status=measured eligible=14 measured=14 numerator=0 unresolved=0 notMeasured=0 notApplicable=23 total=37 effectiveN=14 point=0 bound=215317 n=14",
+        "rust": "status=measured eligible=14 measured=14 numerator=0 unresolved=0 notMeasured=0 notApplicable=23 total=37 effectiveN=14 point=0 bound=215317 n=14"
+      },
+      {
+        "equal": true,
+        "ids": [],
+        "metric": "range-collateral-rate",
+        "oracle": "status=measured eligible=9 measured=9 numerator=0 unresolved=0 notMeasured=0 notApplicable=28 total=37 effectiveN=9 point=0 bound=299153 n=9",
+        "rust": "status=measured eligible=9 measured=9 numerator=0 unresolved=0 notMeasured=0 notApplicable=28 total=37 effectiveN=9 point=0 bound=299153 n=9"
+      },
+      {
+        "equal": true,
+        "ids": [],
+        "metric": "sensitive-miss-rate",
+        "oracle": "status=measured eligible=23 measured=23 numerator=13 unresolved=0 notMeasured=0 notApplicable=14 total=37 effectiveN=23 point=565217 bound=743656 n=23",
+        "rust": "status=measured eligible=23 measured=23 numerator=13 unresolved=0 notMeasured=0 notApplicable=14 total=37 effectiveN=23 point=565217 bound=743656 n=23"
+      },
+      {
+        "equal": true,
+        "ids": [],
+        "metric": "type-miss-rate",
+        "oracle": "status=partial eligible=27 measured=25 numerator=16 unresolved=0 notMeasured=2 notApplicable=10 total=37 effectiveN=25 point=640000 bound=797523 n=25",
+        "rust": "status=partial eligible=27 measured=25 numerator=16 unresolved=0 notMeasured=2 notApplicable=10 total=37 effectiveN=25 point=640000 bound=797523 n=25"
+      },
+      {
+        "equal": true,
+        "ids": [],
+        "metric": "wrong-family-rate",
+        "oracle": "status=partial eligible=27 measured=25 numerator=0 unresolved=0 notMeasured=2 notApplicable=10 total=37 effectiveN=25 point=0 bound=133196 n=25",
+        "rust": "status=partial eligible=27 measured=25 numerator=0 unresolved=0 notMeasured=2 notApplicable=10 total=37 effectiveN=25 point=0 bound=133196 n=25"
+      },
+      {
+        "equal": true,
+        "ids": [],
+        "metric": "wrong-jurisdiction-rate",
+        "oracle": "status=measured eligible=8 measured=8 numerator=0 unresolved=0 notMeasured=0 notApplicable=29 total=37 effectiveN=8 point=0 bound=324416 n=8",
+        "rust": "status=measured eligible=8 measured=8 numerator=0 unresolved=0 notMeasured=0 notApplicable=29 total=37 effectiveN=8 point=0 bound=324416 n=8"
+      }
+    ],
+    "observedFindings": 10,
+    "package": "@redact-secret/core",
+    "packages": [
+      {
+        "installedVersion": "0.1.0-beta.12",
+        "integrity": "sha512-fDVwt2U7VFSKb/0ixSuU5e+TOGVaUnyR1sIYwgS4S6gMndFnaq0M7ikaqac8wnTMYfYO/LS12JayXXeKbhE4aw==",
+        "lockVersion": "0.1.0-beta.12",
+        "name": "@redact-secret/core"
+      },
+      {
+        "installedVersion": "0.1.0-beta.12",
+        "integrity": "sha512-xAA09sFA0bX1+4Ab7fT8Irgf3eLL0+SWB0hvVZ61xuR5WOGhKxpSFOgU1Gteyp/EmvX2RksqYEySijXYiRd+PA==",
+        "lockVersion": "0.1.0-beta.12",
+        "name": "@redact-secret/node-darwin-arm64"
+      },
+      {
+        "installedVersion": null,
+        "integrity": "sha512-0R4AsXsXg5HDrYWCPC1dwIeNj+21oF2FN0K3QawStTieEVPKt1gu/dYpgl9zmYAfddgzGUeEaPyOS3KenIrF7A==",
+        "lockVersion": "0.1.0-beta.12",
+        "name": "@redact-secret/node-darwin-x64"
+      },
+      {
+        "installedVersion": null,
+        "integrity": "sha512-ONmz+lCrQhZo63+o0ny7Cpm+e5RoQnOuDa15djEor7jLFMytHBP7Zwf77kY8m6S8r9/MuglYtrXY7uvcqAl6Xg==",
+        "lockVersion": "0.1.0-beta.12",
+        "name": "@redact-secret/node-linux-arm64-gnu"
+      },
+      {
+        "installedVersion": null,
+        "integrity": "sha512-AesR9/xWVYDFKnyhF+Z76oN06z6u+CXxaGCwh6u0ViIgMTlxdEdy7H7/IHhXzybu/+QMjO5+KK9gAXAGdV6yUQ==",
+        "lockVersion": "0.1.0-beta.12",
+        "name": "@redact-secret/node-linux-arm64-musl"
+      },
+      {
+        "installedVersion": null,
+        "integrity": "sha512-uf66fX2ngvXO9itiettZjrMvUKHbTa9zGRX4ZB9JfGsY+m1EWm2sWqtwtff07P/ajaF3Ioe0Vt6ktJz/I69b3w==",
+        "lockVersion": "0.1.0-beta.12",
+        "name": "@redact-secret/node-linux-x64-gnu"
+      },
+      {
+        "installedVersion": null,
+        "integrity": "sha512-TbMkRyyHYpVN5kL8IkiF0mpZe+KBo7TG52WwMOHK5TwFBKccNRuaFjGu8WkyMZt9HAoLsEato98OLuXCZrLDbA==",
+        "lockVersion": "0.1.0-beta.12",
+        "name": "@redact-secret/node-linux-x64-musl"
+      },
+      {
+        "installedVersion": null,
+        "integrity": "sha512-oH2E5owPI9vyMGdnqbKLywAiD/lC5ZKdociHXqbKMRqplTKcULd7op9p8na3ZSLLXbMO9/yntahFM8A51gfu9A==",
+        "lockVersion": "0.1.0-beta.12",
+        "name": "@redact-secret/node-win32-arm64-msvc"
+      },
+      {
+        "installedVersion": null,
+        "integrity": "sha512-fqa29XtVahqQbakik+/Y57GKe91witJHiPPk8+3m5usytrz+AP6v+AWny80X5Pssj5HzBzFuMHXiSKAWevKlTA==",
+        "lockVersion": "0.1.0-beta.12",
+        "name": "@redact-secret/node-win32-x64-msvc"
+      },
+      {
+        "installedVersion": "0.1.0-beta.12",
+        "integrity": "sha512-i9XV+P0j92z+00jujDe9MQdnniYGirSf3VJkqWe9iUwcn8T4e0++euDqxthIWXRQykIYPoHduM7AVyeUwo6iKg==",
+        "lockVersion": "0.1.0-beta.12",
+        "name": "@redact-secret/wasm"
+      }
+    ],
+    "platform": "darwin-arm64",
+    "selectors": [
+      "pii:global",
+      "pii:us"
+    ],
+    "unexplained": 0,
+    "variants": 54,
+    "variantsWithFindings": 10,
+    "version": "0.1.0-beta.12"
+  },
+  "scanners": [
+    {
+      "canonicalAccounted": true,
+      "canonicalRefusedVariants": 0,
+      "id": "parity-baseline",
+      "oracleStatus": "complete",
+      "variants": 54
+    },
+    {
+      "canonicalAccounted": true,
+      "canonicalRefusedVariants": 0,
+      "id": "parity-mixed",
+      "oracleStatus": "complete",
+      "variants": 54
+    },
+    {
+      "canonicalAccounted": true,
+      "canonicalRefusedVariants": 0,
+      "id": "parity-multi",
+      "oracleStatus": "complete",
+      "variants": 54
+    },
+    {
+      "canonicalAccounted": true,
+      "canonicalRefusedVariants": 0,
+      "id": "parity-nosens",
+      "oracleStatus": "complete",
+      "variants": 54
+    },
+    {
+      "canonicalAccounted": false,
+      "canonicalRefusedVariants": 1,
+      "id": "parity-midchar",
+      "oracleStatus": "complete",
+      "variants": 54
+    },
+    {
+      "canonicalAccounted": true,
+      "canonicalRefusedVariants": 0,
+      "id": "parity-unsupported",
+      "oracleStatus": "unsupported",
+      "variants": 54
+    },
+    {
+      "canonicalAccounted": true,
+      "canonicalRefusedVariants": 0,
+      "id": "parity-error",
+      "oracleStatus": "error",
+      "variants": 54
+    },
+    {
+      "canonicalAccounted": true,
+      "canonicalRefusedVariants": 0,
+      "id": "parity-unavailable",
+      "oracleStatus": "unavailable",
+      "variants": 54
+    },
+    {
+      "canonicalAccounted": true,
+      "canonicalRefusedVariants": 0,
+      "id": "parity-unstable",
+      "oracleStatus": "unstable",
+      "variants": 54
+    },
+    {
+      "canonicalAccounted": true,
+      "canonicalRefusedVariants": 0,
+      "id": "parity-badrange",
+      "oracleStatus": "error",
+      "variants": 54
+    }
+  ],
+  "schema": "pii-eval-parity-report/1",
+  "vectors": [
+    {
+      "id": "uniform",
+      "metricsDifferingInTheAccountingRule": 0,
+      "oracleThrows": false
+    },
+    {
+      "id": "jurisdiction-rates",
+      "metricsDifferingInTheAccountingRule": 0,
+      "oracleThrows": false
+    },
+    {
+      "id": "a2-invalid-variant-sorts-first",
+      "metricsDifferingInTheAccountingRule": 3,
+      "oracleThrows": false
+    },
+    {
+      "id": "a2-not-measured-invalid-variant",
+      "metricsDifferingInTheAccountingRule": 2,
+      "oracleThrows": false
+    },
+    {
+      "id": "a3-benign-two-variants",
+      "metricsDifferingInTheAccountingRule": 10,
+      "oracleThrows": true
+    },
+    {
+      "id": "a8-collision-any-versus-all",
+      "metricsDifferingInTheAccountingRule": 1,
+      "oracleThrows": false
+    },
+    {
+      "id": "unresolved-and-not-measured",
+      "metricsDifferingInTheAccountingRule": 0,
+      "oracleThrows": false
+    },
+    {
+      "id": "all-not-applicable",
+      "metricsDifferingInTheAccountingRule": 0,
+      "oracleThrows": false
+    }
+  ]
+}

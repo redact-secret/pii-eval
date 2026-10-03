@@ -1,0 +1,3150 @@
+{
+ "cases": [
+  {
+   "family": "pii:global:email",
+   "id": "so-email-1",
+   "language": "en",
+   "method": "schema-only",
+   "methodVersion": 1,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 42,
+      "start": 20
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "authored",
+     "strategy": "authored",
+     "text": "so-email-1: contact=person@example.invalid"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "so-ssn-1",
+   "language": "en",
+   "method": "schema-only",
+   "methodVersion": 1,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 23,
+      "start": 14
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "authored",
+     "strategy": "authored",
+     "text": "so-ssn-1: ssn=111111111"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:email",
+   "id": "so-ko-mid",
+   "language": "ko",
+   "method": "schema-only",
+   "methodVersion": 1,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 43,
+      "start": 21
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "authored",
+     "strategy": "authored",
+     "text": "so-ko-mid: \uc5f0\ub77d\ucc98=person@example.invalid \ub05d"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:email",
+   "id": "so-email-2",
+   "language": "en",
+   "method": "schema-only",
+   "methodVersion": 1,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 39,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "authored",
+     "strategy": "authored",
+     "text": "so-email-2: mail=person@example.invalid"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:iban",
+   "id": "so-iban-1",
+   "language": "en",
+   "method": "schema-only",
+   "methodVersion": 1,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 38,
+      "start": 16
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "authored",
+     "strategy": "authored",
+     "text": "so-iban-1: iban DE89370400440532013000"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "so-ssn-dash",
+   "language": "en",
+   "method": "schema-only",
+   "methodVersion": 1,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 28,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "authored",
+     "strategy": "authored",
+     "text": "so-ssn-dash: ssn=123-45-6789"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-syn-valid-1",
+   "language": "en",
+   "method": "type-validation",
+   "methodVersion": 2,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 34,
+      "start": 20
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "validated",
+     "strategy": "authored",
+     "text": "tv-syn-valid-1: ref=SYNTHETIC-1236"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-syn-valid-2",
+   "language": "en",
+   "method": "type-validation",
+   "methodVersion": 2,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 34,
+      "start": 20
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "validated",
+     "strategy": "authored",
+     "text": "tv-syn-valid-2: ref=SYNTHETIC-2248"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-syn-valid-3",
+   "language": "en",
+   "method": "type-validation",
+   "methodVersion": 2,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 34,
+      "start": 20
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "validated",
+     "strategy": "authored",
+     "text": "tv-syn-valid-3: ref=SYNTHETIC-5555"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-syn-invalid-1",
+   "language": "en",
+   "method": "type-validation",
+   "methodVersion": 2,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 36,
+      "start": 22
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "invalid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "validated",
+     "strategy": "authored",
+     "text": "tv-syn-invalid-1: ref=SYNTHETIC-1237 tail"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-syn-invalid-2",
+   "language": "en",
+   "method": "type-validation",
+   "methodVersion": 2,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 36,
+      "start": 22
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "invalid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "validated",
+     "strategy": "authored",
+     "text": "tv-syn-invalid-2: ref=SYNTHETIC-9999 tail"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "tv-ssn-valid-1",
+   "language": "en",
+   "method": "type-validation",
+   "methodVersion": 2,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 29,
+      "start": 20
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "validated",
+     "strategy": "authored",
+     "text": "tv-ssn-valid-1: ssn=111111111"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "tv-ssn-valid-2",
+   "language": "en",
+   "method": "type-validation",
+   "methodVersion": 2,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 29,
+      "start": 20
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "validated",
+     "strategy": "authored",
+     "text": "tv-ssn-valid-2: ssn=123456789"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "tv-ssn-invalid-1",
+   "language": "en",
+   "method": "type-validation",
+   "methodVersion": 2,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 31,
+      "start": 22
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "invalid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "validated",
+     "strategy": "authored",
+     "text": "tv-ssn-invalid-1: ssn=666123456"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "tv-ssn-invalid-2",
+   "language": "en",
+   "method": "type-validation",
+   "methodVersion": 2,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 31,
+      "start": 22
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "invalid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "validated",
+     "strategy": "authored",
+     "text": "tv-ssn-invalid-2: ssn=123450000"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "tv-unavailable",
+   "language": "en",
+   "method": "type-validation",
+   "methodVersion": 2,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 34,
+      "start": 20
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "validated",
+     "strategy": "review-required",
+     "text": "tv-unavailable: ref=SYNTHETIC-1236"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:email",
+   "id": "en-email-core",
+   "language": "en",
+   "method": "context-discrimination",
+   "methodVersion": 2,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 33,
+      "start": 10
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "en-case-equals",
+     "strategy": "derived",
+     "text": "\"EMAIL\" = subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 38,
+      "start": 15
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "en-underscore",
+     "strategy": "derived",
+     "text": "customer_email=subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 40,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "en-hyphen-colon",
+     "strategy": "derived",
+     "text": "customer-e-mail: subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 39,
+      "start": 16
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "en-natural-label",
+     "strategy": "derived",
+     "text": "contact details subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 31,
+      "start": 8
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "not-established",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "en-neutral",
+     "strategy": "derived",
+     "text": "value = subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 32,
+      "start": 9
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "not-established",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "en-ambiguous",
+     "strategy": "derived",
+     "text": "contact: subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 45,
+      "start": 22
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "en-negative",
+     "strategy": "derived",
+     "text": "documentation example subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 64,
+      "start": 41
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "not-established",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "en-benign-prose",
+     "strategy": "derived",
+     "text": "the guide discusses contact wording near subject@example.invalid"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:email",
+   "id": "ko-email-core",
+   "language": "ko",
+   "method": "context-discrimination",
+   "methodVersion": 2,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 40,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "ko-space",
+     "strategy": "derived",
+     "text": "\uace0\uac1d \uc774\uba54\uc77c subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 42,
+      "start": 19
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "ko-mixed-underscore",
+     "strategy": "derived",
+     "text": "customer_\uc774\uba54\uc77c=subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 40,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "ko-hyphen",
+     "strategy": "derived",
+     "text": "\uace0\uac1d-\uc774\uba54\uc77c subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 34,
+      "start": 11
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "ko-colon",
+     "strategy": "derived",
+     "text": "\uc774\uba54\uc77c: subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 33,
+      "start": 10
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "ko-equals",
+     "strategy": "derived",
+     "text": "\uc774\uba54\uc77c=subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 46,
+      "start": 23
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "ko-nfd",
+     "strategy": "derived",
+     "text": "\u110b\u1175\u1106\u1166\u110b\u1175\u11af: subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 39,
+      "start": 16
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "ko-governed-invisible",
+     "strategy": "derived",
+     "text": "\uc774\u200b\uba54\ufe0f\uc77c-subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 29,
+      "start": 6
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "not-established",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "ko-neutral",
+     "strategy": "derived",
+     "text": "\uac12 = subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 23,
+      "start": 0
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "not-established",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "ko-ambiguous",
+     "strategy": "derived",
+     "text": "subject@example.invalid \uc5f0\ub77d\ucc98"
+    },
+    {
+     "candidate": {
+      "end": 30,
+      "start": 7
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "ko-negative",
+     "strategy": "derived",
+     "text": "\uc608\uc2dc subject@example.invalid"
+    },
+    {
+     "candidate": {
+      "end": 73,
+      "start": 50
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "contextObligation": "required-for-sensitive-classification",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "not-established",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "context-frame",
+     "operatorVersion": 1,
+     "slot": "ko-benign-prose",
+     "strategy": "derived",
+     "text": "\uc774 \ubb38\uc11c\ub294 \uc5f0\ub77d\ucc98 \ud45c\ud604\uc744 \uc124\uba85\ud569\ub2c8\ub2e4 subject@example.invalid"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "pb-reserved",
+   "language": "en",
+   "method": "pii-benign",
+   "methodVersion": 3,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 26,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "invalid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "reserved",
+     "strategy": "authored",
+     "text": "pb-reserved: ssn=000000000"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:email",
+   "id": "pb-documentation",
+   "language": "en",
+   "method": "pii-benign",
+   "methodVersion": 3,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 45,
+      "start": 23
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "documentation",
+     "strategy": "authored",
+     "text": "pb-documentation: mail=person@example.invalid"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "pb-test-value",
+   "language": "en",
+   "method": "pii-benign",
+   "methodVersion": 3,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 33,
+      "start": 19
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "test-value",
+     "strategy": "authored",
+     "text": "pb-test-value: ref=SYNTHETIC-0000"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:email",
+   "id": "pb-public-operational",
+   "language": "en",
+   "method": "pii-benign",
+   "methodVersion": 3,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 54,
+      "start": 28
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "public-operational",
+     "strategy": "authored",
+     "text": "pb-public-operational: mail=postmaster@example.invalid"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "pb-placeholder",
+   "language": "en",
+   "method": "pii-benign",
+   "methodVersion": 3,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 34,
+      "start": 20
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "invalid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "placeholder",
+     "strategy": "authored",
+     "text": "pb-placeholder: ref=SYNTHETIC-0001"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:email",
+   "id": "pb-context-negative",
+   "language": "en",
+   "method": "pii-benign",
+   "methodVersion": 3,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 51,
+      "start": 29
+     },
+     "expectation": {
+      "contextClass": "non-sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "non-sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "context-negative",
+     "strategy": "authored",
+     "text": "pb-context-negative: example sample@example.invalid"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "jc-ssn-1",
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "methodVersion": 3,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 23,
+      "start": 14
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "collision",
+     "strategy": "authored",
+     "text": "jc-ssn-1: ssn=111111111"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "jc-ssn-2",
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "methodVersion": 3,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 23,
+      "start": 14
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "collision",
+     "strategy": "authored",
+     "text": "jc-ssn-2: ssn=222222222"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "jc-ssn-3",
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "methodVersion": 3,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 23,
+      "start": 14
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "collision",
+     "strategy": "authored",
+     "text": "jc-ssn-3: ssn=333333333"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "jc-syn-1",
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "methodVersion": 3,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 28,
+      "start": 14
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "collision",
+     "strategy": "authored",
+     "text": "jc-syn-1: ref=SYNTHETIC-1236"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "jc-syn-2",
+   "language": "en",
+   "method": "jurisdiction-collision",
+   "methodVersion": 3,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 28,
+      "start": 14
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": true
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "collision",
+     "strategy": "authored",
+     "text": "jc-syn-2: ref=SYNTHETIC-2248"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "mu-syn-1",
+   "language": "en",
+   "method": "mutation",
+   "methodVersion": 1,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 28,
+      "start": 14
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "not-established",
+      "type": "invalid",
+      "validatorApplicable": false
+     },
+     "operator": "invalidate-final-digit",
+     "operatorVersion": 1,
+     "slot": "mutated",
+     "strategy": "derived",
+     "text": "mu-syn-1: ref=SYNTHETIC-1237"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "mu-syn-wrap",
+   "language": "en",
+   "method": "mutation",
+   "methodVersion": 1,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 31,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "invalid",
+      "validatorApplicable": false
+     },
+     "operator": "invalidate-final-digit",
+     "operatorVersion": 1,
+     "slot": "mutated",
+     "strategy": "derived",
+     "text": "mu-syn-wrap: ref=SYNTHETIC-1230 tail"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "mu-ssn-1",
+   "language": "ko",
+   "method": "mutation",
+   "methodVersion": 1,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 26,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "neutral",
+      "contextObligation": "none",
+      "language": "ko",
+      "referenceApplicable": false,
+      "sensitivity": "not-established",
+      "type": "invalid",
+      "validatorApplicable": true
+     },
+     "operator": "invalidate-final-digit",
+     "operatorVersion": 1,
+     "slot": "mutated",
+     "strategy": "derived",
+     "text": "mu-ssn-1: \ubc88\ud638=111111110"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "mu-ssn-2",
+   "language": "en",
+   "method": "mutation",
+   "methodVersion": 1,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 23,
+      "start": 14
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": false,
+      "sensitivity": "sensitive",
+      "type": "invalid",
+      "validatorApplicable": false
+     },
+     "operator": "invalidate-final-digit",
+     "operatorVersion": 1,
+     "slot": "mutated",
+     "strategy": "derived",
+     "text": "mu-ssn-2: ssn=123456780"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "rd-agree",
+   "language": "en",
+   "method": "reference-differential",
+   "methodVersion": 1,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 28,
+      "start": 14
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": true,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "reference",
+     "strategy": "authored",
+     "text": "rd-agree: ref=SYNTHETIC-1236"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "rd-disagree",
+   "language": "en",
+   "method": "reference-differential",
+   "methodVersion": 1,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 31,
+      "start": 17
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": true,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "reference",
+     "strategy": "authored",
+     "text": "rd-disagree: ref=SYNTHETIC-1237"
+    }
+   ]
+  },
+  {
+   "family": "pii:global:synthetic-reference",
+   "id": "rd-unavailable",
+   "language": "en",
+   "method": "reference-differential",
+   "methodVersion": 1,
+   "scope": "global",
+   "variants": [
+    {
+     "candidate": {
+      "end": 34,
+      "start": 20
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": true,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "reference",
+     "strategy": "review-required",
+     "text": "rd-unavailable: ref=SYNTHETIC-1236"
+    }
+   ]
+  },
+  {
+   "family": "pii:us:ssn",
+   "id": "rd-ssn",
+   "language": "en",
+   "method": "reference-differential",
+   "methodVersion": 1,
+   "scope": "jurisdiction:US",
+   "variants": [
+    {
+     "candidate": {
+      "end": 21,
+      "start": 12
+     },
+     "expectation": {
+      "contextClass": "sensitive",
+      "contextObligation": "none",
+      "language": "en",
+      "referenceApplicable": true,
+      "sensitivity": "sensitive",
+      "type": "valid",
+      "validatorApplicable": false
+     },
+     "operator": "authored",
+     "operatorVersion": 1,
+     "slot": "reference",
+     "strategy": "authored",
+     "text": "rd-ssn: ssn=111111111"
+    }
+   ]
+  }
+ ],
+ "provenance": {
+  "adaptations": [
+   "ajv replaced by a stub that accepts every document",
+   "benign-collision-evidence.ts replaced by a stub (no entries)",
+   "json imports without attributes loaded as JSON modules"
+  ],
+  "inputSha256": "f4ed904849e028c415490d852d0e655b8fc0b2331264b758c1922d641fd44333",
+  "oracle": {
+   "commit": "4b846967346505baca11e0b98cab1475fbce6773",
+   "engineVersion": "1.0.0",
+   "fileCount": 40,
+   "filesTreeDigest": "6f35613cc5a6a827f19609d8c3d22a56362c0f7f526553f17cc1bc4e9ec8a83b",
+   "profile": {
+    "id": "pii-v1",
+    "version": 1
+   },
+   "repository": "redact-secret/redact-secret-benchmarks"
+  },
+  "realScanner": {
+   "adapter": "the oracle scanners/candidate.mjs loadCandidate with the wrapper of scripts/observe-pii-populations.mjs (family prefix pii: only)",
+   "install": "npm ci --ignore-scripts from a lockfile of the oracle lockfile @redact-secret entries (real-scanner/make-lock.mjs)",
+   "lockSha256": "ab397166dd0d8a9413223d699e24e8063f3e2ab046083b58e59713b853c75392",
+   "package": "@redact-secret/core",
+   "packages": [
+    {
+     "installedVersion": "0.1.0-beta.12",
+     "integrity": "sha512-fDVwt2U7VFSKb/0ixSuU5e+TOGVaUnyR1sIYwgS4S6gMndFnaq0M7ikaqac8wnTMYfYO/LS12JayXXeKbhE4aw==",
+     "lockVersion": "0.1.0-beta.12",
+     "name": "@redact-secret/core"
+    },
+    {
+     "installedVersion": "0.1.0-beta.12",
+     "integrity": "sha512-xAA09sFA0bX1+4Ab7fT8Irgf3eLL0+SWB0hvVZ61xuR5WOGhKxpSFOgU1Gteyp/EmvX2RksqYEySijXYiRd+PA==",
+     "lockVersion": "0.1.0-beta.12",
+     "name": "@redact-secret/node-darwin-arm64"
+    },
+    {
+     "installedVersion": null,
+     "integrity": "sha512-0R4AsXsXg5HDrYWCPC1dwIeNj+21oF2FN0K3QawStTieEVPKt1gu/dYpgl9zmYAfddgzGUeEaPyOS3KenIrF7A==",
+     "lockVersion": "0.1.0-beta.12",
+     "name": "@redact-secret/node-darwin-x64"
+    },
+    {
+     "installedVersion": null,
+     "integrity": "sha512-ONmz+lCrQhZo63+o0ny7Cpm+e5RoQnOuDa15djEor7jLFMytHBP7Zwf77kY8m6S8r9/MuglYtrXY7uvcqAl6Xg==",
+     "lockVersion": "0.1.0-beta.12",
+     "name": "@redact-secret/node-linux-arm64-gnu"
+    },
+    {
+     "installedVersion": null,
+     "integrity": "sha512-AesR9/xWVYDFKnyhF+Z76oN06z6u+CXxaGCwh6u0ViIgMTlxdEdy7H7/IHhXzybu/+QMjO5+KK9gAXAGdV6yUQ==",
+     "lockVersion": "0.1.0-beta.12",
+     "name": "@redact-secret/node-linux-arm64-musl"
+    },
+    {
+     "installedVersion": null,
+     "integrity": "sha512-uf66fX2ngvXO9itiettZjrMvUKHbTa9zGRX4ZB9JfGsY+m1EWm2sWqtwtff07P/ajaF3Ioe0Vt6ktJz/I69b3w==",
+     "lockVersion": "0.1.0-beta.12",
+     "name": "@redact-secret/node-linux-x64-gnu"
+    },
+    {
+     "installedVersion": null,
+     "integrity": "sha512-TbMkRyyHYpVN5kL8IkiF0mpZe+KBo7TG52WwMOHK5TwFBKccNRuaFjGu8WkyMZt9HAoLsEato98OLuXCZrLDbA==",
+     "lockVersion": "0.1.0-beta.12",
+     "name": "@redact-secret/node-linux-x64-musl"
+    },
+    {
+     "installedVersion": null,
+     "integrity": "sha512-oH2E5owPI9vyMGdnqbKLywAiD/lC5ZKdociHXqbKMRqplTKcULd7op9p8na3ZSLLXbMO9/yntahFM8A51gfu9A==",
+     "lockVersion": "0.1.0-beta.12",
+     "name": "@redact-secret/node-win32-arm64-msvc"
+    },
+    {
+     "installedVersion": null,
+     "integrity": "sha512-fqa29XtVahqQbakik+/Y57GKe91witJHiPPk8+3m5usytrz+AP6v+AWny80X5Pssj5HzBzFuMHXiSKAWevKlTA==",
+     "lockVersion": "0.1.0-beta.12",
+     "name": "@redact-secret/node-win32-x64-msvc"
+    },
+    {
+     "installedVersion": "0.1.0-beta.12",
+     "integrity": "sha512-i9XV+P0j92z+00jujDe9MQdnniYGirSf3VJkqWe9iUwcn8T4e0++euDqxthIWXRQykIYPoHduM7AVyeUwo6iKg==",
+     "lockVersion": "0.1.0-beta.12",
+     "name": "@redact-secret/wasm"
+    }
+   ],
+   "platform": "darwin-arm64",
+   "selectors": [
+    "pii:global",
+    "pii:us"
+   ],
+   "version": "0.1.0-beta.12"
+  },
+  "runtime": {
+   "icu": "77.1",
+   "node": "v22.16.0",
+   "unicode": "16.0"
+  },
+  "scripts": {
+   "export-oracle.mjs": "e6bff5a6077e522ad940d03f7bc584c77e260fda7307c499e396a999604c6e5a",
+   "hooks.mjs": "b5a10a422d2308a4e0abca4ebd1361236f9e631c652343cbea2422310fb1fecc",
+   "lib.mjs": "24994db96f9d8e603cde57a5569cff5d1a0aaedea8ec6b7bc5e664ec288b1319",
+   "make-input.mjs": "531e2853ed0b617d528432154427fe92bd221d2f821e13c861c8bb1ab184e5f0",
+   "oracle-files.json": "b7ed86ef8475e306a48ac8421e4457b7265c49fa8dd944b5286425cf7ebb4fa5",
+   "register.mjs": "7230fe6a5be2850444efacff27740a4028b23e3bc64007a3ebaa87911abcde91",
+   "stubs/ajv.mjs": "f952150cc59a324468de14a2b03deb84e549b321fc169d6499433f427fc7feb9",
+   "stubs/benign-collision-evidence.mjs": "1303f90078c68a1f291a8b2e2e0c840453c05217468a14212a940cb7d7c3966d"
+  }
+ },
+ "scanners": [
+  {
+   "accounting": {
+    "metrics": {
+     "benign-suppression-rate": {
+      "counts": {
+       "eligible": 6,
+       "measured": 6,
+       "notApplicable": 31,
+       "notMeasured": 0,
+       "numerator": 6,
+       "total": 37,
+       "unresolved": 0
+      },
+      "direction": "lower",
+      "effectiveN": 6,
+      "rate": {
+       "bound": "0.609657",
+       "direction": "lower",
+       "kind": "value",
+       "n": 6,
+       "point": "1.000000"
+      },
+      "status": "measured"
+     },
+     "context-discrimination-rate": {
+      "counts": {
+       "eligible": 2,
+       "measured": 2,
+       "notApplicable": 0,
+       "notMeasured": 0,
+       "numerator": 0,
+       "total": 2,
+       "unresolved": 0
+      },
+      "direction": "lower",
+      "effectiveN": 2,
+      "rate": {
+       "kind": "insufficient-evidence"
+      },
+      "status": "measured"
+     },
+     "jurisdiction-collision-rate": {
+      "counts": {
+       "eligible": 5,
+       "measured": 5,
+       "notApplicable": 32,
+       "notMeasured": 0,
+       "numerator": 3,
+       "total": 37,
+       "unresolved": 0
+      },
+      "direction": "lower",
+      "effectiveN": 5,
+      "rate": {
+       "bound": "0.230720",
+       "direction": "lower",
+       "kind": "value",
+       "n": 5,
+       "point": "0.600000"
+      },
+      "status": "measured"
+     },
+     "measurable-share": {
+      "counts": {
+       "eligible": 74,
+       "measured": 68,
+       "notApplicable": 0,
+       "notMeasured": 2,
+       "numerator": 68,
+       "total": 74,
+       "unresolved": 4
+      },
+      "direction": "lower",
+      "effectiveN": 74,
+      "rate": {
+       "bound": "0.834179",
+       "direction": "lower",
+       "kind": "value",
+       "n": 74,
+       "point": "0.918919"
+      },
+      "status": "partial"
+     },
+     "non-sensitive-flag-rate": {
+      "counts": {
+       "eligible": 14,
+       "measured": 14,
+       "notApplicable": 23,
+       "notMeasured": 0,
+       "numerator": 0,
+       "total": 37,
+       "unresolved": 0
+      },
+      "direction": "upper",
+      "effectiveN": 14,
+      "rate": {
+       "bound": "0.215317",
+       "direction": "upper",
+       "kind": "value",
+       "n": 14,
+       "point": "0.000000"
+      },
+      "status": "measured"
+     },
+     "range-collateral-rate": {
+      "counts": {
+       "eligible": 9,
+       "measured": 9,
+       "notApplicable": 28,
+       "notMeasured": 0,
+       "numerator": 0,
+       "total": 37,
+       "unresolved": 0
+      },
+      "direction": "upper",
+      "effectiveN": 9,
+      "rate": {
+       "bound": "0.299153",
+       "direction": "upper",
+       "kind": "value",
+       "n": 9,
+       "point": "0.000000"
+      },
+      "status": "measured"
+     },
+     "sensitive-miss-rate": {
+      "counts": {
+       "eligible": 23,
+       "measured": 23,
+       "notApplicable": 14,
+       "notMeasured": 0,
+       "numerator": 13,
+       "total": 37,
+       "unresolved": 0
+      },
+      "direction": "upper",
+      "effectiveN": 23,
+      "rate": {
+       "bound": "0.743656",
+       "direction": "upper",
+       "kind": "value",
+       "n": 23,
+       "point": "0.565217"
+      },
+      "status": "measured"
+     },
+     "type-miss-rate": {
+      "counts": {
+       "eligible": 27,
+       "measured": 25,
+       "notApplicable": 10,
+       "notMeasured": 2,
+       "numerator": 16,
+       "total": 37,
+       "unresolved": 0
+      },
+      "direction": "upper",
+      "effectiveN": 25,
+      "rate": {
+       "bound": "0.797523",
+       "direction": "upper",
+       "kind": "value",
+       "n": 25,
+       "point": "0.640000"
+      },
+      "status": "partial"
+     },
+     "wrong-family-rate": {
+      "counts": {
+       "eligible": 27,
+       "measured": 25,
+       "notApplicable": 10,
+       "notMeasured": 2,
+       "numerator": 0,
+       "total": 37,
+       "unresolved": 0
+      },
+      "direction": "upper",
+      "effectiveN": 25,
+      "rate": {
+       "bound": "0.133196",
+       "direction": "upper",
+       "kind": "value",
+       "n": 25,
+       "point": "0.000000"
+      },
+      "status": "partial"
+     },
+     "wrong-jurisdiction-rate": {
+      "counts": {
+       "eligible": 8,
+       "measured": 8,
+       "notApplicable": 29,
+       "notMeasured": 0,
+       "numerator": 0,
+       "total": 37,
+       "unresolved": 0
+      },
+      "direction": "upper",
+      "effectiveN": 8,
+      "rate": {
+       "bound": "0.324416",
+       "direction": "upper",
+       "kind": "value",
+       "n": 8,
+       "point": "0.000000"
+      },
+      "status": "measured"
+     }
+    },
+    "rowCount": 54,
+    "sourceCaseCount": 37
+   },
+   "declaredStatus": "complete",
+   "id": "redact-secret-core",
+   "outcomes": [
+    {
+     "case": "en-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "unresolved",
+      "status": "review-required"
+     },
+     "slot": "en-ambiguous",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "en-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "unresolved",
+      "status": "review-required"
+     },
+     "slot": "en-benign-prose",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "en-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "en-case-equals",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "en-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "en-hyphen-colon",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "en-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "en-natural-label",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "en-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "en-negative",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "en-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "unresolved",
+      "status": "review-required"
+     },
+     "slot": "en-neutral",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "en-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "en-underscore",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "jc-ssn-1",
+     "observed": {
+      "families": [
+       "pii:us:ssn"
+      ],
+      "findingCount": 1,
+      "jurisdictions": [
+       "US"
+      ]
+     },
+     "range": "exact",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "collision",
+     "type": {
+      "state": "correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "jc-ssn-2",
+     "observed": {
+      "families": [
+       "pii:us:ssn"
+      ],
+      "findingCount": 1,
+      "jurisdictions": [
+       "US"
+      ]
+     },
+     "range": "exact",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "collision",
+     "type": {
+      "state": "correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "jc-ssn-3",
+     "observed": {
+      "families": [
+       "pii:us:ssn"
+      ],
+      "findingCount": 1,
+      "jurisdictions": [
+       "US"
+      ]
+     },
+     "range": "exact",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "collision",
+     "type": {
+      "state": "correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "jc-syn-1",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "collision",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "jc-syn-2",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "collision",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "ko-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "unresolved",
+      "status": "review-required"
+     },
+     "slot": "ko-ambiguous",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "ko-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "unresolved",
+      "status": "review-required"
+     },
+     "slot": "ko-benign-prose",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "ko-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "ko-colon",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "ko-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "ko-equals",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "ko-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "ko-governed-invisible",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "ko-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "ko-hyphen",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "ko-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "ko-mixed-underscore",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "ko-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "ko-negative",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "ko-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "unresolved",
+      "status": "review-required"
+     },
+     "slot": "ko-neutral",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "ko-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "ko-nfd",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "ko-email-core",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "ko-space",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "mu-ssn-1",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "unresolved",
+      "status": "review-required"
+     },
+     "slot": "mutated",
+     "type": {
+      "state": "invalid-correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "mu-ssn-2",
+     "observed": {
+      "families": [
+       "pii:us:ssn"
+      ],
+      "findingCount": 1,
+      "jurisdictions": [
+       "US"
+      ]
+     },
+     "range": "exact",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "mutated",
+     "type": {
+      "state": "invalid-accepted",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "mu-syn-1",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "unresolved",
+      "status": "review-required"
+     },
+     "slot": "mutated",
+     "type": {
+      "state": "invalid-correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "mu-syn-wrap",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "mutated",
+     "type": {
+      "state": "invalid-correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "pb-context-negative",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "context-negative",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "pb-documentation",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "documentation",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "pb-placeholder",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "placeholder",
+     "type": {
+      "state": "invalid-correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "pb-public-operational",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "public-operational",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "pb-reserved",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "reserved",
+     "type": {
+      "state": "invalid-correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "pb-test-value",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "test-value",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "rd-agree",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "reference",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "rd-disagree",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "reference",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "rd-ssn",
+     "observed": {
+      "families": [
+       "pii:us:ssn"
+      ],
+      "findingCount": 1,
+      "jurisdictions": [
+       "US"
+      ]
+     },
+     "range": "exact",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "reference",
+     "type": {
+      "state": "correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "rd-unavailable",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "reference",
+     "type": {
+      "state": "not-measured",
+      "status": "not-measured"
+     }
+    },
+    {
+     "case": "so-email-1",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "authored",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "so-email-2",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "authored",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "so-iban-1",
+     "observed": {
+      "families": [
+       "pii:global:iban"
+      ],
+      "findingCount": 1,
+      "jurisdictions": []
+     },
+     "range": "exact",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "authored",
+     "type": {
+      "state": "correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "so-ko-mid",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "authored",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "so-ssn-1",
+     "observed": {
+      "families": [
+       "pii:us:ssn"
+      ],
+      "findingCount": 1,
+      "jurisdictions": [
+       "US"
+      ]
+     },
+     "range": "exact",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "authored",
+     "type": {
+      "state": "correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "so-ssn-dash",
+     "observed": {
+      "families": [
+       "pii:us:ssn"
+      ],
+      "findingCount": 1,
+      "jurisdictions": [
+       "US"
+      ]
+     },
+     "range": "exact",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "authored",
+     "type": {
+      "state": "correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "tv-ssn-invalid-1",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "validated",
+     "type": {
+      "state": "invalid-correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "tv-ssn-invalid-2",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "validated",
+     "type": {
+      "state": "invalid-correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "tv-ssn-valid-1",
+     "observed": {
+      "families": [
+       "pii:us:ssn"
+      ],
+      "findingCount": 1,
+      "jurisdictions": [
+       "US"
+      ]
+     },
+     "range": "exact",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "validated",
+     "type": {
+      "state": "correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "tv-ssn-valid-2",
+     "observed": {
+      "families": [
+       "pii:us:ssn"
+      ],
+      "findingCount": 1,
+      "jurisdictions": [
+       "US"
+      ]
+     },
+     "range": "exact",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "validated",
+     "type": {
+      "state": "correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "tv-syn-invalid-1",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "validated",
+     "type": {
+      "state": "invalid-correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "tv-syn-invalid-2",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "correct",
+      "status": "pass"
+     },
+     "slot": "validated",
+     "type": {
+      "state": "invalid-correct",
+      "status": "pass"
+     }
+    },
+    {
+     "case": "tv-syn-valid-1",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "validated",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "tv-syn-valid-2",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "validated",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "tv-syn-valid-3",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "validated",
+     "type": {
+      "state": "miss",
+      "status": "fail"
+     }
+    },
+    {
+     "case": "tv-unavailable",
+     "observed": {
+      "families": [],
+      "findingCount": 0,
+      "jurisdictions": []
+     },
+     "range": "miss",
+     "sensitivity": {
+      "state": "miss",
+      "status": "fail"
+     },
+     "slot": "validated",
+     "type": {
+      "state": "not-measured",
+      "status": "not-measured"
+     }
+    }
+   ],
+   "replays": {
+    "agreed": true,
+    "count": 2,
+    "divergentPaths": 0
+   },
+   "returned": [
+    {
+     "case": "en-email-core",
+     "findings": [],
+     "slot": "en-ambiguous"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [],
+     "slot": "en-benign-prose"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [],
+     "slot": "en-case-equals"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [],
+     "slot": "en-hyphen-colon"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [],
+     "slot": "en-natural-label"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [],
+     "slot": "en-negative"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [],
+     "slot": "en-neutral"
+    },
+    {
+     "case": "en-email-core",
+     "findings": [],
+     "slot": "en-underscore"
+    },
+    {
+     "case": "jc-ssn-1",
+     "findings": [
+      {
+       "end": 23,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 14
+      }
+     ],
+     "slot": "collision"
+    },
+    {
+     "case": "jc-ssn-2",
+     "findings": [
+      {
+       "end": 23,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 14
+      }
+     ],
+     "slot": "collision"
+    },
+    {
+     "case": "jc-ssn-3",
+     "findings": [
+      {
+       "end": 23,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 14
+      }
+     ],
+     "slot": "collision"
+    },
+    {
+     "case": "jc-syn-1",
+     "findings": [],
+     "slot": "collision"
+    },
+    {
+     "case": "jc-syn-2",
+     "findings": [],
+     "slot": "collision"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [],
+     "slot": "ko-ambiguous"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [],
+     "slot": "ko-benign-prose"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [],
+     "slot": "ko-colon"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [],
+     "slot": "ko-equals"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [],
+     "slot": "ko-governed-invisible"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [],
+     "slot": "ko-hyphen"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [],
+     "slot": "ko-mixed-underscore"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [],
+     "slot": "ko-negative"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [],
+     "slot": "ko-neutral"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [],
+     "slot": "ko-nfd"
+    },
+    {
+     "case": "ko-email-core",
+     "findings": [],
+     "slot": "ko-space"
+    },
+    {
+     "case": "mu-ssn-1",
+     "findings": [],
+     "slot": "mutated"
+    },
+    {
+     "case": "mu-ssn-2",
+     "findings": [
+      {
+       "end": 23,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 14
+      }
+     ],
+     "slot": "mutated"
+    },
+    {
+     "case": "mu-syn-1",
+     "findings": [],
+     "slot": "mutated"
+    },
+    {
+     "case": "mu-syn-wrap",
+     "findings": [],
+     "slot": "mutated"
+    },
+    {
+     "case": "pb-context-negative",
+     "findings": [],
+     "slot": "context-negative"
+    },
+    {
+     "case": "pb-documentation",
+     "findings": [],
+     "slot": "documentation"
+    },
+    {
+     "case": "pb-placeholder",
+     "findings": [],
+     "slot": "placeholder"
+    },
+    {
+     "case": "pb-public-operational",
+     "findings": [],
+     "slot": "public-operational"
+    },
+    {
+     "case": "pb-reserved",
+     "findings": [],
+     "slot": "reserved"
+    },
+    {
+     "case": "pb-test-value",
+     "findings": [],
+     "slot": "test-value"
+    },
+    {
+     "case": "rd-agree",
+     "findings": [],
+     "slot": "reference"
+    },
+    {
+     "case": "rd-disagree",
+     "findings": [],
+     "slot": "reference"
+    },
+    {
+     "case": "rd-ssn",
+     "findings": [
+      {
+       "end": 21,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 12
+      }
+     ],
+     "slot": "reference"
+    },
+    {
+     "case": "rd-unavailable",
+     "findings": [],
+     "slot": "reference"
+    },
+    {
+     "case": "so-email-1",
+     "findings": [],
+     "slot": "authored"
+    },
+    {
+     "case": "so-email-2",
+     "findings": [],
+     "slot": "authored"
+    },
+    {
+     "case": "so-iban-1",
+     "findings": [
+      {
+       "end": 38,
+       "family": "pii:global:iban",
+       "sensitive": true,
+       "start": 16
+      }
+     ],
+     "slot": "authored"
+    },
+    {
+     "case": "so-ko-mid",
+     "findings": [],
+     "slot": "authored"
+    },
+    {
+     "case": "so-ssn-1",
+     "findings": [
+      {
+       "end": 23,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 14
+      }
+     ],
+     "slot": "authored"
+    },
+    {
+     "case": "so-ssn-dash",
+     "findings": [
+      {
+       "end": 28,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 17
+      }
+     ],
+     "slot": "authored"
+    },
+    {
+     "case": "tv-ssn-invalid-1",
+     "findings": [],
+     "slot": "validated"
+    },
+    {
+     "case": "tv-ssn-invalid-2",
+     "findings": [],
+     "slot": "validated"
+    },
+    {
+     "case": "tv-ssn-valid-1",
+     "findings": [
+      {
+       "end": 29,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 20
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "tv-ssn-valid-2",
+     "findings": [
+      {
+       "end": 29,
+       "family": "pii:us:ssn",
+       "jurisdiction": "US",
+       "sensitive": true,
+       "start": 20
+      }
+     ],
+     "slot": "validated"
+    },
+    {
+     "case": "tv-syn-invalid-1",
+     "findings": [],
+     "slot": "validated"
+    },
+    {
+     "case": "tv-syn-invalid-2",
+     "findings": [],
+     "slot": "validated"
+    },
+    {
+     "case": "tv-syn-valid-1",
+     "findings": [],
+     "slot": "validated"
+    },
+    {
+     "case": "tv-syn-valid-2",
+     "findings": [],
+     "slot": "validated"
+    },
+    {
+     "case": "tv-syn-valid-3",
+     "findings": [],
+     "slot": "validated"
+    },
+    {
+     "case": "tv-unavailable",
+     "findings": [],
+     "slot": "validated"
+    }
+   ],
+   "status": "complete"
+  }
+ ],
+ "schema": "pii-eval-real-scanner-export/1"
+}
