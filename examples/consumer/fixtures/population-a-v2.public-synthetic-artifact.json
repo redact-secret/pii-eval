@@ -1,0 +1,439 @@
+{
+  "schema": "pii-eval.public-synthetic-artifact",
+  "schemaVersion": "1.1",
+  "semantic": {
+    "completeness": "complete",
+    "engine": {
+      "name": "pii-eval",
+      "version": "0.0.0"
+    },
+    "failures": [],
+    "manifestDigest": "c29f95a954c2d74bb04bb0f03de55e397288ce01216d79dbbda23089d27d532a",
+    "mechanics": {
+      "intervalPrecision": 6,
+      "intervalZ": {
+        "mantissa": 196,
+        "scale": 2
+      },
+      "minDenominator": 4,
+      "replays": 2
+    },
+    "methodCoverage": [
+      {
+        "cases": 1,
+        "method": {
+          "id": "context-discrimination",
+          "version": 2
+        },
+        "variants": 3
+      },
+      {
+        "cases": 1,
+        "method": {
+          "id": "jurisdiction-collision",
+          "version": 3
+        },
+        "variants": 1
+      },
+      {
+        "cases": 1,
+        "method": {
+          "id": "type-validation",
+          "version": 2
+        },
+        "variants": 2
+      }
+    ],
+    "outcomes": [
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "collision-us-ssn-demo",
+        "method": "jurisdiction-collision",
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "correct",
+        "typeIdentity": "correct",
+        "variantId": "collision-us-ssn-demo-authored"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "removed"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "correct",
+        "variantId": "context-email-ko-demo-neutral"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "removed"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "false-positive",
+        "typeIdentity": "correct",
+        "variantId": "context-email-ko-demo-non-sensitive"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "removed"
+        },
+        "caseId": "context-email-ko-demo",
+        "method": "context-discrimination",
+        "occurrenceId": "occurrence-1",
+        "range": "exact",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "correct",
+        "typeIdentity": "correct",
+        "variantId": "context-email-ko-demo-sensitive"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "type-card-demo",
+        "method": "type-validation",
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "type-card-demo-authored"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "type-card-demo",
+        "method": "type-validation",
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct",
+        "variantId": "type-card-demo-mutated"
+      }
+    ],
+    "population": {
+      "populationDigest": "ecb5d3aa0c082479cd6485132de2668a869266690c101bf10850e9f9f5500996",
+      "populationId": "consumer-population-a",
+      "populationVersion": 2,
+      "visibility": "public-synthetic"
+    },
+    "populationCounts": {
+      "authoredCases": 3,
+      "occurrences": 6,
+      "variants": 6
+    },
+    "protocol": {
+      "accounting": "pii-v1",
+      "id": "pii-v1",
+      "rules": {
+        "accounting": {
+          "id": "pii-v1-canonical-accounting",
+          "revision": 2
+        },
+        "matching": {
+          "id": "pii-v1-canonical",
+          "revision": 2
+        },
+        "statistics": {
+          "id": "pii-v1-wilson-exact",
+          "revision": 1
+        }
+      },
+      "version": 2
+    },
+    "runClass": "public-synthetic",
+    "scannerMetrics": [
+      {
+        "metrics": [
+          {
+            "counts": {
+              "eligible": 0,
+              "measured": 0,
+              "notApplicable": 3,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "benign-suppression-rate",
+              "version": 1
+            },
+            "status": "not-applicable",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 1,
+              "measured": 1,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 1,
+              "unresolved": 0
+            },
+            "effectiveN": 1,
+            "metric": {
+              "id": "context-discrimination-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 1,
+              "measured": 1,
+              "notApplicable": 2,
+              "notMeasured": 0,
+              "numerator": 1,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 1,
+            "metric": {
+              "id": "jurisdiction-collision-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 6,
+              "measured": 5,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 5,
+              "total": 6,
+              "unresolved": 1
+            },
+            "effectiveN": 6,
+            "metric": {
+              "id": "measurable-share",
+              "version": 1
+            },
+            "status": "partial",
+            "value": {
+              "bound": {
+                "mantissa": 436491,
+                "scale": 6
+              },
+              "point": {
+                "mantissa": 833333,
+                "scale": 6
+              },
+              "state": "measured"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 2,
+              "measured": 2,
+              "notApplicable": 1,
+              "notMeasured": 0,
+              "numerator": 1,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 2,
+            "metric": {
+              "id": "non-sensitive-flag-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 2,
+              "measured": 2,
+              "notApplicable": 1,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 2,
+            "metric": {
+              "id": "range-collateral-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 3,
+              "measured": 3,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 1,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 3,
+            "metric": {
+              "id": "sensitive-miss-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 3,
+              "measured": 3,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 1,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 3,
+            "metric": {
+              "id": "type-miss-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 3,
+              "measured": 3,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 3,
+            "metric": {
+              "id": "wrong-family-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 1,
+              "measured": 1,
+              "notApplicable": 2,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 3,
+              "unresolved": 0
+            },
+            "effectiveN": 1,
+            "metric": {
+              "id": "wrong-jurisdiction-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          }
+        ],
+        "scannerId": "redact-secret-core"
+      }
+    ],
+    "scanners": [
+      {
+        "capabilities": {
+          "action": "sanitized-output",
+          "families": [
+            {
+              "family": "pii:global:email",
+              "state": "supported"
+            },
+            {
+              "family": "pii:us:ssn",
+              "state": "supported"
+            }
+          ],
+          "familyClassification": "supported",
+          "jurisdictionReporting": "supported",
+          "jurisdictions": [
+            {
+              "jurisdiction": "US",
+              "state": "supported"
+            }
+          ],
+          "ranges": "supported",
+          "sensitivityClassification": "supported"
+        },
+        "identity": {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "redact-secret-core-node",
+            "adapterVersion": "1.0.0",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "35442b4205465fd400852079fa1620eae869ddc2b3ea5f849a4bd92406fb8737",
+          "configurationDigest": "d213ca5dd371adcea382769b656cd9b3d7b6543ea157dbf63e9a3f50eaeb3f21",
+          "product": {
+            "candidateDigest": "35442b4205465fd400852079fa1620eae869ddc2b3ea5f849a4bd92406fb8737",
+            "kind": "candidate"
+          },
+          "scannerId": "redact-secret-core",
+          "scannerVersion": "0.1.0-beta.12"
+        },
+        "replays": {
+          "agreed": true,
+          "count": 2
+        },
+        "status": "complete"
+      }
+    ],
+    "sourceArtifactDigest": "1e3cae89c04cb1e78c520f29b74490a893b841116f4fe1d78baeb75ec96fa0e9"
+  },
+  "semanticDigest": "992b97b00e8a6c2dddcb3686b729106e41c8c6ebc9d8e9ec051a1635943e1b53"
+}
