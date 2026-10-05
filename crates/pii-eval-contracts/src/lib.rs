@@ -26,6 +26,7 @@ pub mod ident;
 pub mod limits;
 pub mod manifest;
 pub mod observation;
+pub mod projection;
 pub mod protocol;
 pub mod reason;
 pub mod scanner;
@@ -35,9 +36,9 @@ pub mod version;
 pub use artifact::{
     ArtifactScanner, CaseOutcome, Completeness, FailureCode, MeasurementFailure, MethodCoverage,
     MetricCounts, MetricResult, MetricValue, ObservedSummary, Phase, PhaseTiming, PopulationCounts,
-    PublicOutcome, PublicScannerSummary, PublicSyntheticArtifact, PublicSyntheticArtifactBody,
-    PublicSyntheticClass, RunArtifact, RunArtifactBody, RunDiagnostics, ScannerMetrics,
-    serialize_internal, serialize_public_synthetic,
+    PublicOutcome, PublicPopulationBinding, PublicScannerSummary, PublicSyntheticArtifact,
+    PublicSyntheticArtifactBody, PublicSyntheticClass, RunArtifact, RunArtifactBody,
+    RunDiagnostics, ScannerMetrics, serialize_internal, serialize_public_synthetic,
 };
 pub use axes::{
     ActionExpectation, ActionKind, ActionOutcome, AxisStatus, ContextClass, ContextObligation,
@@ -71,6 +72,10 @@ pub use manifest::{
 pub use observation::{
     Finding, InputObservation, ObservationDiagnostics, ObservationSet, ObservationSetBody,
     OffsetUnitName, ReplayRecord, RuntimeProvenance,
+};
+pub use projection::{
+    ControlClassStratum, LanguageStratum, ProductProjection, ProjectionBinding, ProjectionMode,
+    ProjectionRow, ProjectionView,
 };
 pub use protocol::{
     ACCOUNTING_VERSION, AccountingId, Applicability, BoundDirection, EffectiveNBasis, METHODS,

@@ -45,6 +45,8 @@ pub struct RunArgs {
     pub node: Option<String>,
     /// Custodian job context file (protected runs).
     pub job_context: Option<String>,
+    /// Projection roster file (overrides `projection.roster.path`).
+    pub projection_roster: Option<String>,
 }
 
 /// `pii-eval replay --snapshot FILE --manifest FILE --observation FILE... --out DIR ...`
@@ -68,6 +70,11 @@ pub struct ReplayArgs {
     pub overwrite: Option<String>,
     /// Custodian job context (required when the population is protected).
     pub job_context: Option<String>,
+    /// Projection roster file: attach the product projection (schema 1.2).
+    pub projection_roster: Option<String>,
+    /// Mode of the projection rows (`official` or `exploratory`); required
+    /// with `--projection-roster`, because a replay has no run configuration.
+    pub projection_mode: Option<String>,
 }
 
 /// `pii-eval validate FILE [--kind KIND] [--snapshot FILE] [--manifest FILE]`
@@ -83,6 +90,8 @@ pub struct ValidateArgs {
     pub manifest: Option<String>,
     /// Custodian job context (required for protected documents).
     pub job_context: Option<String>,
+    /// Projection roster file: recompute the artifact's product projection.
+    pub projection_roster: Option<String>,
 }
 
 /// `pii-eval compare --base FILE --other FILE`
@@ -194,6 +203,7 @@ pub fn parse(args: &[String]) -> Result<Command, Failure> {
                     ("out", false),
                     ("node", false),
                     ("job-context", false),
+                    ("projection-roster", false),
                 ],
                 0,
             )?;
@@ -202,6 +212,7 @@ pub fn parse(args: &[String]) -> Result<Command, Failure> {
                 out: o.one("out"),
                 node: o.one("node"),
                 job_context: o.one("job-context"),
+                projection_roster: o.one("projection-roster"),
             }))
         }
         "replay" => {
@@ -217,6 +228,8 @@ pub fn parse(args: &[String]) -> Result<Command, Failure> {
                     ("out", false),
                     ("overwrite", false),
                     ("job-context", false),
+                    ("projection-roster", false),
+                    ("projection-mode", false),
                 ],
                 0,
             )?;
@@ -237,6 +250,8 @@ pub fn parse(args: &[String]) -> Result<Command, Failure> {
                 out: o.required("out")?,
                 overwrite: o.one("overwrite"),
                 job_context: o.one("job-context"),
+                projection_roster: o.one("projection-roster"),
+                projection_mode: o.one("projection-mode"),
             }))
         }
         "validate" => {
@@ -247,6 +262,7 @@ pub fn parse(args: &[String]) -> Result<Command, Failure> {
                     ("snapshot", false),
                     ("manifest", false),
                     ("job-context", false),
+                    ("projection-roster", false),
                 ],
                 1,
             )?;
@@ -260,6 +276,7 @@ pub fn parse(args: &[String]) -> Result<Command, Failure> {
                 snapshot: o.one("snapshot"),
                 manifest: o.one("manifest"),
                 job_context: o.one("job-context"),
+                projection_roster: o.one("projection-roster"),
             }))
         }
         "compare" => {
@@ -288,12 +305,14 @@ pub fn parse(args: &[String]) -> Result<Command, Failure> {
 pub const USAGE: &str = "\
 usage:
   pii-eval run      --config FILE [--out DIR] [--node PATH] [--job-context FILE]
+                    [--projection-roster FILE]
   pii-eval replay   --snapshot FILE --manifest FILE --observation FILE [--observation FILE]...
                     --out DIR [--original FILE] [--expect-snapshot-digest SHA256]
                     [--expect-manifest-digest SHA256] [--overwrite refuse|replace]
-                    [--job-context FILE]
+                    [--job-context FILE] [--projection-roster FILE
+                    --projection-mode official|exploratory]
   pii-eval validate FILE [--kind KIND] [--snapshot FILE] [--manifest FILE]
-                    [--job-context FILE]
+                    [--job-context FILE] [--projection-roster FILE]
   pii-eval compare  --base FILE --other FILE [--snapshot FILE] [--job-context FILE]
   pii-eval worker-job --job FILE        (also: pii-eval --job FILE)
   pii-eval --version | --help

@@ -19,14 +19,15 @@ use pii_eval_contracts::{
     ActionCapability, ActionOutcome, ArtifactScanner, CaseOutcome, Completeness, ContractError,
     CorpusSnapshot, EngineIdentity, EngineName, InputObservation, MeasurementFailure,
     MethodCoverage, MethodId, MethodRef, ObservationDiagnostics, ObservationSet,
-    ObservationSetBody, Phase, PhaseTiming, ProtocolIdentity, PublicSyntheticArtifact, RunArtifact,
-    RunArtifactBody, RunClass, RunDiagnostics, RunManifest, ScannerMetrics, ScannerStatus,
-    TimestampUtc, VersionString, seal,
+    ObservationSetBody, Phase, PhaseTiming, ProjectionMode, ProtocolIdentity,
+    PublicSyntheticArtifact, RunArtifact, RunArtifactBody, RunClass, RunDiagnostics, RunManifest,
+    ScannerIdentity, ScannerMetrics, ScannerStatus, TimestampUtc, VersionString, seal,
 };
 use pii_eval_kernel::methods::ReviewGate;
 use pii_eval_kernel::{
-    AccountError, AssessError, AuthoredIndex, ScannerInput, ScannerView, VariantInput,
-    account_outcomes, assess_variant,
+    AccountError, AssessError, AuthoredIndex, OutcomeRef, ProjectionError, ProjectionInput,
+    ProjectionRoster, ScannerInput, ScannerView, VariantInput, account_outcomes, assess_variant,
+    build_projection,
 };
 
 use crate::exec::{ObservedInput, ScannerRun, VariantTask};
@@ -41,6 +42,8 @@ pub enum AssembleError {
     Assess(AssessError),
     /// A document could not be built or sealed.
     Contract(ContractError),
+    /// The product projection could not be built from the roster.
+    Projection(ProjectionError),
     /// The runs do not correspond to the manifest's scanners.
     ScannerMismatch,
     /// The observations of a complete scanner do not cover every variant once.
@@ -53,6 +56,7 @@ impl std::fmt::Display for AssembleError {
             AssembleError::Account(e) => write!(f, "accounting: {e}"),
             AssembleError::Assess(_) => f.write_str("a variant could not be assessed"),
             AssembleError::Contract(e) => write!(f, "{e}"),
+            AssembleError::Projection(e) => write!(f, "projection: {e}"),
             AssembleError::ScannerMismatch => f.write_str("runs do not match the manifest"),
             AssembleError::IncompleteObservations => {
                 f.write_str("a complete scanner did not observe every variant")
@@ -134,6 +138,17 @@ fn millis(d: Duration) -> u64 {
     u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
 }
 
+/// The optional product projection of a run (schema 1.2, ADR 0016): the
+/// caller's roster and the run's mode. With none, the public artifact is the
+/// 1.1 document, byte for byte.
+#[derive(Debug, Clone)]
+pub struct ProjectionRequest {
+    /// The caller's roster, already checked against the snapshot.
+    pub roster: ProjectionRoster,
+    /// The run's mode, copied into every row.
+    pub mode: ProjectionMode,
+}
+
 /// Assemble the documents for `runs` (one per manifest scanner, in manifest order).
 pub fn assemble(
     snapshot: &CorpusSnapshot,
@@ -141,6 +156,19 @@ pub fn assemble(
     tasks: &[VariantTask<'_>],
     runs: &[ScannerRun],
     options: AssembleOptions,
+) -> Result<Assembled, AssembleError> {
+    assemble_with_projection(snapshot, manifest, tasks, runs, options, None)
+}
+
+/// [`assemble`], with the optional product projection attached to the public
+/// artifact (public-synthetic runs only; the internal artifact is unchanged).
+pub fn assemble_with_projection(
+    snapshot: &CorpusSnapshot,
+    manifest: &RunManifest,
+    tasks: &[VariantTask<'_>],
+    runs: &[ScannerRun],
+    options: AssembleOptions,
+    projection: Option<&ProjectionRequest>,
 ) -> Result<Assembled, AssembleError> {
     let m = &manifest.semantic;
     if runs.len() != m.scanners.len()
@@ -379,11 +407,45 @@ pub fn assemble(
     }
     seal(&mut artifact).map_err(AssembleError::Contract)?;
     let public = if m.run_class == RunClass::PublicSynthetic {
-        Some(artifact.to_public_synthetic().map_err(|_| {
-            AssembleError::Contract(ContractError::root(
-                pii_eval_contracts::ReasonCode::PublicProjectionForbidden,
-            ))
-        })?)
+        let block = match projection {
+            None => None,
+            Some(request) => {
+                let a = &artifact.semantic;
+                let scanners: Vec<(&ScannerIdentity, ScannerStatus)> =
+                    a.scanners.iter().map(|s| (&s.identity, s.status)).collect();
+                let outcome_rows: Vec<OutcomeRef<'_>> =
+                    a.outcomes.iter().map(OutcomeRef::from).collect();
+                let population = pii_eval_contracts::PublicPopulationBinding {
+                    population_id: a.population.population_id.clone(),
+                    visibility: pii_eval_contracts::PublicSyntheticClass::Only,
+                    population_version: a.population.population_version,
+                    population_digest: a.population.population_digest.clone(),
+                };
+                Some(
+                    build_projection(
+                        &ProjectionInput {
+                            snapshot: body,
+                            population: &population,
+                            scanners: &scanners,
+                            rows: &outcome_rows,
+                            mechanics: &a.mechanics,
+                            mode: request.mode,
+                        },
+                        &request.roster,
+                    )
+                    .map_err(AssembleError::Projection)?,
+                )
+            }
+        };
+        Some(
+            artifact
+                .to_public_synthetic_with_projection(block)
+                .map_err(|_| {
+                    AssembleError::Contract(ContractError::root(
+                        pii_eval_contracts::ReasonCode::PublicProjectionForbidden,
+                    ))
+                })?,
+        )
     } else {
         None
     };

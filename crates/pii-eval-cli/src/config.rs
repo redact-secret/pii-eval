@@ -156,6 +156,8 @@ pub struct RunConfig {
     pub host: HostConfig,
     /// Output settings.
     pub output: OutputConfig,
+    /// The optional product projection (schema 1.2, ADR 0016): the roster file.
+    pub projection: Option<PinnedDocument>,
 }
 
 // ---------------------------------------------------------------------------
@@ -314,6 +316,7 @@ impl RunConfig {
                 "scanners",
                 "host",
                 "output",
+                "projection",
             ],
         )?;
         if top.str("schema")? != CONFIG_SCHEMA {
@@ -411,6 +414,17 @@ impl RunConfig {
             },
         };
 
+        let projection = match top.opt_sub("projection", &["roster"])? {
+            None => None,
+            Some(p) => {
+                let f = p.sub("roster", &["path", "rosterDigest"])?;
+                Some(PinnedDocument {
+                    path: f.path("path", base)?,
+                    digest: f.opt_digest("rosterDigest")?,
+                })
+            }
+        };
+
         let config = RunConfig {
             mode,
             run_class,
@@ -422,6 +436,7 @@ impl RunConfig {
             scanners,
             host,
             output,
+            projection,
         };
         config.check_mode_rules()?;
         Ok(config)
@@ -450,6 +465,13 @@ impl RunConfig {
             if self.output.overwrite != OverwritePolicy::Refuse {
                 return Err(bad("output.overwrite (must be refuse)"));
             }
+            // An official run pins the roster the projection is built from.
+            if self.projection.as_ref().is_some_and(|p| p.digest.is_none()) {
+                return missing("projection.roster.rosterDigest");
+            }
+        }
+        if self.projection.is_some() && self.run_class == RunClass::Protected {
+            return Err(bad("projection (public-synthetic runs only)"));
         }
         if self.run_class == RunClass::Protected && !official {
             return Err(bad("mode (a protected run is official)"));

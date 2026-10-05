@@ -39,6 +39,10 @@
     "outcome-contradiction",
     "population-binding-mismatch",
     "product-identity-invalid",
+    "projection-binding-mismatch",
+    "projection-invalid",
+    "projection-pooled-denominator",
+    "projection-view-missing",
     "protocol-binding-mismatch",
     "public-projection-forbidden",
     "range-invalid",
@@ -56,5 +60,5 @@
     "unknown-schema",
     "unknown-variant"
   ],
-  "schemaVersion": "1.1"
+  "schemaVersion": "1.2"
 }

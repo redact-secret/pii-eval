@@ -45,6 +45,13 @@ pub const MAX_OUTCOMES: usize = 16_000_000;
 /// Most failure records in one run artifact.
 pub const MAX_FAILURES: usize = 4096;
 
+/// Most rows in the product-projection block of one public artifact (ADR 0016).
+/// A row is one (scanner, view, family) cell; the bound keeps the document under
+/// the parse cap.
+pub const MAX_PROJECTION_ROWS: usize = 2048;
+/// Most language or control-class strata in one projection row.
+pub const MAX_PROJECTION_STRATA: usize = 64;
+
 /// Most violations one validation pass reports before it stops collecting.
 pub const MAX_VIOLATIONS: usize = 64;
 /// Longest rendered location path in an error, in bytes.

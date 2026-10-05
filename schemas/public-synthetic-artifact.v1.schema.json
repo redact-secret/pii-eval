@@ -142,6 +142,33 @@
       ],
       "type": "string"
     },
+    "ControlClassStratum": {
+      "additionalProperties": false,
+      "description": "One control-class stratum of a row. The class is an opaque label the\ncaller's roster assigns to authored cases; the corpus carries no control\nclass (ADR 0005, A7). Strata cover the assigned cases only.",
+      "properties": {
+        "controlClass": {
+          "$ref": "#/$defs/Id",
+          "description": "Opaque control-class label from the roster."
+        },
+        "counts": {
+          "$ref": "#/$defs/PopulationCounts",
+          "description": "Authored counts of the stratum."
+        },
+        "metrics": {
+          "description": "The ten metrics over the stratum's cases.",
+          "items": {
+            "$ref": "#/$defs/MetricResult"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "controlClass",
+        "counts",
+        "metrics"
+      ],
+      "type": "object"
+    },
     "EngineIdentity": {
       "additionalProperties": false,
       "description": "Engine implementation identity bound into plans and artifacts.",
@@ -240,6 +267,39 @@
       "maxLength": 2,
       "minLength": 2,
       "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "LanguageStratum": {
+      "additionalProperties": false,
+      "description": "One language stratum of a row: the row's cases in that language, accounted\non their own.",
+      "properties": {
+        "counts": {
+          "$ref": "#/$defs/PopulationCounts",
+          "description": "Authored counts of the stratum."
+        },
+        "language": {
+          "$ref": "#/$defs/LanguageTag",
+          "description": "Case language."
+        },
+        "metrics": {
+          "description": "The ten metrics over the stratum's cases.",
+          "items": {
+            "$ref": "#/$defs/MetricResult"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "language",
+        "counts",
+        "metrics"
+      ],
+      "type": "object"
+    },
+    "LanguageTag": {
+      "maxLength": 35,
+      "minLength": 2,
+      "pattern": "^[a-z]{2,8}(-[a-z0-9]{2,8})*$",
       "type": "string"
     },
     "MeasurementFailure": {
@@ -633,6 +693,152 @@
         }
       ]
     },
+    "ProductProjection": {
+      "additionalProperties": false,
+      "description": "The closed, optional product-projection block (schema 1.2).",
+      "properties": {
+        "requiredViews": {
+          "description": "The views the caller required, ascending, unique. Every one has rows.",
+          "items": {
+            "$ref": "#/$defs/ProjectionView"
+          },
+          "type": "array"
+        },
+        "rosterDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the caller's roster (view and control-class assignments), so a\ndifferent roster is a different artifact."
+        },
+        "rows": {
+          "description": "Rows, ascending by (scanner id, view, family); each key appears once.",
+          "items": {
+            "$ref": "#/$defs/ProjectionRow"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "rosterDigest",
+        "requiredViews",
+        "rows"
+      ],
+      "type": "object"
+    },
+    "ProjectionBinding": {
+      "additionalProperties": false,
+      "description": "The identities a row must share with the artifact that holds it. Copying\nthem into the row makes a row that was lifted out of its artifact, or edited\nto point at another scanner configuration or population, detectable on its\nown.",
+      "properties": {
+        "activationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the activation selectors."
+        },
+        "configurationDigest": {
+          "$ref": "#/$defs/Sha256Digest",
+          "description": "Digest of the scanner configuration parameters."
+        },
+        "population": {
+          "$ref": "#/$defs/PublicPopulationBinding",
+          "description": "The population the row belongs to."
+        },
+        "product": {
+          "$ref": "#/$defs/ProductIdentity",
+          "description": "Released, or the candidate and its digest."
+        },
+        "scannerId": {
+          "$ref": "#/$defs/ScannerId",
+          "description": "The scanner the row measures."
+        }
+      },
+      "required": [
+        "scannerId",
+        "configurationDigest",
+        "activationDigest",
+        "product",
+        "population"
+      ],
+      "type": "object"
+    },
+    "ProjectionMode": {
+      "description": "The mode of the run the rows come from (the run configuration's mode).\n`official` runs pin every identity and enforce resource limits;\n`exploratory` runs may not. The mode travels with every row so an\nexploratory number is never read as an official one.",
+      "enum": [
+        "official",
+        "exploratory"
+      ],
+      "type": "string"
+    },
+    "ProjectionRow": {
+      "additionalProperties": false,
+      "description": "One cell of the projection: a scanner, a view and a family, with their own\ncounts and ten metric results.",
+      "properties": {
+        "binding": {
+          "$ref": "#/$defs/ProjectionBinding",
+          "description": "Scanner, configuration, activation, product and population binding."
+        },
+        "byControlClass": {
+          "description": "Control-class strata, ascending by class; only when the roster assigns\nclasses.",
+          "items": {
+            "$ref": "#/$defs/ControlClassStratum"
+          },
+          "type": "array"
+        },
+        "byLanguage": {
+          "description": "Language strata, ascending by language, partitioning the cell.",
+          "items": {
+            "$ref": "#/$defs/LanguageStratum"
+          },
+          "type": "array"
+        },
+        "counts": {
+          "$ref": "#/$defs/PopulationCounts",
+          "description": "Authored cases, variants and occurrences of this cell. Never effective N."
+        },
+        "family": {
+          "$ref": "#/$defs/FamilyId",
+          "description": "Family of the cases in this cell, as the corpus names it."
+        },
+        "methodCoverage": {
+          "description": "Method coverage of the cell, ascending by method id.",
+          "items": {
+            "$ref": "#/$defs/MethodCoverage"
+          },
+          "type": "array"
+        },
+        "metrics": {
+          "description": "The ten metrics over the cell's cases, ascending by metric id. Counts,\neffective N and the value or withheld reason are the metric's own.",
+          "items": {
+            "$ref": "#/$defs/MetricResult"
+          },
+          "type": "array"
+        },
+        "mode": {
+          "$ref": "#/$defs/ProjectionMode",
+          "description": "Mode of the run."
+        },
+        "view": {
+          "$ref": "#/$defs/ProjectionView",
+          "description": "The view the cases belong to."
+        }
+      },
+      "required": [
+        "family",
+        "view",
+        "mode",
+        "binding",
+        "counts",
+        "methodCoverage",
+        "metrics"
+      ],
+      "type": "object"
+    },
+    "ProjectionView": {
+      "description": "A population view of the product projection. The four ids are the closed\nvocabulary of the benchmarks request (redact-secret-benchmarks#664). A\nrun's caller supplies which of them it requires and which cases belong\nto which (the roster); the engine holds no view policy.",
+      "enum": [
+        "oracle-plan",
+        "qualification-plan",
+        "diagnostic-balanced",
+        "benign-heavy-stress"
+      ],
+      "type": "string"
+    },
     "ProtocolId": {
       "description": "Protocol identifier enum (one variant today, so unknown protocols fail to parse).",
       "oneOf": [
@@ -873,6 +1079,17 @@
         "populationCounts": {
           "$ref": "#/$defs/PopulationCounts",
           "description": "Authored counts."
+        },
+        "productProjection": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductProjection"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The product projection: per (scanner, view, family) counts and metrics\nfor this one population. Optional and additive (schema 1.2, ADR 0016):\npresent only when the caller supplied a roster, and only under a schema\nversion of 1.2 or later. It is part of the semantic digest."
         },
         "protocol": {
           "$ref": "#/$defs/ProtocolIdentity",
@@ -1218,7 +1435,7 @@
       "type": "string"
     }
   },
-  "$id": "urn:pii-eval:schema:public-synthetic-artifact:1.1",
+  "$id": "urn:pii-eval:schema:public-synthetic-artifact:1.2",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "A public-synthetic artifact document.",

@@ -366,6 +366,294 @@ fn run_class_and_product_are_independent_identities_each_checked_against_the_man
     assert_eq!(detail(&summary(&out)), "run-class");
 }
 
+/// docs/migration/benchmarks-handoff-664.md section 3a, the one open item: a
+/// test that changes ONLY the manifest's activation selectors and asserts the
+/// refusal by name.
+///
+/// Activation travels in the scanner configuration, so a manifest with other
+/// selectors is a different, self-consistent plan: the adapter derives its
+/// identity from the manifest's own configuration and the run would proceed under
+/// that other enable set. What must refuse is every place that holds the run to
+/// the plan it was supposed to follow, and each refusal has a name:
+///
+/// * the operator's manifest digest pin (`manifest-digest`, exit 4);
+/// * replaying observations of the original run against the changed manifest
+///   (`observation-set`, `configuration-binding-mismatch`, exit 4);
+/// * validating the original artifact against the changed manifest
+///   (`run-artifact`, `configuration-binding-mismatch`, exit 4).
+///
+/// And the changed run is not silently the same measurement: its artifact records
+/// another activation digest, hence another semantic digest.
+#[test]
+fn a_manifest_that_changes_only_the_activation_selectors_is_refused_by_name() {
+    let node = node_or_return!();
+    let ws = Workspace::new("run-activation", &node);
+    let original: RunManifest = parse_default(&std::fs::read(&ws.manifest).unwrap()).unwrap();
+    assert!(
+        original.semantic.scanners[0].configuration.activation.len() >= 2,
+        "the plan enables more than one selector"
+    );
+    let baseline = ws.out("baseline");
+    assert_eq!(code(&ws.run(&baseline)), 0);
+
+    // The same manifest with fewer enabled selectors, made self-consistent (the
+    // declared activation digest follows the selectors) and resealed.
+    let mut changed = original.clone();
+    {
+        let plan = &mut changed.semantic.scanners[0];
+        plan.configuration.activation.pop();
+        plan.identity.activation_digest = plan.configuration.activation_digest().unwrap();
+    }
+    seal(&mut changed).unwrap();
+    pii_eval_contracts::validate(&changed).expect("the changed manifest is valid on its own");
+    let (a, b) = (&original.semantic, &changed.semantic);
+    assert_ne!(
+        a.scanners[0].configuration.activation,
+        b.scanners[0].configuration.activation
+    );
+    // Nothing else differs: parameters, configuration digest, adapter, product,
+    // population, mechanics, limits and the other plan fields are equal.
+    let mut rest = changed.clone();
+    rest.semantic.scanners[0].configuration.activation =
+        a.scanners[0].configuration.activation.clone();
+    rest.semantic.scanners[0].identity.activation_digest =
+        a.scanners[0].identity.activation_digest.clone();
+    assert_eq!(rest.semantic, original.semantic);
+    let changed_path = ws.tmp.0.join("changed-activation-manifest.json");
+    std::fs::write(&changed_path, to_pretty_json(&changed).unwrap()).unwrap();
+
+    // 1. The operator pinned the original manifest digest.
+    let config = ws.tmp.0.join("pinned.json");
+    let mut spec = ConfigSpec::new(&ws.snapshot, &changed_path, &ws.package);
+    let pinned = original.semantic_digest.as_str().to_owned();
+    spec.manifest_digest = Some(&pinned);
+    std::fs::write(&config, spec.json()).unwrap();
+    let out = ws.out("pinned");
+    let refused = run_cli(&[
+        "run",
+        "--config",
+        s(&config),
+        "--node",
+        s(&node),
+        "--out",
+        s(&out),
+    ]);
+    assert_eq!(
+        code(&refused),
+        4,
+        "{}",
+        String::from_utf8_lossy(&refused.stdout)
+    );
+    assert_eq!(reason(&summary(&refused)), "provenance-mismatch");
+    assert_eq!(detail(&summary(&refused)), "manifest-digest");
+    assert!(!out.exists(), "nothing was started or written");
+
+    // 2. Replay of the original observations against the changed manifest.
+    let replayed = ws.out("replayed");
+    let replay = run_cli(&[
+        "replay",
+        "--snapshot",
+        s(&ws.snapshot),
+        "--manifest",
+        s(&changed_path),
+        "--observation",
+        s(&baseline.join("observation-redact-secret-core.json")),
+        "--out",
+        s(&replayed),
+    ]);
+    assert_eq!(
+        code(&replay),
+        4,
+        "{}",
+        String::from_utf8_lossy(&replay.stdout)
+    );
+    assert_eq!(reason(&summary(&replay)), "provenance-mismatch");
+    assert_eq!(detail(&summary(&replay)), "observation-set");
+    assert!(
+        summary(&replay)["error"]["codes"]
+            .to_string()
+            .contains("configuration-binding-mismatch")
+    );
+    assert!(!replayed.exists());
+
+    // 3. Validation of the original artifact against the changed manifest.
+    let validated = run_cli(&[
+        "validate",
+        s(&baseline.join("run-artifact.json")),
+        "--manifest",
+        s(&changed_path),
+    ]);
+    assert_eq!(code(&validated), 4);
+    assert_eq!(detail(&summary(&validated)), "run-artifact");
+    assert!(
+        summary(&validated)["error"]["codes"]
+            .to_string()
+            .contains("configuration-binding-mismatch")
+    );
+
+    // 4. The changed plan, run on its own, is another measurement: another
+    // activation digest recorded, another artifact digest.
+    let config = ws.tmp.0.join("changed.json");
+    std::fs::write(
+        &config,
+        ConfigSpec::new(&ws.snapshot, &changed_path, &ws.package).json(),
+    )
+    .unwrap();
+    let other = ws.out("other");
+    let result = run_cli(&[
+        "run",
+        "--config",
+        s(&config),
+        "--node",
+        s(&node),
+        "--out",
+        s(&other),
+    ]);
+    assert_eq!(code(&result), 0, "{}", stderr(&result));
+    let digest_of = |dir: &Path| -> (String, String) {
+        let v: Value =
+            serde_json::from_slice(&std::fs::read(dir.join("run-artifact.json")).unwrap()).unwrap();
+        (
+            v["semanticDigest"].as_str().unwrap().to_owned(),
+            v["semantic"]["scanners"][0]["identity"]["activationDigest"]
+                .as_str()
+                .unwrap()
+                .to_owned(),
+        )
+    };
+    let (base_digest, base_activation) = digest_of(&baseline);
+    let (other_digest, other_activation) = digest_of(&other);
+    assert_ne!(base_activation, other_activation);
+    assert_ne!(base_digest, other_digest);
+}
+
+#[test]
+fn a_projection_roster_is_checked_before_any_scanner_starts_and_pins_are_enforced() {
+    let node = node_or_return!();
+    let ws = Workspace::new("run-projection", &node);
+    let roster = example_dir().join("projection-roster.json");
+    let config_with = |name: &str, mode: &str, projection: &str| -> PathBuf {
+        let mut spec = ConfigSpec::new(&ws.snapshot, &ws.manifest, &ws.package);
+        spec.mode = mode;
+        let extra = format!(r#","projection": {projection}"#);
+        spec.extra_top = &extra;
+        let path = ws.tmp.0.join(format!("{name}.json"));
+        std::fs::write(&path, spec.json()).unwrap();
+        path
+    };
+    let run = |config: &Path, out: &Path, extra: &[&str]| {
+        let mut args = vec![
+            "run",
+            "--config",
+            s(config),
+            "--node",
+            s(&node),
+            "--out",
+            s(out),
+        ];
+        args.extend(extra);
+        run_cli(&args)
+    };
+
+    // The happy path: the summary reports the block, the artifact carries it.
+    let ok_config = config_with(
+        "ok",
+        "exploratory",
+        &format!(r#"{{"roster": {{"path": "{}"}}}}"#, s(&roster)),
+    );
+    let out = ws.out("ok");
+    let result = run(&ok_config, &out, &[]);
+    assert_eq!(code(&result), 0, "{}", stderr(&result));
+    let v = summary(&result);
+    assert_eq!(v["semantic"]["productProjection"]["mode"], "exploratory");
+    assert_eq!(v["semantic"]["productProjection"]["rows"], 3);
+    let artifact: Value =
+        serde_json::from_slice(&std::fs::read(out.join("public-synthetic-artifact.json")).unwrap())
+            .unwrap();
+    assert_eq!(artifact["schemaVersion"], "1.2");
+    assert_eq!(
+        artifact["semantic"]["productProjection"]["rows"][0]["mode"],
+        "exploratory"
+    );
+    // The same run through the flag instead of the configuration, with no projection
+    // in the configuration at all.
+    let plain = ws.out("flag");
+    let flagged = run(&ws.config, &plain, &["--projection-roster", s(&roster)]);
+    assert_eq!(code(&flagged), 0, "{}", stderr(&flagged));
+    assert_eq!(
+        std::fs::read(plain.join("public-synthetic-artifact.json")).unwrap(),
+        std::fs::read(out.join("public-synthetic-artifact.json")).unwrap()
+    );
+    // And without a roster it is the 1.1 artifact, as before.
+    let base = ws.out("base");
+    assert_eq!(code(&ws.run(&base)), 0);
+    let base_doc: Value = serde_json::from_slice(
+        &std::fs::read(base.join("public-synthetic-artifact.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(base_doc["schemaVersion"], "1.1");
+    assert!(base_doc["semantic"].get("productProjection").is_none());
+
+    // A pinned roster digest that differs: provenance mismatch, nothing started.
+    let wrong = config_with(
+        "wrong-pin",
+        "exploratory",
+        &format!(
+            r#"{{"roster": {{"path": "{}", "rosterDigest": "{}"}}}}"#,
+            s(&roster),
+            "0".repeat(64)
+        ),
+    );
+    let out = ws.out("wrong-pin");
+    let refused = run(&wrong, &out, &[]);
+    assert_eq!(code(&refused), 4);
+    assert_eq!(detail(&summary(&refused)), "projection-roster-digest");
+    assert!(!out.exists());
+
+    // An official run must pin the roster.
+    let mut official = ConfigSpec::new(&ws.snapshot, &ws.manifest, &ws.package);
+    official.mode = "official";
+    let extra = format!(
+        r#","engineVersion": "{}","protocol": {{"id": "pii-v1", "revision": 2}},"projection": {{"roster": {{"path": "{}"}}}}"#,
+        pii_eval_contracts::ENGINE_VERSION,
+        s(&roster)
+    );
+    official.extra_top = &extra;
+    let snapshot_digest = read_snapshot(&ws.snapshot).semantic_digest;
+    let manifest_digest = parse_default::<RunManifest>(&std::fs::read(&ws.manifest).unwrap())
+        .unwrap()
+        .semantic_digest;
+    official.snapshot_digest = Some(snapshot_digest.as_str());
+    official.manifest_digest = Some(manifest_digest.as_str());
+    let path = ws.tmp.0.join("official-unpinned.json");
+    std::fs::write(&path, official.json()).unwrap();
+    let refused = run(&path, &ws.out("official-unpinned"), &[]);
+    assert_eq!(code(&refused), 3);
+    assert_eq!(reason(&summary(&refused)), "config-invalid");
+    assert!(detail(&summary(&refused)).contains("projection.roster.rosterDigest"));
+
+    // A roster that does not match the snapshot (a case it does not contain).
+    let bad_roster = ws.tmp.0.join("bad-roster.json");
+    std::fs::write(
+        &bad_roster,
+        std::fs::read_to_string(&roster)
+            .unwrap()
+            .replace("type-card-demo", "no-such-case"),
+    )
+    .unwrap();
+    let out = ws.out("bad-roster");
+    let refused = run(&ws.config, &out, &["--projection-roster", s(&bad_roster)]);
+    assert_eq!(
+        code(&refused),
+        3,
+        "{}",
+        String::from_utf8_lossy(&refused.stdout)
+    );
+    assert_eq!(reason(&summary(&refused)), "document-invalid");
+    assert_eq!(detail(&summary(&refused)), "projection-roster");
+    assert!(!out.exists(), "refused before anything started");
+}
+
 #[test]
 fn a_manifest_for_another_population_scanner_configuration_or_artifact_is_refused() {
     let node = node_or_return!();

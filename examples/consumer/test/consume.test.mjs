@@ -295,6 +295,178 @@ test("unreadable, oversized and non-UTF-8 files carry their explicit codes", () 
   }
 });
 
+// -- product projection (schema 1.2, ADR 0016) ------------------------------
+
+const P2 = "population-a-v2.projection.public-synthetic-artifact.json";
+const projectionPinsText = read("pins.projection.json");
+const projectionPins = () => loadPins(projectionPinsText);
+
+/** Consume the projected artifact edited by `edit`, under the projection pins. */
+function projected(edit, pinEdit) {
+  const pinned = JSON.parse(projectionPinsText);
+  if (pinEdit) pinEdit(pinned);
+  return consume(loadPins(JSON.stringify(pinned)), [art(P2, mutated(P2, edit))]);
+}
+
+const codes = (report) => (report.rejections[0] ? report.rejections[0].reasons.map((x) => x.code) : []);
+
+test("the projected artifact is accepted under its 1.2 pins, rows kept apart, nothing decided", () => {
+  const report = consume(projectionPins(), [art(P2)]);
+  assert.equal(report.complete, true, JSON.stringify(report.rejections));
+  assert.equal(report.pooling, "none");
+  assert.equal(report.decision, "none");
+  const block = report.populations[0].productProjection;
+  assert.deepEqual(block.requiredViews, ["oracle-plan", "qualification-plan"]);
+  assert.equal(block.rows.length, 3);
+  // Each row keeps its own cases and ten metrics; the cells add up to the population, once.
+  const total = block.rows.reduce((a, r) => a + r.counts.authoredCases, 0);
+  assert.equal(total, report.populations[0].populationCounts.authoredCases);
+  for (const row of block.rows) assert.equal(row.metrics.length, 10);
+  assert.deepEqual(new Set(block.rows.map((r) => r.mode)), new Set(["official"]));
+});
+
+test("a 1.1 pin set refuses a 1.2 artifact and a 1.2 pin set refuses a 1.1 artifact", () => {
+  const old = consume(pins(), [art(P2), art(B1)]);
+  assert.ok(codesOf(old, P2).includes("schema-version-unsupported"));
+  const fresh = consume(projectionPins(), [art(A2)]);
+  assert.ok(codesOf(fresh, A2).includes("schema-version-unsupported"));
+});
+
+test("a pinned projection is required: an artifact without the block is rejected", () => {
+  const doc = JSON.parse(read(A2));
+  doc.schemaVersion = "1.2";
+  doc.semanticDigest = semanticDigest(doc);
+  const plain = consume(projectionPins(), [art("plain-1-2.json", JSON.stringify(doc))]);
+  assert.ok(codesOf(plain, "plain-1-2.json").includes("projection-missing"));
+});
+
+test("duplicate family/view rows are rejected", () => {
+  const report = projected((sem) => {
+    const rows = sem.productProjection.rows;
+    rows.splice(1, 0, structuredClone(rows[1]));
+  });
+  assert.ok(codes(report).includes("projection-row-duplicate"), JSON.stringify(report.rejections));
+});
+
+test("an absent required view is rejected, whether the artifact or the pin requires it", () => {
+  const dropped = projected((sem) => {
+    sem.productProjection.rows = sem.productProjection.rows.filter((r) => r.view !== "oracle-plan");
+  });
+  assert.ok(codes(dropped).includes("projection-view-missing"));
+  // The artifact does not require a view the pin requires.
+  const narrowed = projected(
+    (sem) => {
+      sem.productProjection.requiredViews = ["oracle-plan"];
+      sem.productProjection.rows = sem.productProjection.rows.filter((r) => r.view === "oracle-plan");
+    },
+    () => {},
+  );
+  assert.ok(codes(narrowed).includes("projection-view-missing"));
+  // A pin that requires a view nobody produced.
+  const unproduced = projected(() => {}, (p) => p.populations[0].projection.requiredViews.push("benign-heavy-stress"));
+  assert.ok(codes(unproduced).includes("projection-view-missing"));
+});
+
+test("pooled denominators are rejected", () => {
+  // A row that holds more cases than the population allows, next to the others.
+  const extra = projected((sem) => {
+    const rows = sem.productProjection.rows;
+    const all = structuredClone(rows[0]);
+    all.family = "pii:global:phone";
+    all.counts = { ...sem.populationCounts };
+    rows.push(all);
+    rows.sort((a, b) => (a.view + a.family < b.view + b.family ? -1 : 1));
+  });
+  assert.ok(codes(extra).includes("projection-pooled-denominator"));
+  // A metric whose total exceeds the cases of its own row.
+  const metric = projected((sem) => {
+    const m = sem.productProjection.rows[0].metrics.find((x) => x.metric.id === "type-miss-rate");
+    m.counts.total = 99;
+    m.counts.notApplicable = 99 - m.counts.eligible;
+  });
+  assert.ok(codes(metric).includes("projection-pooled-denominator"));
+  // Two cells merged into one row: the sums still add up, but the row's methods no longer do.
+  const merged = projected((sem) => {
+    const rows = sem.productProjection.rows;
+    const second = rows.splice(2, 1)[0];
+    rows[1].counts.authoredCases += second.counts.authoredCases;
+    rows[1].counts.variants += second.counts.variants;
+    rows[1].counts.occurrences += second.counts.occurrences;
+  });
+  assert.ok(codes(merged).includes("projection-counts-mismatch"), JSON.stringify(codes(merged)));
+  // Language strata that count more than their row.
+  const strata = projected((sem) => {
+    const row = sem.productProjection.rows.find((r) => r.byLanguage?.length);
+    row.byLanguage[0].counts.authoredCases += 5;
+    row.byLanguage[0].counts.variants += 5;
+    row.byLanguage[0].counts.occurrences += 5;
+  });
+  assert.ok(codes(strata).includes("projection-pooled-denominator"));
+});
+
+test("unknown modes and views are rejected, and the modes of one artifact never mix", () => {
+  const mode = projected((sem) => {
+    sem.productProjection.rows[0].mode = "pilot";
+  });
+  assert.ok(codes(mode).includes("projection-mode-unknown"));
+  const view = projected((sem) => {
+    sem.productProjection.rows[0].view = "everything";
+  });
+  assert.ok(codes(view).includes("projection-view-unknown"));
+  const mixed = projected((sem) => {
+    sem.productProjection.rows[0].mode = "exploratory";
+  });
+  assert.ok(codes(mixed).includes("projection-mode-mismatch"));
+  // The pin names the mode: an exploratory run is not an official one.
+  const exploratory = projected(
+    (sem) => {
+      for (const r of sem.productProjection.rows) r.mode = "exploratory";
+    },
+  );
+  assert.ok(codes(exploratory).includes("projection-mode-mismatch"));
+});
+
+test("a row bound to another scanner, configuration, activation, candidate or population is rejected", () => {
+  const other = "0".repeat(64);
+  const edits = {
+    configuration: (b) => (b.configurationDigest = other),
+    activation: (b) => (b.activationDigest = other),
+    candidate: (b) => (b.product = { kind: "candidate", candidateDigest: other }),
+    released: (b) => (b.product = { kind: "released" }),
+    population: (b) => (b.population.populationDigest = other),
+    "population-version": (b) => (b.population.populationVersion += 1),
+    scanner: (b) => (b.scannerId = "another-scanner"),
+  };
+  for (const [name, edit] of Object.entries(edits)) {
+    const report = projected((sem) => edit(sem.productProjection.rows[0].binding));
+    assert.ok(codes(report).includes("projection-binding-mismatch"), name);
+  }
+});
+
+test("a different roster, a malformed block and an unclosed row are rejected", () => {
+  const roster = projected((sem) => (sem.productProjection.rosterDigest = "1".repeat(64)));
+  assert.ok(codes(roster).includes("projection-roster-mismatch"));
+  const extraMember = projected((sem) => (sem.productProjection.verdict = "stable"));
+  assert.ok(codes(extraMember).includes("projection-malformed"));
+  const extraField = projected((sem) => (sem.productProjection.rows[0].score = 1));
+  assert.ok(codes(extraField).includes("projection-malformed"));
+  const noMetric = projected((sem) => sem.productProjection.rows[0].metrics.pop());
+  assert.ok(codes(noMetric).includes("projection-malformed"));
+});
+
+test("projection pins are validated strictly", () => {
+  const edit = (f) => {
+    const p = JSON.parse(projectionPinsText);
+    f(p);
+    return JSON.stringify(p);
+  };
+  assert.throws(() => loadPins(edit((p) => (p.populations[0].projection.mode = "pilot"))), { code: "pins-projection" });
+  assert.throws(() => loadPins(edit((p) => (p.populations[0].projection.requiredViews = ["merged"]))), { code: "pins-projection" });
+  assert.throws(() => loadPins(edit((p) => (p.populations[0].projection.requiredViews = []))), { code: "pins-projection" });
+  assert.throws(() => loadPins(edit((p) => (p.artifactSchema.version = "1.1"))), { code: "pins-projection" });
+  assert.throws(() => loadPins(edit((p) => (p.populations[0].projection.rosterDigest = "abc"))), { code: "pins-projection" });
+});
+
 // -- command line and independence ----------------------------------------
 
 function run(args) {

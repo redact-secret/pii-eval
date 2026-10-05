@@ -125,12 +125,12 @@ read on 2026-10-03, against what this repository proves:
 | Identical pinned scanners/configurations, frozen public synthetic inputs or bound replay observations | Covered | The same frozen observations go to both engines (report); the real pinned scanner (ADR 0012 P8) |
 | Case and variant identities/counts, seven methods, both axes, ten metrics, numerator/denominator, intervals, unmeasured/review-required/unstable states | Covered | Report layers `variant`, `outcome*`, `accounting*`, `statistics*` and the scanner statuses; review-required through `tv-unavailable` and `rd-unavailable` |
 | Semantic digests | Covered for the engine; the oracle has none | Engine artifact digests are equal across runs (below); the oracle's accounting carries only an unresolved input commitment (report, not compared) |
-| Oracle-plan, qualification-plan, diagnostic-balanced and benign-heavy-stress populations kept separately identified | **Open** | The parity population is one synthetic population (`parity-synthetic`). The kernel has the two views as an external roster (`ViewRoster`, ADR 0007); the product-owned plans were not built or run here. Benchmarks supplies them as snapshots, one population per run |
+| Oracle-plan, qualification-plan, diagnostic-balanced and benign-heavy-stress populations kept separately identified | Mechanism covered (schema 1.2); the product-owned plans are benchmarks' | One population per run, as before: benchmarks supplies each plan as its own snapshot. Inside one population artifact the optional schema 1.2 **product projection** carries per (scanner, view, family) rows for a caller-supplied roster of the four view ids ([section 7](#7-schema-12-the-product-projection), [ADR 0016](../adr/0016-product-projection-and-schema-1-2.md)). The parity population itself is still one synthetic population (`parity-synthetic`); no product plan was built or run here |
 | Classification; no tuning | Covered | Report census, ADR 0012 P6, section 4 |
 | Protected runs reuse approved receipts only | Not applicable | No protected corpus was run (custodian contract) |
 | Committed reproducible report, zero unexplained | Covered | `fixtures/oracle-parity/report.json`, generated and compared in CI |
 | At least two same-input runs with equal semantic digest | Covered | `oracle_parity.rs` runs the engine at one and four workers and again (equal artifact semantic digest); `oracle_parity_cli.rs` shows byte-identical documents |
-| Wrong activation / candidate / population bindings rejected | Covered, one case open | Population: `a_manifest_for_another_population_scanner_configuration_or_artifact_is_refused` in `cli_run.rs` (`population-binding-mismatch`, exit 4). Candidate/product: `run_class_and_product_are_independent_identities_each_checked_against_the_manifest` (exit 4, `product`) and `every_provenance_mismatch_is_exit_4_before_any_scanner_starts`. Activation travels in the scanner configuration: a plan whose configuration or adapter version differs is exit 4 `scanner-plan` (the first `cli_run.rs` test above), and the running scanner's activation identity is checked at startup (`PinKind::Activation`, `crates/pii-eval-adapters/tests/process_adapter.rs`). **Open:** no test changes only the manifest's activation selectors and asserts that refusal by name |
+| Wrong activation / candidate / population bindings rejected | Covered | Population: `a_manifest_for_another_population_scanner_configuration_or_artifact_is_refused` in `cli_run.rs` (`population-binding-mismatch`, exit 4). Candidate/product: `run_class_and_product_are_independent_identities_each_checked_against_the_manifest` (exit 4, `product`) and `every_provenance_mismatch_is_exit_4_before_any_scanner_starts`. Activation travels in the scanner configuration: a plan whose configuration or adapter version differs is exit 4 `scanner-plan` (the first `cli_run.rs` test above), and the running scanner's activation identity is checked at startup (`PinKind::Activation`, `crates/pii-eval-adapters/tests/process_adapter.rs`). Activation only: `a_manifest_that_changes_only_the_activation_selectors_is_refused_by_name` (`cli_run.rs`) changes nothing in the manifest but the enabled selectors (and the digest that follows them) and asserts the refusals by name: an operator manifest-digest pin (exit 4 `manifest-digest`), replay of the original observations (exit 4 `observation-set`, `configuration-binding-mismatch`) and validation of the original artifact (exit 4 `run-artifact`, `configuration-binding-mismatch`). A manifest with other selectors is a self-consistent *different plan*: run on its own it is accepted as such and records another activation digest and another artifact digest, so it can never pass for the original measurement. Schema 1.2 rows carry the same bindings and are refused when they differ from their artifact ([section 7](#7-schema-12-the-product-projection)) |
 | No protected bytes in the report | Covered | Synthetic only; the report test asserts that no authored value appears |
 
 ## 4. Mismatch handling
@@ -181,12 +181,15 @@ reviewer):
 - Replay of **stored** observation sets against the legacy mode needs the scanner
   emission order carried (`0004/D2`): a stored set holds findings in canonical
   order. Same-observation parity here used the emission order.
-- The oracle projections `benignByControlClass`, `evidenceByClass`,
-  `contextByLanguage`, `contextRoster` and the `evidence` block are not carried by
-  schema 1.x and were not compared (`0005/A7`). If benchmarks needs them, an
-  additive minor (schema 1.2) with a consumer is the route (ADR 0008 section 9).
-- Population views (`diagnostic-balanced`, `benign-heavy-stress`) are an external
-  roster in the kernel; artifacts do not carry them yet.
+- The oracle projections `evidenceByClass`, `contextRoster` and the `evidence`
+  block are not carried and were not compared (`0005/A7`). `contextByLanguage` is
+  superseded by the language strata (every metric, every cell) and
+  `benignByControlClass` by the optional roster-supplied control-class strata of
+  schema 1.2 ([section 7](#7-schema-12-the-product-projection)); the oracle's
+  numbers were not compared against them (the oracle's grouping differs, A3/A8).
+- Population views are carried by schema 1.2 as the optional product projection
+  (section 7). The product-owned view membership, thresholds and which view gates
+  which family are benchmarks'; the engine only restates the measurement.
 - The oracle's evidence-entry checks and JSON-schema validation did not run in the
   harness (`0007/D8`, `D9`; stubs, ADR 0012 P2).
 - Replay without the original artifact is impossible for scanners that return
@@ -207,3 +210,119 @@ diff of two revision-2 artifacts (it refuses legacy artifacts, exit 10).
 Compare a candidate run with an oracle-derived baseline through the compatibility
 protocol and this suite, not through `compare`. All commands and exit codes:
 [docs/cli.md](../cli.md).
+
+## 7. Schema 1.2: the product projection
+
+Requested by #664 ("Schema 1.2 needs a closed optional product-projection block ...").
+Design and decisions: [ADR 0016](../adr/0016-product-projection-and-schema-1-2.md).
+Contract: `schemas/public-synthetic-artifact.v1.schema.json` (one schema file per
+kind and major, superseded in place; the minor is in `schemaVersion` and the `$id`).
+
+**What changes for a consumer.** Nothing unless it asks. Without a roster the public
+artifact is the schema 1.1 document byte for byte (a test compares it with the 1.1
+golden). With a roster the artifact is sealed under schema **1.2** and carries
+`semantic.productProjection`; the internal artifact, the observation sets and the
+manifest are byte-identical either way. The block is inside `semantic`, so the
+semantic digest (ADR 0003, domain `pii-eval.public-synthetic-artifact/1.2`) covers
+it. A 1.1 reader rejects it with `schema-minor-too-new`; pin `artifactSchema.version`
+`1.2` to consume it.
+
+**Producing it.**
+
+```sh
+pii-eval run --config run-config.json --projection-roster projection-roster.json --out OUT
+# or in the configuration: "projection": {"roster": {"path": "...", "rosterDigest": "<sha256>"}}
+# (an official run must pin rosterDigest); mode = the configuration's mode.
+pii-eval validate OUT/public-synthetic-artifact.json --snapshot snapshot.json \
+  --projection-roster projection-roster.json     # recomputes every row from the roster
+```
+
+The roster (`pii-eval-projection-roster/1`) is yours: `requiredViews` (a subset of
+`oracle-plan`, `qualification-plan`, `diagnostic-balanced`, `benign-heavy-stress`),
+the view of every authored case (complete, exclusive), and optionally a control
+class (an opaque label) for some cases. Families are the corpus's own; a case that
+spans several families without a collision target is refused (split it).
+
+**Shape** (real engine output, abridged: `...` stands for omitted metric results; the
+full artifact is `fixtures/contracts/v1/rev2/public-synthetic-artifact.projection.json`):
+
+```json
+{
+  "schema": "pii-eval.public-synthetic-artifact",
+  "schemaVersion": "1.2",
+  "semanticDigest": "<sha256 over semantic, domain .../1.2>",
+  "semantic": {
+    "...": "every 1.1 member, unchanged",
+    "productProjection": {
+      "rosterDigest": "96fa1097350a6c843b887d0f0dff6960bbf87d5f8ab4a077f724ee372448bc4b",
+      "requiredViews": ["oracle-plan", "qualification-plan"],
+      "rows": [
+        {
+          "binding": {
+            "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+            "configurationDigest": "ec0ea698e39929f6aee9ac0e4cf464267a1ca1902e841bb471e95c7f844f6669",
+            "population": {
+              "populationDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae",
+              "populationId": "synthetic-demo-population",
+              "populationVersion": 1,
+              "visibility": "public-synthetic"
+            },
+            "product": {"kind": "released"},
+            "scannerId": "alpha-scan"
+          },
+          "byControlClass": [],
+          "byLanguage": [
+            {
+              "counts": {"authoredCases": 1, "occurrences": 3, "variants": 3},
+              "language": "ko",
+              "metrics": ["... ten metric results ..."]
+            }
+          ],
+          "counts": {"authoredCases": 1, "occurrences": 3, "variants": 3},
+          "family": "pii:global:email",
+          "methodCoverage": [
+            {"cases": 1, "method": {"id": "context-discrimination", "version": 2}, "variants": 3}
+          ],
+          "metrics": [
+            {
+              "counts": {"eligible": 1, "measured": 1, "notApplicable": 0, "notMeasured": 0,
+                         "numerator": 0, "total": 1, "unresolved": 0},
+              "effectiveN": 1,
+              "metric": {"id": "context-discrimination-rate", "version": 1},
+              "status": "measured",
+              "value": {"reason": "insufficient-evidence", "state": "withheld"}
+            },
+            "... nine more, ascending by metric id; a measured value is {\"state\": \"measured\", \"point\": {...}, \"bound\": {...}} ..."
+          ],
+          "mode": "exploratory",
+          "view": "qualification-plan"
+        }
+      ]
+    }
+  }
+}
+```
+
+`byControlClass` and `byLanguage` are omitted when empty (`byLanguage` is always
+present for a non-empty cell). Rows are ascending by (`binding.scannerId`, `view`,
+`family`), every key once, one `mode` for the whole block.
+
+**What a consumer must reject** (the reference consumer implements all of them,
+`examples/consumer/`, pin `artifactSchema.version` `1.2`, optional per-population
+`projection: {requiredViews, mode, rosterDigest}`):
+
+| Case | Engine reason code | Reference consumer code |
+| --- | --- | --- |
+| duplicate (scanner, view, family) rows | `duplicate-identity` | `projection-row-duplicate` |
+| a required view with no row for a scanner (the artifact's or the pin's) | `projection-view-missing` | `projection-view-missing` |
+| pooled denominators (a row or stratum counting beyond its cases, a scanner's rows adding to more than the population, a metric total beyond its row) | `projection-pooled-denominator` (less than the population: `count-mismatch`) | `projection-pooled-denominator`, `projection-counts-mismatch` |
+| unknown mode or view; mixed modes | `schema-violation`; `projection-invalid` | `projection-mode-unknown`, `projection-view-unknown`, `projection-mode-mismatch` |
+| scanner / configuration / activation / candidate / population differs from the artifact | `projection-binding-mismatch` | `projection-binding-mismatch` |
+| another roster, or no block when pinned | `projection-invalid` (no roster given) | `projection-roster-mismatch`, `projection-missing` |
+
+**What it proves, and what it does not.** `validate --snapshot` (no roster) proves the
+structure and bindings; with `--projection-roster` it recomputes every cell, stratum
+and count from the authored population and compares (`"recomputed"`). A consumer
+that reads only the published block (as the reference consumer does) proves structure,
+bindings and no pooling, not the values. Nothing in the block is a verdict: no
+threshold, support status or ranking, and qualification stays benchmarks'.

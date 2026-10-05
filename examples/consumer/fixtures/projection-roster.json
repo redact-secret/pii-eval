@@ -1,0 +1,11 @@
+{
+  "schema": "pii-eval-projection-roster/1",
+  "requiredViews": ["oracle-plan", "qualification-plan"],
+  "views": [
+    {"view": "oracle-plan", "cases": ["collision-us-ssn-demo"]},
+    {"view": "qualification-plan", "cases": ["context-email-ko-demo", "type-card-demo"]}
+  ],
+  "controlClasses": [
+    {"class": "test-value", "cases": ["type-card-demo"]}
+  ]
+}

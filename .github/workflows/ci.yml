@@ -200,6 +200,22 @@ jobs:
     with:
       engine-run-id: ${{ format('{0}', github.run_id) }}
 
+  # The same workflow with the product projection (schema 1.2, ADR 0016): the engine
+  # artifact of this run measures the synthetic quickstart with a roster, and the
+  # workflow validates the public artifact, recomputing the projection from the roster.
+  # The uploaded run artifact (pii-eval-run-<run id>-<attempt>) then holds the 1.2 artifact.
+  evaluate-projection:
+    name: evaluate with the product projection (schema 1.2)
+    needs: engine
+    uses: ./.github/workflows/evaluate.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      engine-run-id: ${{ format('{0}', github.run_id) }}
+      config: examples/quickstart/run-config.projection.json
+      artifact-suffix: projection
+
   # Real Linux bubblewrap measurement of Node and the engine under the custodian's
   # worker limits (docs/custodian-isolation-node.md): a replica of the custodian's
   # launcher on a hosted runner, synthetic data, the controls must pass, no limit is

@@ -20,6 +20,7 @@ mod bigint;
 pub mod matching;
 pub mod methods;
 pub mod output;
+pub mod projection;
 pub mod range;
 pub mod stats;
 pub mod verify;
@@ -36,6 +37,10 @@ pub use matching::{
     overlaps, range_state, relation,
 };
 pub use output::{MAX_SANITIZED_BYTES, OutputAssessment, OutputError, verify_output};
+pub use projection::{
+    ProjectionError, ProjectionInput, ProjectionRoster, build_projection, case_family,
+    verify_public_projection,
+};
 pub use range::{
     OffsetUnit, RangeError, RangeTranslator, byte_to_unit_offset, translate_offset,
     translate_range, unit_length, validate_range, validate_range_bytes,
