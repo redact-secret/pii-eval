@@ -12,7 +12,10 @@ use pii_eval_contracts::{
     CorpusSnapshot, RunManifest, validate, validate_manifest_against_snapshot,
 };
 
-use crate::assemble::{AssembleError, AssembleOptions, Assembled, assemble, variant_tasks};
+use crate::assemble::{
+    AssembleError, AssembleOptions, Assembled, ProjectionRequest, assemble_with_projection,
+    variant_tasks,
+};
 use crate::exec::{
     CancelToken, EffectiveLimits, ExecError, ExecutionPlan, ExecutorConfig, ScannerRun,
     ScannerTask, effective_limits, execute,
@@ -104,6 +107,16 @@ pub fn run(
     config: &RunConfig,
     cancel: &CancelToken,
 ) -> Result<RunOutput, RunError> {
+    run_with_projection(request, config, cancel, None)
+}
+
+/// [`run`] with the optional product projection (schema 1.2, ADR 0016).
+pub fn run_with_projection(
+    request: &RunRequest<'_>,
+    config: &RunConfig,
+    cancel: &CancelToken,
+    projection: Option<&ProjectionRequest>,
+) -> Result<RunOutput, RunError> {
     let started = Instant::now();
     let started_at = SystemTime::now();
     validate(request.snapshot).map_err(|_| RunError::InvalidPlan)?;
@@ -135,7 +148,7 @@ pub fn run(
     };
     let effective = effective_limits(&m.limits, &config.executor).map_err(RunError::Exec)?;
     let runs = execute(&plan, &config.executor, cancel).map_err(RunError::Exec)?;
-    let assembled = assemble(
+    let assembled = assemble_with_projection(
         request.snapshot,
         request.manifest,
         &tasks,
@@ -144,6 +157,7 @@ pub fn run(
             diagnostics: config.diagnostics,
             run_started_at: started_at,
         },
+        projection,
     )
     .map_err(RunError::Assemble)?;
     Ok(RunOutput {
@@ -161,7 +175,18 @@ pub fn run_and_write(
     cancel: &CancelToken,
     writer: &ArtifactWriter,
 ) -> Result<(RunOutput, WrittenRun), RunError> {
-    let mut output = run(request, config, cancel)?;
+    run_and_write_with_projection(request, config, cancel, writer, None)
+}
+
+/// [`run_and_write`] with the optional product projection.
+pub fn run_and_write_with_projection(
+    request: &RunRequest<'_>,
+    config: &RunConfig,
+    cancel: &CancelToken,
+    writer: &ArtifactWriter,
+    projection: Option<&ProjectionRequest>,
+) -> Result<(RunOutput, WrittenRun), RunError> {
+    let mut output = run_with_projection(request, config, cancel, projection)?;
     let cancelled = cancel.is_cancelled()
         || output
             .runs

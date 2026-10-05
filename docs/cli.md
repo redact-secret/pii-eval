@@ -17,12 +17,14 @@ custodian for public/synthetic data.
 
 ```text
 pii-eval run      --config FILE [--out DIR] [--node PATH] [--job-context FILE]
+                  [--projection-roster FILE]
 pii-eval replay   --snapshot FILE --manifest FILE --observation FILE [--observation FILE]...
                   --out DIR [--original FILE] [--expect-snapshot-digest SHA256]
                   [--expect-manifest-digest SHA256] [--overwrite refuse|replace]
-                  [--job-context FILE]
+                  [--job-context FILE] [--projection-roster FILE
+                  --projection-mode official|exploratory]
 pii-eval validate FILE [--kind KIND] [--snapshot FILE] [--manifest FILE]
-                  [--job-context FILE]
+                  [--job-context FILE] [--projection-roster FILE]
 pii-eval compare  --base FILE --other FILE [--snapshot FILE] [--job-context FILE]
 pii-eval worker-job --job FILE       # also: pii-eval --job FILE (see below)
 pii-eval --version | --help
@@ -77,10 +79,17 @@ language). `--job-context` (or the environment
 variable `PII_EVAL_JOB_CONTEXT`, the option wins) names the custodian job
 context of a protected run.
 
+`--projection-roster` names a projection roster (below) and overrides
+`projection.roster.path`: the public artifact then carries the schema 1.2
+product-projection block. Without a roster the output is the schema 1.1 output,
+byte for byte.
+
 Order of work: parse the configuration; for a protected run, require and
 validate the job context **before any input path is touched**; read the snapshot
 and manifest (a protected run only from inside the context's input root); check
-every identity pin and binding; build the pinned adapters and require that each
+every identity pin and binding; read the projection roster, if any, and check it
+against the snapshot (every case in exactly one view, every case with one
+family); build the pinned adapters and require that each
 derived scanner plan equals the manifest's; hash every pinned artifact; prepare
 the output directory; check the execution limits; only then start scanners.
 Failures before that point launch nothing and leave no output directory behind.
@@ -138,6 +147,10 @@ parts: the original passed the accounting verifier and binds to these
 observation sets, but its verdicts and failure codes are not re-derived by the
 replay.
 
+`--projection-roster` with `--projection-mode` (both or neither: a replay has no run
+configuration to take the mode from) re-attaches the product projection: the replayed
+public artifact is byte-identical to a run's under the same roster and mode.
+
 `--expect-snapshot-digest` and `--expect-manifest-digest` pin the semantic
 digests. Only revision-2 (canonical) manifests can be replayed; a legacy
 revision-1 plan is not re-measured. Diagnostics are never attached, so a
@@ -161,6 +174,13 @@ Whether a document is protected is known only after it is parsed, so the file is
 read (not reported) before the refusal; an observation set carries no visibility
 and is treated as protected only when a protected `--snapshot` or `--manifest`
 accompanies it.
+
+For a public artifact under schema 1.2 the typed parse already checks the product
+projection's structure and bindings (`semantic.productProjection: "structural"`).
+`--projection-roster` (with `--snapshot`) additionally recomputes every row, stratum
+and count from the authored population and the roster and compares them with the
+block (`"recomputed"`); a block that differs, or an artifact with no block, is exit 3
+`verification-failed` with the contract codes of [Product projection](#product-projection-schema-12).
 
 Legacy revision 1 documents are **readable**: they validate structurally and
 keep their digests. A legacy run or public artifact is **not verifiable** (its
@@ -237,7 +257,8 @@ other commands take only file paths and digests and use flags.
   }],
   "host": {"maxWorkers": 4, "resources": "enforce", "diagnostics": false,
            "scratchDir": "/var/tmp/pii-eval", "minSessionMemoryBytes": 134217728},
-  "output": {"dir": "out", "overwrite": "refuse"}
+  "output": {"dir": "out", "overwrite": "refuse"},
+  "projection": {"roster": {"path": "projection-roster.json", "rosterDigest": "<sha256>"}}
 }
 ```
 
@@ -251,6 +272,7 @@ other commands take only file paths and digests and use flags.
 | `scanners[]` | Only `adapter: redact-secret-core` exists in this release. `shim` is verified against the shipped shim digest and cannot be overridden. `package.treeSha256` is required for a candidate (it is the candidate digest); a released package must be `0.1.0-beta.12` with the released tree digest. `extraArtifacts` pin further files or trees (a native addon). The scanner plan derived by the adapter from the manifest's scanner configuration must equal the manifest's plan, so activation, configuration and adapter identity are bound by the manifest and re-verified by the running scanner. |
 | `host` | Execution settings that never enter a digest: `maxWorkers` (1 to 256, a cap on the manifest's `workers`), `resources` (`enforce` or `unenforced`), `diagnostics` (attach non-semantic timing; default false), `scratchDir`, `minSessionMemoryBytes`. |
 | `output` | `dir` (or `--out`) and `overwrite` (`refuse` default, `replace`). |
+| `projection` | Optional, public-synthetic runs only. `roster.path` names a projection roster; `roster.rosterDigest` pins the roster's digest (required when `mode` is `official`). The run's `mode` becomes the `mode` of every projection row. |
 
 Execution bounds (workers, per-scanner parallelism, pending tasks, batch,
 scanner timeout, output bytes, memory, scratch) are fields of the **manifest**,
@@ -258,6 +280,43 @@ so they are part of the plan's digest; the host can only lower parallelism,
 never raise a bound. Results are identical at one worker and at many
 (determinism tests), because the executor indexes by manifest order, never by
 completion order.
+
+## Product projection (schema 1.2)
+
+The public artifact can carry one optional block, `semantic.productProjection`,
+that restates the **one population** it measured per (scanner, view, family):
+the cell's cases, variants and occurrences, method coverage, the ten metrics with
+integer counts, effective N and the interval or withheld reason, language strata
+(always) and control-class strata (when the roster assigns classes), the run's
+`mode` and the scanner, configuration, activation, product and population binding
+of the artifact. It is inside `semantic`, so the semantic digest covers it; the
+artifact is then sealed under schema 1.2. Design, field shape and rejection rules:
+[ADR 0016](adr/0016-product-projection-and-schema-1-2.md). The engine holds no view
+policy: the caller's **roster** names the views the run requires, the view of every
+authored case, and optionally a control class for some cases.
+
+```json
+{
+  "schema": "pii-eval-projection-roster/1",
+  "requiredViews": ["oracle-plan", "qualification-plan"],
+  "views": [
+    {"view": "oracle-plan", "cases": ["case-a"]},
+    {"view": "qualification-plan", "cases": ["case-b", "case-c"]}
+  ],
+  "controlClasses": [{"class": "test-value", "cases": ["case-c"]}]
+}
+```
+
+`requiredViews` are drawn from the closed set `oracle-plan`, `qualification-plan`,
+`diagnostic-balanced`, `benign-heavy-stress`; every authored case is in exactly one
+view, every listed view is required and has at least one case, and a case's family
+is its collision target or the one family all its occurrences share (a case that
+spans several families without a target is refused: there is no honest cell for it).
+The file is strict JSON with closed fields; a problem is `config-invalid` or
+`document-invalid` naming `projection-roster` (never a value), and a pinned
+`rosterDigest` that differs is exit 4 `provenance-mismatch` (`projection-roster-digest`).
+The `semantic.productProjection` of a `run` or `replay` summary reports the roster
+digest, the mode, the required views and the row count.
 
 ## Custodian job context (`pii-eval-job-context/1`) and protected runs
 
@@ -389,7 +448,8 @@ the files additionally carry timestamps and timings outside the digested body
 `examples/quickstart/` holds a synthetic snapshot, a manifest derived from the
 inert fake `@redact-secret/core` package under
 `crates/pii-eval-adapters/tests/fixtures/fake-core`, and two configurations
-(exploratory and official with every pin). The fake is not a scanner and not the
+(exploratory and official with every pin), plus the same two with the product
+projection and its roster (`projection-roster.json`). The fake is not a scanner and not the
 real package: it exists so the whole pipeline runs offline in CI. Needs Rust
 (the pinned toolchain), Node 22 and `ps`; no network after the build.
 The test `cli_example` runs exactly this block.
@@ -405,6 +465,10 @@ pii-eval run --config examples/quickstart/run-config.json --node "$NODE" --out "
 pii-eval validate "$OUT/run/run-artifact.json" --snapshot examples/quickstart/snapshot.json --manifest "$OUT/run/manifest.json"
 pii-eval validate "$OUT/run/public-synthetic-artifact.json" --snapshot examples/quickstart/snapshot.json
 pii-eval run --config examples/quickstart/run-config.official.json --node "$NODE" --out "$OUT/official"
+pii-eval run --config examples/quickstart/run-config.projection.json --node "$NODE" --out "$OUT/projection"
+pii-eval validate "$OUT/projection/public-synthetic-artifact.json" --snapshot examples/quickstart/snapshot.json \
+  --projection-roster examples/quickstart/projection-roster.json
+pii-eval run --config examples/quickstart/run-config.official.projection.json --node "$NODE" --out "$OUT/official-projection"
 pii-eval replay --snapshot examples/quickstart/snapshot.json --manifest "$OUT/run/manifest.json" \
   --observation "$OUT/run/observation-redact-secret-core.json" \
   --original "$OUT/run/run-artifact.json" --out "$OUT/replay"

@@ -16,7 +16,9 @@ use pii_eval_kernel::{VerifyFailure, verify_run_artifact_accounting};
 use serde_json::json;
 
 use crate::args::ReplayArgs;
-use crate::assemble::{AssembleOptions, assemble, variant_tasks};
+use crate::assemble::{
+    AssembleOptions, ProjectionRequest, assemble_with_projection, variant_tasks,
+};
 use crate::cmd_run::{read_document, wire, write_failure};
 use crate::files::{confine, prepare_output, read_input};
 use crate::replay::{needs_original, runs_from_observations};
@@ -47,6 +49,33 @@ pub fn replay(args: &ReplayArgs) -> Result<Report, Failure> {
     };
     let expect_snapshot = digest_option(&args.expect_snapshot_digest, "expect-snapshot-digest")?;
     let expect_manifest = digest_option(&args.expect_manifest_digest, "expect-manifest-digest")?;
+    // A replay has no run configuration, so the projection's mode is stated on
+    // the command line: both options or neither.
+    let projection_mode = match (&args.projection_roster, &args.projection_mode) {
+        (None, None) => None,
+        (Some(_), Some(mode)) => Some(match mode.as_str() {
+            "official" => pii_eval_contracts::ProjectionMode::Official,
+            "exploratory" => pii_eval_contracts::ProjectionMode::Exploratory,
+            _ => {
+                return Err(Failure::usage(
+                    reason::INVALID_OPTION_VALUE,
+                    "projection-mode",
+                ));
+            }
+        }),
+        (Some(_), None) => {
+            return Err(Failure::usage(
+                reason::MISSING_REQUIRED_OPTION,
+                "projection-mode",
+            ));
+        }
+        (None, Some(_)) => {
+            return Err(Failure::usage(
+                reason::MISSING_REQUIRED_OPTION,
+                "projection-roster",
+            ));
+        }
+    };
     if args.observations.len() > pii_eval_contracts::limits::MAX_SCANNERS {
         return Err(Failure::usage(reason::INVALID_OPTION_VALUE, "observation"));
     }
@@ -152,9 +181,27 @@ pub fn replay(args: &ReplayArgs) -> Result<Report, Failure> {
         ));
     }
 
+    // The optional product projection (schema 1.2): the roster is read now that
+    // the snapshot is; its mode was checked with the other options.
+    let projection: Option<ProjectionRequest> = match (&args.projection_roster, projection_mode) {
+        (Some(path), Some(mode)) => {
+            if protected {
+                return Err(Failure::usage(
+                    reason::INVALID_OPTION_VALUE,
+                    "projection-roster (public-synthetic runs only)",
+                ));
+            }
+            Some(ProjectionRequest {
+                roster: crate::projection::load_roster(Path::new(path), &snapshot, None)?,
+                mode,
+            })
+        }
+        _ => None,
+    };
+
     let runs = runs_from_observations(&snapshot, &manifest, &sets, original.as_ref())?;
     let tasks = variant_tasks(&snapshot);
-    let mut assembled = assemble(
+    let mut assembled = assemble_with_projection(
         &snapshot,
         &manifest,
         &tasks,
@@ -163,6 +210,7 @@ pub fn replay(args: &ReplayArgs) -> Result<Report, Failure> {
             diagnostics: false,
             run_started_at: std::time::SystemTime::UNIX_EPOCH,
         },
+        projection.as_ref(),
     )
     .map_err(|_| Failure::new(Exit::Invalid, reason::ASSEMBLY_FAILED))?;
 
@@ -252,6 +300,18 @@ pub fn replay(args: &ReplayArgs) -> Result<Report, Failure> {
         })).collect::<Vec<_>>(),
     });
     let mut semantic = semantic;
+    if let Some(block) = assembled
+        .public
+        .as_ref()
+        .and_then(|p| p.semantic.product_projection.as_ref())
+    {
+        semantic["productProjection"] = json!({
+            "rosterDigest": block.roster_digest.as_str(),
+            "mode": block.rows.first().map(|r| r.mode.as_str()),
+            "requiredViews": block.required_views.iter().map(|v| v.as_str()).collect::<Vec<_>>(),
+            "rows": block.rows.len(),
+        });
+    }
     if assembled.public.is_none() {
         if let Some(o) = semantic.as_object_mut() {
             o.remove("publicArtifactDigest");

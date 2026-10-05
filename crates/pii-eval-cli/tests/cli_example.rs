@@ -20,7 +20,14 @@ use pii_eval_contracts::{ENGINE_VERSION, to_pretty_json};
 const FAKE_CORE_REL: &str = "../../crates/pii-eval-adapters/tests/fixtures/fake-core";
 const SHIM_REL: &str = "../../crates/pii-eval-adapters/shims/node/redact-secret-core.mjs";
 
-fn config_text(official: bool, snapshot_digest: &str, manifest_digest: &str, tree: &str) -> String {
+/// `projection` is `None` for no projection, else the roster pin (`""` for none).
+fn config_text(
+    official: bool,
+    snapshot_digest: &str,
+    manifest_digest: &str,
+    tree: &str,
+    projection: Option<&str>,
+) -> String {
     let pins = if official {
         format!(
             r#"  "engineVersion": "{ENGINE_VERSION}",
@@ -51,10 +58,18 @@ fn config_text(official: bool, snapshot_digest: &str, manifest_digest: &str, tre
       }}
     }}
   ],
-  "host": {{"maxWorkers": 2, "resources": "enforce"}}
+  "host": {{"maxWorkers": 2, "resources": "enforce"}}{projection}
 }}
 "#,
         mode = if official { "official" } else { "exploratory" },
+        projection = match projection {
+            None => String::new(),
+            Some("") => ",\n  \"projection\": {\"roster\": {\"path\": \"projection-roster.json\"}}"
+                .to_owned(),
+            Some(d) => format!(
+                ",\n  \"projection\": {{\"roster\": {{\"path\": \"projection-roster.json\", \"rosterDigest\": \"{d}\"}}}}"
+            ),
+        },
     )
 }
 
@@ -67,6 +82,12 @@ fn generated_example() -> Vec<(&'static str, Vec<u8>)> {
     let exe = std::fs::canonicalize(std::env::current_exe().unwrap()).unwrap();
     let manifest = manifest_for(&snapshot, &fake_core_dir(), &exe, limits(2, 1), 2);
     let tree = sha256_of_tree(&fake_core_dir()).unwrap();
+    let roster = pii_eval_cli::projection::load_roster(
+        &example_dir().join("projection-roster.json"),
+        &snapshot,
+        None,
+    )
+    .expect("the example roster binds to the example snapshot");
     vec![
         (
             "manifest.json",
@@ -74,7 +95,22 @@ fn generated_example() -> Vec<(&'static str, Vec<u8>)> {
         ),
         (
             "run-config.json",
-            config_text(false, "", "", tree.as_str()).into_bytes(),
+            config_text(false, "", "", tree.as_str(), None).into_bytes(),
+        ),
+        (
+            "run-config.projection.json",
+            config_text(false, "", "", tree.as_str(), Some("")).into_bytes(),
+        ),
+        (
+            "run-config.official.projection.json",
+            config_text(
+                true,
+                snapshot.semantic_digest.as_str(),
+                manifest.semantic_digest.as_str(),
+                tree.as_str(),
+                Some(roster.digest().as_str()),
+            )
+            .into_bytes(),
         ),
         (
             "run-config.official.json",
@@ -83,6 +119,7 @@ fn generated_example() -> Vec<(&'static str, Vec<u8>)> {
                 snapshot.semantic_digest.as_str(),
                 manifest.semantic_digest.as_str(),
                 tree.as_str(),
+                None,
             )
             .into_bytes(),
         ),

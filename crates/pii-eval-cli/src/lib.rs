@@ -19,6 +19,7 @@ pub mod cmd_worker;
 pub mod config;
 pub mod exec;
 pub mod files;
+pub mod projection;
 pub mod replay;
 pub mod run;
 pub mod scanners;

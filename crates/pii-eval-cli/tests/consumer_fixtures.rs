@@ -24,13 +24,16 @@ use common::TempDir;
 use pii_eval_contracts::{CorpusSnapshot, ENGINE_VERSION, Id, seal, to_pretty_json};
 use serde_json::{Value, json};
 
-const NAMES: [&str; 6] = [
+const NAMES: [&str; 9] = [
     "population-a-v1.public-synthetic-artifact.json",
     "population-a-v2.public-synthetic-artifact.json",
     "population-a-v2.other-candidate.public-synthetic-artifact.json",
     "population-a-v2.run-artifact.json",
     "population-b-v1.public-synthetic-artifact.json",
     "pins.json",
+    "population-a-v2.projection.public-synthetic-artifact.json",
+    "pins.projection.json",
+    "projection-roster.json",
 ];
 
 fn consumer_dir() -> PathBuf {
@@ -60,6 +63,18 @@ fn population(id: &str, version: u32, drop_first_case: bool) -> CorpusSnapshot {
 /// One official public-synthetic run of `snapshot` over `package`, through the
 /// binary; the documents it wrote.
 fn measure(label: &str, node: &Path, snapshot: &CorpusSnapshot, package: &Path) -> Measured {
+    measure_with(label, node, snapshot, package, false)
+}
+
+/// [`measure`], optionally with the product projection (schema 1.2) built from
+/// the example roster, whose digest the official configuration pins.
+fn measure_with(
+    label: &str,
+    node: &Path,
+    snapshot: &CorpusSnapshot,
+    package: &Path,
+    projection: bool,
+) -> Measured {
     let tmp = TempDir::new(label);
     let snapshot_path = tmp.0.join("snapshot.json");
     std::fs::write(&snapshot_path, to_pretty_json(snapshot).unwrap()).unwrap();
@@ -70,9 +85,19 @@ fn measure(label: &str, node: &Path, snapshot: &CorpusSnapshot, package: &Path) 
     spec.mode = "official";
     spec.snapshot_digest = Some(snapshot.semantic_digest.as_str());
     spec.manifest_digest = Some(manifest.semantic_digest.as_str());
-    let extra = format!(
+    let mut extra = format!(
         r#","engineVersion": "{ENGINE_VERSION}","protocol": {{"id": "pii-v1", "revision": 2}}"#
     );
+    if projection {
+        let roster_path = example_dir().join("projection-roster.json");
+        let roster =
+            pii_eval_cli::projection::load_roster(&roster_path, snapshot, None).expect("roster");
+        extra.push_str(&format!(
+            r#","projection": {{"roster": {{"path": "{}", "rosterDigest": "{}"}}}}"#,
+            s(&roster_path),
+            roster.digest().as_str()
+        ));
+    }
     spec.extra_top = &extra;
     let config = tmp.0.join("run-config.json");
     std::fs::write(&config, spec.json()).unwrap();
@@ -133,6 +158,35 @@ fn pins_for(a1: &Value, a2: &Value, b1: &Value) -> Value {
     })
 }
 
+/// Pins for the projected artifact: schema 1.2, and the views, mode and roster
+/// digest the caller requires.
+fn projection_pins_for(a2: &Value) -> Value {
+    let sem = &a2["semantic"];
+    let block = &sem["productProjection"];
+    json!({
+        "schema": "pii-eval-consumer-pins/1",
+        "engine": sem["engine"],
+        "protocol": sem["protocol"],
+        "artifactSchema": {"id": a2["schema"], "version": a2["schemaVersion"]},
+        "requireComplete": true,
+        "populations": [{
+            "label": "population-a",
+            "population": sem["population"],
+            "runClass": sem["runClass"],
+            "artifactDigest": a2["semanticDigest"],
+            "manifestDigest": sem["manifestDigest"],
+            "retiredArtifactDigests": [],
+            "retiredManifestDigests": [],
+            "projection": {
+                "requiredViews": block["requiredViews"],
+                "mode": block["rows"][0]["mode"],
+                "rosterDigest": block["rosterDigest"],
+            },
+            "scanners": sem["scanners"].as_array().unwrap().iter().map(|s| s["identity"].clone()).collect::<Vec<_>>(),
+        }],
+    })
+}
+
 fn generated(node: &Path) -> Vec<(&'static str, Vec<u8>)> {
     let a1 = measure(
         "cf-a1",
@@ -160,6 +214,15 @@ fn generated(node: &Path) -> Vec<(&'static str, Vec<u8>)> {
         &json_of(&a2.public),
         &json_of(&b1.public),
     );
+    // Population A version 2 again, now with the product projection (schema 1.2).
+    let projected = measure_with(
+        "cf-a2-projection",
+        node,
+        &a2_snapshot,
+        &fake_core_dir(),
+        true,
+    );
+    let projection_pins = projection_pins_for(&json_of(&projected.public));
     vec![
         (NAMES[0], a1.public),
         (NAMES[1], a2.public),
@@ -167,6 +230,12 @@ fn generated(node: &Path) -> Vec<(&'static str, Vec<u8>)> {
         (NAMES[3], a2.internal),
         (NAMES[4], b1.public),
         (NAMES[5], pretty(&pins)),
+        (NAMES[6], projected.public),
+        (NAMES[7], pretty(&projection_pins)),
+        (
+            NAMES[8],
+            std::fs::read(example_dir().join("projection-roster.json")).unwrap(),
+        ),
     ]
 }
 
@@ -226,6 +295,22 @@ fn the_consumer_accepts_fresh_engine_output_and_rejects_the_negative_artifacts()
         report["rejections"][0]["reasons"][0]["code"],
         "artifact-superseded"
     );
+    // The projected artifact of the same population, under its own pins (1.2).
+    let projection_pins = f("pins.projection.json");
+    let (status, report) = consume(&["--pins", &projection_pins, &f(NAMES[6])]);
+    assert_eq!(status, 0, "{report}");
+    assert_eq!(report["pooling"], "none");
+    assert_eq!(
+        report["populations"][0]["productProjection"]["rows"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
+    // The 1.1 pins refuse the 1.2 artifact (and the other way round): no silent upgrade.
+    let (status, report) = consume(&["--pins", &pins, &f(NAMES[6]), &f(NAMES[4])]);
+    assert_eq!(status, 1);
+    assert!(report.to_string().contains("schema-version-unsupported"));
     // The wrong candidate, and the internal artifact.
     let (status, report) = consume(&["--pins", &pins, &f(NAMES[2]), &f(NAMES[4])]);
     assert_eq!(status, 1);

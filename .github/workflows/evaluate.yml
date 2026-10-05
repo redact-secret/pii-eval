@@ -34,6 +34,11 @@ on:
         required: false
         type: boolean
         default: false
+      artifact-suffix:
+        description: Optional lowercase suffix for the output artifact name (so two calls in one run do not collide)
+        required: false
+        type: string
+        default: ""
   workflow_call:
     inputs:
       engine-run-id:
@@ -51,6 +56,11 @@ on:
         required: false
         type: boolean
         default: false
+      artifact-suffix:
+        description: Optional lowercase suffix for the output artifact name (so two calls in one run do not collide)
+        required: false
+        type: string
+        default: ""
     outputs:
       artifact-name:
         description: Name of the artifact holding the run output
@@ -79,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
-      artifact-name: pii-eval-run-${{ github.run_id }}-${{ github.run_attempt }}
+      artifact-name: pii-eval-run-${{ github.run_id }}-${{ github.run_attempt }}${{ inputs.artifact-suffix != '' && format('-{0}', inputs.artifact-suffix) || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -96,9 +106,14 @@ jobs:
         env:
           ENGINE_RUN_ID: ${{ inputs.engine-run-id }}
           CONFIG: ${{ inputs.config }}
+          SUFFIX: ${{ inputs.artifact-suffix }}
         run: |
           set -euo pipefail
           nl=$'\n'
+          if [[ ! "$SUFFIX" =~ ^[a-z0-9-]{0,40}$ ]]; then
+            echo "artifact-suffix must be at most 40 characters of a-z, 0-9 and -" >&2
+            exit 2
+          fi
           if [[ "$ENGINE_RUN_ID" == *"$nl"* || "$CONFIG" == *"$nl"* ]]; then
             echo "inputs must be a single line" >&2
             exit 2
@@ -211,6 +226,23 @@ jobs:
             echo "pii-eval validate exited with status $rc" >&2
             exit "$rc"
           fi
+          # The public artifact too: schema 1.1, or 1.2 with the product projection, which
+          # is then recomputed from the snapshot and the configuration's roster
+          # (docs/cli.md, ADR 0016). The roster path comes from the configuration, resolved
+          # like the snapshot path; none means no projection was asked for.
+          roster=$(node -e 'const p=require("path"),fs=require("fs");const c=JSON.parse(fs.readFileSync(process.env.CONFIG,"utf8"));const r=c.projection&&c.projection.roster&&c.projection.roster.path;process.stdout.write(r?p.resolve(p.dirname(process.env.CONFIG),r):"")')
+          roster_args=()
+          if [ -n "$roster" ]; then
+            roster_args=(--projection-roster "$roster")
+          fi
+          rc=0
+          untrusted "$RUNNER_TEMP/validate-public-summary.raw" "$RUNNER_TEMP/validate-public-stderr.raw" \
+            "$engine" validate "$out/run/public-synthetic-artifact.json" --snapshot "$snapshot" "${roster_args[@]}" || rc=$?
+          node tools/ci/summary-line.mjs "$RUNNER_TEMP/validate-public-summary.raw" | tee "$RUNNER_TEMP/validate-public-summary.json"
+          if [ "$rc" -ne 0 ]; then
+            echo "pii-eval validate (public artifact) exited with status $rc" >&2
+            exit "$rc"
+          fi
       - name: Summary
         shell: bash
         run: |
@@ -233,10 +265,14 @@ jobs:
             echo '```json'
             cat "$RUNNER_TEMP/validate-summary.json"
             echo '```'
+            echo "Public artifact validation summary (the product projection, when asked for, is recomputed):"
+            echo '```json'
+            cat "$RUNNER_TEMP/validate-public-summary.json"
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: pii-eval-run-${{ github.run_id }}-${{ github.run_attempt }}
+          name: pii-eval-run-${{ github.run_id }}-${{ github.run_attempt }}${{ inputs.artifact-suffix != '' && format('-{0}', inputs.artifact-suffix) || '' }}
           path: ${{ runner.temp }}/run-output
           retention-days: 14
           if-no-files-found: error

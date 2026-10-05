@@ -12,7 +12,7 @@ retained; nobody else can.
 | File | Role |
 | --- | --- |
 | `.github/workflows/build-engine.yml` | Builds the engine once with the documented command (`cargo build --release --locked`), writes `build-info.json` and `SHA256SUMS`, verifies them, uploads the artifact. Triggers: `workflow_call` (any workflow can reuse it) and `workflow_dispatch` (by hand). |
-| `.github/workflows/ci.yml` | The `engine` job calls `build-engine.yml` on every push to `main` and every pull request, so the documented release build is exercised and an artifact exists for every CI run. The `evaluate` job then calls `evaluate.yml` with the run id of the same run, so every CI run proves that the artifact can be chosen, downloaded, verified and used (no second build). The `check` and `msrv` jobs use `Swatinem/rust-cache` (the cache action credential-eval pins), so repeated builds are incremental. |
+| `.github/workflows/ci.yml` | The `engine` job calls `build-engine.yml` on every push to `main` and every pull request, so the documented release build is exercised and an artifact exists for every CI run. The `evaluate` job then calls `evaluate.yml` with the run id of the same run, so every CI run proves that the artifact can be chosen, downloaded, verified and used (no second build). The `evaluate-projection` job calls it again with `examples/quickstart/run-config.projection.json` (a roster, ADR 0016): the public artifact in that run's output is schema 1.2 and the workflow validates it, recomputing the product projection from the roster. The `check` and `msrv` jobs use `Swatinem/rust-cache` (the cache action credential-eval pins), so repeated builds are incremental. |
 | `.github/workflows/evaluate.yml` | A dispatchable workflow that runs a **public, synthetic** evaluation with a **prebuilt** engine artifact. Triggers: `workflow_dispatch` and `workflow_call`. |
 | `.github/workflows/isolation.yml`, `tools/isolation/` | The `isolation` job of `ci.yml`: Node and the engine under the custodian's sandbox limits on a hosted Linux runner (`docs/custodian-isolation-node.md`). It uses the verified engine artifact of the same run, never loosens a limit, and fails if its sandbox controls fail. It is a measurement of limits, not a protected evaluation and not a deployment path. |
 | `.github/workflows/isolation.yml` (job `worker-flow`), `tools/isolation/worker-e2e.mjs` | The whole custodian worker flow in the same replica sandbox with the real pinned Node, driven by the test engine `worker_test_engine` (built with the feature `worker-test-adapters`; test code, never uploaded or part of the engine artifact; the production `pii-eval` refuses until the contract is decided). It fails if a control fails or any expected custodian outcome is violated, and never loosens a limit. No protected data (the synthetic job carries the protected run class); not a protected evaluation and not a deployment path (`docs/worker-job.md`). |
@@ -36,7 +36,7 @@ cache holds registry and git dependencies only (`cache-targets: false`), never
 cached build output.
 
 Evaluation output (from `evaluate.yml`) is a second, separate artifact,
-`pii-eval-run-<run id>-<attempt>`, retained 14 days. It holds the files the CLI
+`pii-eval-run-<run id>-<attempt>` (with `-<artifact-suffix>` when the caller gives one: the `evaluate-projection` job of `ci.yml` uses `projection`), retained 14 days. It holds the files the CLI
 wrote for a public/synthetic run.
 
 ## What the checks prove, and what they do not

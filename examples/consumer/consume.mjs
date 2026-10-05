@@ -34,6 +34,10 @@ const MAX_DEPTH = 32;
 const TOP_LEVEL_FIELDS = ["schema", "schemaVersion", "semantic", "semanticDigest"];
 const MAX_SAFE = Number.MAX_SAFE_INTEGER;
 
+/** The closed vocabulary of the schema 1.2 product projection (ADR 0016). */
+export const PROJECTION_VIEWS = ["benign-heavy-stress", "diagnostic-balanced", "oracle-plan", "qualification-plan"];
+export const PROJECTION_MODES = ["exploratory", "official"];
+
 /** The ten metric ids of protocol pii-v1 (docs/migration/ownership-map.md). */
 export const METRIC_IDS = [
   "benign-suppression-rate",
@@ -68,6 +72,17 @@ export const REASON_CODES = [
   "population-not-pinned",
   "population-version-mismatch",
   "population-visibility-mismatch",
+  "projection-binding-mismatch",
+  "projection-counts-mismatch",
+  "projection-malformed",
+  "projection-missing",
+  "projection-mode-mismatch",
+  "projection-mode-unknown",
+  "projection-pooled-denominator",
+  "projection-roster-mismatch",
+  "projection-row-duplicate",
+  "projection-view-missing",
+  "projection-view-unknown",
   "protocol-mismatch",
   "run-class-mismatch",
   "scanner-activation-mismatch",
@@ -358,6 +373,10 @@ export function verifyArtifact(doc, pins) {
   //    the rows; this consumer reads only the public projection.)
   reasons.push(...checkMetrics(sem, pin));
 
+  // 7. The product projection (schema 1.2), when the artifact carries one or
+  //    the pin requires one.
+  reasons.push(...checkProjection(sem, pin));
+
   return { pin, reasons: dedupe(reasons) };
 }
 
@@ -407,6 +426,142 @@ function checkMetrics(sem, pin) {
   return out;
 }
 
+const COUNT_FIELDS = ["authoredCases", "occurrences", "variants"];
+const ROW_FIELDS = ["binding", "byControlClass", "byLanguage", "counts", "family", "methodCoverage", "metrics", "mode", "view"];
+const BLOCK_FIELDS = ["requiredViews", "rosterDigest", "rows"];
+const HEX = /^[0-9a-f]{64}$/;
+
+const keysAre = (o, allowed, required) =>
+  Object.keys(o).every((k) => allowed.includes(k)) && required.every((k) => k in o);
+const nat = (n) => Number.isSafeInteger(n) && n >= 0;
+const countsOk = (c) =>
+  isObject(c) &&
+  keysAre(c, COUNT_FIELDS, COUNT_FIELDS) &&
+  COUNT_FIELDS.every((f) => nat(c[f])) &&
+  c.variants >= c.authoredCases &&
+  c.occurrences >= c.variants;
+
+/** A metric list is the ten metrics, each once, with sane counts that fit `cases`. */
+function metricProblems(metrics, cases, path, out) {
+  if (!Array.isArray(metrics)) return out.push(reason("projection-malformed", path));
+  const ids = metrics.map((m) => (isObject(m) && isObject(m.metric) ? m.metric.id : undefined));
+  if (!same(ids.slice().sort(), METRIC_IDS.slice().sort())) return out.push(reason("projection-malformed", path));
+  for (const m of metrics) {
+    const c = m.counts;
+    const fields = ["eligible", "measured", "notApplicable", "notMeasured", "numerator", "total", "unresolved"];
+    const ok =
+      isObject(c) && fields.every((f) => nat(c[f])) && nat(m.effectiveN) &&
+      c.numerator <= c.measured && c.measured <= c.eligible && c.eligible <= c.total;
+    if (!ok) return out.push(reason("projection-malformed", path));
+    // One sample is one authored case (a trio for context discrimination); the
+    // axis-assertion metric counts at most two assertions per case. A larger
+    // total counts cases the row does not hold: a pooled denominator.
+    const per = m.metric.id === "measurable-share" ? 2 : 1;
+    if (c.total > cases * per) return out.push(reason("projection-pooled-denominator", path));
+  }
+}
+
+/**
+ * The schema 1.2 product projection (ADR 0016): one population, per
+ * (scanner, view, family) rows. Rejects duplicate rows, absent required views,
+ * pooled denominators, unknown modes and views, and a row whose binding differs
+ * from the artifact. Never merges rows and never derives a verdict.
+ */
+function checkProjection(sem, pin) {
+  const out = [];
+  const block = sem.productProjection;
+  const want = pin.projection;
+  if (block === undefined) {
+    if (want) out.push(reason("projection-missing", "productProjection"));
+    return out;
+  }
+  const malformed = (field) => out.push(reason("projection-malformed", field));
+  if (!isObject(block) || !keysAre(block, BLOCK_FIELDS, BLOCK_FIELDS) || !HEX.test(block.rosterDigest) || !Array.isArray(block.rows) || !Array.isArray(block.requiredViews)) {
+    malformed("productProjection");
+    return out;
+  }
+  const required = block.requiredViews;
+  if (required.length === 0) malformed("productProjection.requiredViews");
+  for (const v of required) if (!PROJECTION_VIEWS.includes(v)) out.push(reason("projection-view-unknown", "productProjection.requiredViews"));
+  if (required.some((v, i) => i > 0 && !(required[i - 1] < v))) malformed("productProjection.requiredViews");
+  if (want) {
+    if (want.rosterDigest && want.rosterDigest !== block.rosterDigest) out.push(reason("projection-roster-mismatch", "productProjection.rosterDigest"));
+    for (const v of want.requiredViews) if (!required.includes(v)) out.push(reason("projection-view-missing", "productProjection.requiredViews"));
+  }
+
+  const scanners = Array.isArray(sem.scanners) ? sem.scanners.filter(isObject) : [];
+  const seen = new Set();
+  const sums = new Map();
+  let mode;
+  block.rows.forEach((row, i) => {
+    const at = `productProjection.rows[${i}]`;
+    if (!isObject(row) || !keysAre(row, ROW_FIELDS, ["binding", "counts", "family", "methodCoverage", "metrics", "mode", "view"])) return malformed(at);
+    if (!PROJECTION_MODES.includes(row.mode)) out.push(reason("projection-mode-unknown", `${at}.mode`));
+    if (!PROJECTION_VIEWS.includes(row.view)) out.push(reason("projection-view-unknown", `${at}.view`));
+    else if (!required.includes(row.view)) out.push(reason("projection-view-unknown", `${at}.view`));
+    if (typeof row.family !== "string" || row.family.length === 0) return malformed(`${at}.family`);
+    if (!isObject(row.binding) || typeof row.binding.scannerId !== "string") return malformed(`${at}.binding`);
+    const key = `${row.binding.scannerId}|${row.view}|${row.family}`;
+    if (seen.has(key)) out.push(reason("projection-row-duplicate", at));
+    seen.add(key);
+    // One mode for the whole artifact, and the pinned one when pinned.
+    if (PROJECTION_MODES.includes(row.mode)) {
+      mode ??= row.mode;
+      if (row.mode !== mode || (want?.mode && row.mode !== want.mode)) out.push(reason("projection-mode-mismatch", `${at}.mode`));
+    }
+    // Binding: the row says it belongs to this artifact's scanner and population.
+    const s = scanners.find((x) => isObject(x.identity) && x.identity.scannerId === row.binding.scannerId);
+    const b = row.binding;
+    const bound =
+      s !== undefined &&
+      b.configurationDigest === s.identity.configurationDigest &&
+      b.activationDigest === s.identity.activationDigest &&
+      same(b.product, s.identity.product) &&
+      same(b.population, sem.population);
+    if (!bound) out.push(reason("projection-binding-mismatch", `${at}.binding`));
+    // Counts: the row's own, inside the row's own cases.
+    if (!countsOk(row.counts)) return malformed(`${at}.counts`);
+    const cov = row.methodCoverage;
+    if (!Array.isArray(cov) || cov.some((m) => !isObject(m) || !nat(m.cases) || !nat(m.variants))) return malformed(`${at}.methodCoverage`);
+    if (cov.reduce((a, m) => a + m.cases, 0) !== row.counts.authoredCases || cov.reduce((a, m) => a + m.variants, 0) !== row.counts.variants) {
+      out.push(reason("projection-counts-mismatch", `${at}.methodCoverage`));
+    }
+    metricProblems(row.metrics, row.counts.authoredCases, `${at}.metrics`, out);
+    for (const [name, partition] of [["byLanguage", true], ["byControlClass", false]]) {
+      const strata = row[name];
+      if (strata === undefined) continue;
+      if (!Array.isArray(strata) || strata.some((x) => !isObject(x) || !countsOk(x.counts))) {
+        malformed(`${at}.${name}`);
+        continue;
+      }
+      strata.forEach((x, j) => metricProblems(x.metrics, x.counts.authoredCases, `${at}.${name}[${j}].metrics`, out));
+      const total = (f) => strata.reduce((a, x) => a + x.counts[f], 0);
+      const over = COUNT_FIELDS.some((f) => total(f) > row.counts[f]);
+      const under = partition && strata.length > 0 && COUNT_FIELDS.some((f) => total(f) < row.counts[f]);
+      if (over) out.push(reason("projection-pooled-denominator", `${at}.${name}`));
+      else if (under) out.push(reason("projection-counts-mismatch", `${at}.${name}`));
+    }
+    const sum = sums.get(row.binding.scannerId) ?? { authoredCases: 0, occurrences: 0, variants: 0 };
+    for (const f of COUNT_FIELDS) sum[f] += row.counts[f];
+    sums.set(row.binding.scannerId, sum);
+  });
+  // Every scanner has every required view, and its rows add up to the
+  // population exactly: more is a pooled denominator, less a missing cell.
+  const pc = sem.populationCounts;
+  for (const s of scanners) {
+    const id = s.identity?.scannerId;
+    for (const v of required) {
+      if (!block.rows.some((r) => isObject(r) && isObject(r.binding) && r.binding.scannerId === id && r.view === v)) {
+        out.push(reason("projection-view-missing", "productProjection.rows"));
+      }
+    }
+    const sum = sums.get(id) ?? { authoredCases: 0, occurrences: 0, variants: 0 };
+    if (isObject(pc) && COUNT_FIELDS.some((f) => sum[f] > pc[f])) out.push(reason("projection-pooled-denominator", "productProjection.rows"));
+    else if (isObject(pc) && COUNT_FIELDS.some((f) => sum[f] !== pc[f])) out.push(reason("projection-counts-mismatch", "productProjection.rows"));
+  }
+  return out;
+}
+
 function dedupe(reasons) {
   const seen = new Set();
   return reasons.filter((r) => {
@@ -423,6 +578,8 @@ function dedupe(reasons) {
 
 const HEX64 = /^[0-9a-f]{64}$/;
 export const PUBLIC_SCHEMA_VERSION = "1.1";
+/** The schema versions a pin may name. 1.2 adds the optional product projection (ADR 0016). */
+export const PUBLIC_SCHEMA_VERSIONS = ["1.1", "1.2"];
 
 /**
  * Validate and normalize the caller's pin document, strictly: an unusable pin
@@ -437,7 +594,7 @@ export function loadPins(text) {
   need(isObject(p) && p.schema === PINS_SCHEMA, "pins-schema");
   need(isObject(p.engine) && isObject(p.protocol), "pins-identity");
   need(
-    isObject(p.artifactSchema) && p.artifactSchema.id === PUBLIC_SCHEMA && p.artifactSchema.version === PUBLIC_SCHEMA_VERSION,
+    isObject(p.artifactSchema) && p.artifactSchema.id === PUBLIC_SCHEMA && PUBLIC_SCHEMA_VERSIONS.includes(p.artifactSchema.version),
     "pins-artifact-schema",
   );
   need(typeof p.requireComplete === "boolean", "pins-require-complete");
@@ -465,6 +622,17 @@ export function loadPins(text) {
     );
     // A digest cannot be both the head and retired.
     need(!q.retiredArtifactDigests.includes(q.artifactDigest) && !q.retiredManifestDigests.includes(q.manifestDigest), "pins-head-retired");
+    // An optional projection pin: the views the population's artifact must
+    // cover, the mode, and optionally the roster digest. Schema 1.2 only.
+    if (q.projection !== undefined) {
+      const w = q.projection;
+      need(
+        p.artifactSchema.version === "1.2" && isObject(w) && Array.isArray(w.requiredViews) && w.requiredViews.length > 0 &&
+          w.requiredViews.every((v) => PROJECTION_VIEWS.includes(v)) && new Set(w.requiredViews).size === w.requiredViews.length &&
+          (w.mode === undefined || PROJECTION_MODES.includes(w.mode)) && (w.rosterDigest === undefined || HEX64.test(w.rosterDigest)),
+        "pins-projection",
+      );
+    }
     need(Array.isArray(q.scanners) && q.scanners.length > 0, "pins-scanners");
     const scannerIds = new Set();
     for (const s of q.scanners) {
@@ -528,6 +696,7 @@ export function consume(pins, artifacts) {
       population: sem.population,
       populationCounts: sem.populationCounts,
       populationId: pin.population.populationId,
+      productProjection: sem.productProjection,
       scanners: pin.scanners.map((want) => {
         const s = sem.scanners.find((x) => x.identity.scannerId === want.scannerId);
         const block = sem.scannerMetrics.find((b) => b.scannerId === want.scannerId);

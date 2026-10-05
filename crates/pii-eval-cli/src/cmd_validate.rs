@@ -18,7 +18,8 @@ use pii_eval_contracts::{
     validate_observation_against_snapshot, validate_public_artifact_against_snapshot,
 };
 use pii_eval_kernel::{
-    VerifyFailure, verify_public_artifact_accounting, verify_run_artifact_accounting,
+    VerifyFailure, verify_public_artifact_accounting, verify_public_projection,
+    verify_run_artifact_accounting,
 };
 use serde_json::{Value, json};
 
@@ -117,6 +118,9 @@ pub fn validate(args: &ValidateArgs) -> Result<Report, Failure> {
             None => None,
         },
     };
+    if args.projection_roster.is_some() && kind != DocumentKind::PublicSyntheticArtifact {
+        return Err(not_applicable("projection-roster"));
+    }
     let limits = ParseLimits::default();
     // Protected documents are handled only inside a custodian job context, and
     // their counts are withheld (ADR 0010 C6).
@@ -225,6 +229,16 @@ pub fn validate(args: &ValidateArgs) -> Result<Report, Failure> {
                 parse(&bytes, &limits).map_err(|v| from_violations(stem, &v))?;
             let legacy = d.semantic.protocol.is_legacy();
             let mut verification = "not-run";
+            // The product projection (schema 1.2): structure and bindings were
+            // checked by the typed parse; with a roster and a snapshot the block
+            // is recomputed from the authored population.
+            let mut projection = d.semantic.product_projection.as_ref().map(|_| "structural");
+            if args.projection_roster.is_some() && ctx.snapshot.is_none() {
+                return Err(Failure::usage(
+                    reason::MISSING_REQUIRED_OPTION,
+                    "snapshot (needed with projection-roster)",
+                ));
+            }
             if let Some(snapshot) = &ctx.snapshot {
                 validate_public_artifact_against_snapshot(&d, snapshot)
                     .map_err(|v| from_binding(stem, &v))?;
@@ -232,6 +246,12 @@ pub fn validate(args: &ValidateArgs) -> Result<Report, Failure> {
                 if !legacy {
                     verify_public_artifact_accounting(&d, snapshot).map_err(verify_failure)?;
                     verification = "verified";
+                    if let Some(path) = &args.projection_roster {
+                        let roster =
+                            crate::projection::load_roster(Path::new(path), snapshot, None)?;
+                        verify_public_projection(&d, snapshot, &roster).map_err(verify_failure)?;
+                        projection = Some("recomputed");
+                    }
                 }
             }
             if legacy {
@@ -246,12 +266,16 @@ pub fn validate(args: &ValidateArgs) -> Result<Report, Failure> {
                     .map(|x| (x.identity.scanner_id.as_str(), wire(&x.status))),
             );
             s["completeness"] = json!(wire(&d.semantic.completeness));
+            if let Some(p) = projection {
+                s["productProjection"] = json!(p);
+            }
             (s, legacy, verification)
         }
     };
     let mut paths: Vec<&Path> = vec![Path::new(&args.file)];
     paths.extend(args.snapshot.as_deref().map(Path::new));
     paths.extend(args.manifest.as_deref().map(Path::new));
+    paths.extend(args.projection_roster.as_deref().map(Path::new));
     confine(protected, args.job_context.as_deref(), &paths, None)?;
     if protected {
         if let Some(o) = semantic.as_object_mut() {

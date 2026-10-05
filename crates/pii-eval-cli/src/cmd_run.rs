@@ -30,7 +30,9 @@ use crate::args::RunArgs;
 use crate::config::{JobContext, ProductKind, RunConfig};
 use crate::exec::{CancelToken, ExecError, ExecutorConfig};
 use crate::files::{OutputDir, canonical_or_parent, is_inside, prepare_output, read_input};
-use crate::run::{RunConfig as PipelineConfig, RunError, RunRequest, run_and_write};
+use crate::run::{
+    RunConfig as PipelineConfig, RunError, RunRequest, run_and_write_with_projection,
+};
 use crate::scanners::{build_adapter, preflight_pins};
 use crate::status::{Exit, Failure, from_binding, from_violations, reason};
 use crate::summary::{Report, files_value};
@@ -217,6 +219,30 @@ pub fn run(args: &RunArgs, cancel: &CancelToken) -> Result<Report, Failure> {
         }
     }
 
+    // 4b. The optional product projection: the roster is read and checked
+    // against the snapshot here, before any scanner starts.
+    let roster_path = args
+        .projection_roster
+        .as_ref()
+        .map(PathBuf::from)
+        .or_else(|| config.projection.as_ref().map(|p| p.path.clone()));
+    let projection = match roster_path {
+        None => None,
+        Some(path) => {
+            if protected {
+                return Err(Failure::config("projection (public-synthetic runs only)"));
+            }
+            let pin = config.projection.as_ref().and_then(|p| p.digest.as_ref());
+            if config.mode == crate::config::Mode::Official && pin.is_none() {
+                return Err(Failure::config("projection.roster.rosterDigest (required)"));
+            }
+            Some(crate::projection::request(
+                crate::projection::load_roster(&path, &snapshot, pin)?,
+                config.mode,
+            ))
+        }
+    };
+
     // 5. Adapters; each derived plan must equal the manifest's.
     let node_of = |cfg: &crate::config::ScannerConfig| -> Result<PathBuf, Failure> {
         let node = args
@@ -308,7 +334,7 @@ pub fn run(args: &RunArgs, cancel: &CancelToken) -> Result<Report, Failure> {
         ArtifactWriter::new(output.path(), config.output.overwrite).with_manifest(),
         output.path(),
     );
-    let result = run_and_write(
+    let result = run_and_write_with_projection(
         &RunRequest {
             snapshot: &snapshot,
             manifest: &manifest,
@@ -321,6 +347,7 @@ pub fn run(args: &RunArgs, cancel: &CancelToken) -> Result<Report, Failure> {
         },
         cancel,
         &writer,
+        projection.as_ref(),
     );
     let (out, written) = match result {
         Ok(ok) => ok,
@@ -392,6 +419,19 @@ pub fn run(args: &RunArgs, cancel: &CancelToken) -> Result<Report, Failure> {
         "failureCodes": artifact.semantic.failures.iter().map(|f| wire(&f.code)).collect::<Vec<_>>(),
     });
     let mut semantic = semantic;
+    if let Some(block) = out
+        .assembled
+        .public
+        .as_ref()
+        .and_then(|p| p.semantic.product_projection.as_ref())
+    {
+        semantic["productProjection"] = json!({
+            "rosterDigest": block.roster_digest.as_str(),
+            "mode": block.rows.first().map(|r| r.mode.as_str()),
+            "requiredViews": block.required_views.iter().map(|v| v.as_str()).collect::<Vec<_>>(),
+            "rows": block.rows.len(),
+        });
+    }
     if let Some(o) = semantic.as_object_mut() {
         if protected {
             // A protected run reports identities and statuses, not the

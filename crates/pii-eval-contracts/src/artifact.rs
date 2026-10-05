@@ -30,6 +30,7 @@ use crate::ident::{FamilyId, Id, JurisdictionCode, ScannerId, Sha256Digest, Time
 use crate::limits::{MAX_FAILURES, MAX_OUTCOMES, MAX_SAFE_INTEGER, MAX_SCANNERS};
 use crate::manifest::{PopulationBinding, RunClass};
 use crate::observation::{ReplayRecord, scanner_state_consistent};
+use crate::projection::{ProductProjection, ProjectionContext};
 use crate::protocol::{
     EffectiveNBasis, Mechanics, MethodId, MethodRef, MetricRef, MetricStatus, ProtocolIdentity,
     WithheldReason,
@@ -281,7 +282,7 @@ impl MetricCounts {
 }
 
 impl MetricResult {
-    fn validate(&self, mechanics: &Mechanics, path: &Path<'_>, c: &mut Collector) {
+    pub(crate) fn validate(&self, mechanics: &Mechanics, path: &Path<'_>, c: &mut Collector) {
         let definition = self.metric.id.definition();
         if self.metric.version != definition.version {
             c.push(ReasonCode::MetricDefinitionMismatch, &path.field("metric"));
@@ -613,6 +614,12 @@ pub struct PublicSyntheticArtifactBody {
     pub failures: Vec<MeasurementFailure>,
     /// Coverage of the outcome matrix.
     pub completeness: Completeness,
+    /// The product projection: per (scanner, view, family) counts and metrics
+    /// for this one population. Optional and additive (schema 1.2, ADR 0016):
+    /// present only when the caller supplied a roster, and only under a schema
+    /// version of 1.2 or later. It is part of the semantic digest.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub product_projection: Option<ProductProjection>,
 }
 
 /// A public-synthetic artifact document.
@@ -629,11 +636,30 @@ pub struct PublicSyntheticArtifact {
     pub semantic: PublicSyntheticArtifactBody,
 }
 
-impl_document!(
+impl_document!(@impl
     PublicSyntheticArtifact,
     PublicSyntheticArtifactBody,
     crate::version::DocumentKind::PublicSyntheticArtifact,
-    protocol
+    {
+        fn validate_gates(&self, c: &mut Collector) {
+            crate::protocol::check_revision_gate(
+                self.schema_version,
+                &self.semantic.protocol,
+                c,
+            );
+            // The product projection exists from schema 1.2 on, and only with
+            // the canonical protocol (it restates revision-2 accounting).
+            if self.semantic.product_projection.is_some()
+                && (self.schema_version < SchemaVersion::V1_2
+                    || !self.semantic.protocol.is_canonical())
+            {
+                c.push(
+                    ReasonCode::ProjectionInvalid,
+                    &Path::ROOT.field("semantic").field("productProjection"),
+                );
+            }
+        }
+    }
 );
 
 impl RunArtifact {
@@ -646,6 +672,20 @@ impl RunArtifact {
     /// The projection is sealed under the schema version of its source: 1.0 for a
     /// revision-1 artifact, the current version (1.1) for revision 2.
     pub fn to_public_synthetic(&self) -> Result<PublicSyntheticArtifact, Violations> {
+        self.to_public_synthetic_with_projection(None)
+    }
+
+    /// [`Self::to_public_synthetic`] with the optional product projection
+    /// (schema 1.2, ADR 0016). With `None` the output is byte-identical to the
+    /// 1.1 projection; with `Some` the artifact is sealed under 1.2 and the
+    /// block is part of its semantic digest. The block is built by the kernel
+    /// from the authored population and the caller's roster; here it is
+    /// attached and its structure and bindings are validated (a block that
+    /// fails is refused, with the stable reason codes).
+    pub fn to_public_synthetic_with_projection(
+        &self,
+        projection: Option<ProductProjection>,
+    ) -> Result<PublicSyntheticArtifact, Violations> {
         // A tampered or corrupt artifact is never projected.
         crate::document::validate(self)?;
         let body = &self.semantic;
@@ -660,7 +700,9 @@ impl RunArtifact {
         // (revision 1, schema 1.0) artifact projects to a legacy public one.
         let mut public = PublicSyntheticArtifact {
             schema: PublicSyntheticArtifactSchema::Only,
-            schema_version: if body.protocol.is_canonical() {
+            schema_version: if projection.is_some() {
+                SchemaVersion::V1_2
+            } else if body.protocol.is_canonical() {
                 SchemaVersion::CURRENT
             } else {
                 SchemaVersion::V1_0
@@ -696,9 +738,15 @@ impl RunArtifact {
                 scanner_metrics: body.scanner_metrics.clone(),
                 failures: body.failures.clone(),
                 completeness: body.completeness,
+                product_projection: projection,
             },
         };
         crate::document::seal(&mut public)?;
+        if public.semantic.product_projection.is_some() {
+            // A block this engine built that fails its own structure is a
+            // defect, never a document to publish.
+            crate::document::validate(&public)?;
+        }
         Ok(public)
     }
 }
@@ -1110,6 +1158,21 @@ impl PublicSyntheticArtifactBody {
             path,
             c,
         );
+        if let Some(projection) = &self.product_projection {
+            let scanners: Vec<(&ScannerIdentity, ScannerStatus)> =
+                views.iter().map(|v| (v.identity, v.status)).collect();
+            projection.validate(
+                &ProjectionContext {
+                    scanners: &scanners,
+                    population: &self.population,
+                    counts: &self.population_counts,
+                    methods: &self.method_coverage,
+                    mechanics: &self.mechanics,
+                },
+                &path.field("productProjection"),
+                c,
+            );
+        }
     }
 }
 

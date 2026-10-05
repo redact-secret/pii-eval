@@ -25,7 +25,12 @@ pub const SCHEMA_MAJOR: u16 = 1;
 /// with its rule identities, per-scanner metrics, the `resource-limit-exceeded`
 /// failure code and the runtime provenance of observation diagnostics. Every
 /// valid 1.0 document is still valid and keeps its digest.
-pub const SCHEMA_MINOR: u16 = 1;
+///
+/// 1.2 (ADR 0016) adds one optional block to the public-synthetic artifact, the
+/// product projection. This is the highest minor a reader accepts; what a
+/// writer emits by default is [`SchemaVersion::CURRENT`] (still 1.1): a document
+/// is sealed under 1.2 only when it carries the block.
+pub const SCHEMA_MINOR: u16 = 2;
 
 /// The five document kinds. The string is the `schema` field value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -90,11 +95,10 @@ pub struct SchemaVersion {
 }
 
 impl SchemaVersion {
-    /// The version this crate writes.
-    pub const CURRENT: SchemaVersion = SchemaVersion {
-        major: SCHEMA_MAJOR,
-        minor: SCHEMA_MINOR,
-    };
+    /// The version this crate writes by default: 1.1. Schema 1.2 is additive and
+    /// opt-in (ADR 0016), so no document that does not carry the product
+    /// projection changes its bytes or its digest.
+    pub const CURRENT: SchemaVersion = SchemaVersion::V1_1;
 
     /// Schema 1.0, the freeze of P2. Legacy (protocol revision 1) documents are
     /// sealed under it and stay valid and unchanged.
@@ -102,6 +106,10 @@ impl SchemaVersion {
 
     /// Schema 1.1: protocol revision 2 (ADR 0008).
     pub const V1_1: SchemaVersion = SchemaVersion { major: 1, minor: 1 };
+
+    /// Schema 1.2: the optional product-projection block of the public
+    /// artifact (ADR 0016).
+    pub const V1_2: SchemaVersion = SchemaVersion { major: 1, minor: 2 };
 
     /// Parse `"<major>.<minor>"`: ASCII digits, no sign, no leading zeros.
     pub fn parse(text: &str) -> Option<Self> {
@@ -212,7 +220,8 @@ mod tests {
         let v = |major, minor| SchemaVersion { major, minor };
         assert_eq!(v(1, 0).readable(), Ok(()));
         assert_eq!(v(1, 1).readable(), Ok(()));
-        assert_eq!(v(1, 2).readable(), Err(ReasonCode::SchemaMinorTooNew));
+        assert_eq!(v(1, 2).readable(), Ok(()));
+        assert_eq!(v(1, 3).readable(), Err(ReasonCode::SchemaMinorTooNew));
         assert_eq!(v(2, 0).readable(), Err(ReasonCode::IncompatibleSchemaMajor));
         assert_eq!(v(0, 9).readable(), Err(ReasonCode::IncompatibleSchemaMajor));
     }

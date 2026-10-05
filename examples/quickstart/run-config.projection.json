@@ -1,0 +1,22 @@
+{
+  "schema": "pii-eval-run-config/1",
+  "mode": "exploratory",
+  "runClass": "public-synthetic",
+  "product": "candidate",
+  "snapshot": {"path": "snapshot.json"},
+  "manifest": {"path": "manifest.json"},
+  "scanners": [
+    {
+      "adapter": "redact-secret-core",
+      "shim": {"path": "../../crates/pii-eval-adapters/shims/node/redact-secret-core.mjs"},
+      "package": {
+        "dir": "../../crates/pii-eval-adapters/tests/fixtures/fake-core",
+        "entry": "lib/index.js",
+        "version": "0.1.0-beta.12",
+        "treeSha256": "35442b4205465fd400852079fa1620eae869ddc2b3ea5f849a4bd92406fb8737"
+      }
+    }
+  ],
+  "host": {"maxWorkers": 2, "resources": "enforce"},
+  "projection": {"roster": {"path": "projection-roster.json"}}
+}

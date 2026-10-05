@@ -450,7 +450,12 @@ fn check_all(
     if let Some(public) = &assembled.public {
         validate(public).map_err(invalid)?;
         verify_public_artifact_accounting(public, snapshot).map_err(WriteError::Verification)?;
-        let projected = artifact.to_public_synthetic().map_err(invalid)?;
+        // The public artifact is the projection of the internal one, plus the
+        // optional product-projection block (validated structurally above and
+        // recomputable with `validate --projection-roster`).
+        let projected = artifact
+            .to_public_synthetic_with_projection(public.semantic.product_projection.clone())
+            .map_err(invalid)?;
         if *public != projected {
             return Err(WriteError::Invalid);
         }

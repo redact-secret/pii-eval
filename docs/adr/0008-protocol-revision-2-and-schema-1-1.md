@@ -64,7 +64,7 @@ binds to a revision-2 manifest.
 ## 2. Schema 1.1: exactly what changed
 
 Schema version is now `1.1` (`SCHEMA_MINOR = 1`); readers accept `1.0` and
-`1.1`; `1.2` is `schema-minor-too-new`. Per ADR 0002 every change is optional or
+`1.1`; `1.2` was `schema-minor-too-new` until [ADR 0016](0016-product-projection-and-schema-1-2.md) added it (the product projection). Per ADR 0002 every change is optional or
 revision-gated, so every valid 1.0 document is still valid:
 
 | Change | Where | Rule |
@@ -193,6 +193,8 @@ test builds a group with extra sensitive and neutral frames.
 | R7 | Runtime provenance recorded in diagnostics. | Addition (non-semantic) |
 
 ## 9. Considered and deferred
+
+(Population views arrived as the optional product projection of schema 1.2, ADR 0016.)
 
 - Population `view` (diagnostic-balanced / benign-heavy-stress), benign class
   and evidence class (P5): not added. They are optional fields that can arrive

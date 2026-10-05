@@ -751,3 +751,135 @@ impl Fixtures {
         Fixtures::build(Visibility::PublicSynthetic, ProductIdentity::Released)
     }
 }
+
+// ---------------------------------------------------------------------------
+// Product projection (schema 1.2, ADR 0016). Structural fixtures only: every
+// metric is the all-zero `not-applicable` result, so counts need no scoring
+// rule. Real values come from the kernel (`pii-eval-kernel` projection tests).
+// ---------------------------------------------------------------------------
+
+fn zero_metric_results() -> Vec<MetricResult> {
+    let mut out: Vec<MetricResult> = METRICS
+        .iter()
+        .map(|d| MetricResult {
+            metric: MetricRef {
+                id: d.id,
+                version: d.version,
+            },
+            status: MetricStatus::NotApplicable,
+            counts: MetricCounts {
+                eligible: 0,
+                measured: 0,
+                numerator: 0,
+                unresolved: 0,
+                not_measured: 0,
+                not_applicable: 0,
+                total: 0,
+            },
+            effective_n: 0,
+            value: MetricValue::Withheld {
+                reason: WithheldReason::ZeroDenominator,
+            },
+        })
+        .collect();
+    out.sort_by_key(|m| m.metric.id.as_str());
+    out
+}
+
+/// Two cells per scanner that partition the fixture population (3 cases, 6
+/// variants, 6 occurrences): `oracle-plan` / `pii:global:email` holds the
+/// context case, `qualification-plan` / `pii:us:ssn` the other two.
+pub fn projection_block(
+    public: &PublicSyntheticArtifact,
+    mode: ProjectionMode,
+) -> ProductProjection {
+    let body = &public.semantic;
+    let cell = |scanner: &PublicScannerSummary,
+                view: ProjectionView,
+                family: &str,
+                counts: (u64, u64, u64),
+                methods: &[(MethodId, u64, u64)]| ProjectionRow {
+        family: fam(family),
+        view,
+        mode,
+        binding: ProjectionBinding {
+            scanner_id: scanner.identity.scanner_id.clone(),
+            configuration_digest: scanner.identity.configuration_digest.clone(),
+            activation_digest: scanner.identity.activation_digest.clone(),
+            product: scanner.identity.product.clone(),
+            population: body.population.clone(),
+        },
+        counts: PopulationCounts {
+            authored_cases: counts.0,
+            variants: counts.1,
+            occurrences: counts.2,
+        },
+        method_coverage: methods
+            .iter()
+            .map(|(m, cases, variants)| MethodCoverage {
+                method: MethodRef::frozen(*m),
+                cases: *cases,
+                variants: *variants,
+            })
+            .collect(),
+        metrics: zero_metric_results(),
+        by_language: vec![],
+        by_control_class: vec![],
+    };
+    let mut rows = Vec::new();
+    for s in &body.scanners {
+        rows.push(cell(
+            s,
+            ProjectionView::OraclePlan,
+            "pii:global:email",
+            (1, 3, 3),
+            &[(MethodId::ContextDiscrimination, 1, 3)],
+        ));
+        rows.push(cell(
+            s,
+            ProjectionView::QualificationPlan,
+            "pii:us:ssn",
+            (2, 3, 3),
+            &[
+                (MethodId::JurisdictionCollision, 1, 1),
+                (MethodId::TypeValidation, 1, 2),
+            ],
+        ));
+    }
+    rows.sort_by_key(|r| {
+        (
+            r.binding.scanner_id.as_str().to_owned(),
+            r.view.as_str(),
+            r.family.as_str().to_owned(),
+        )
+    });
+    ProductProjection {
+        roster_digest: digest_of("synthetic-roster"),
+        required_views: vec![
+            ProjectionView::OraclePlan,
+            ProjectionView::QualificationPlan,
+        ],
+        rows,
+    }
+}
+
+/// The canonical public artifact with `block` attached, sealed under 1.2.
+pub fn public_with_projection(f: &Fixtures, block: ProductProjection) -> PublicSyntheticArtifact {
+    f.artifact
+        .to_public_synthetic_with_projection(Some(block))
+        .expect("a structurally valid projection seals")
+}
+
+/// A valid 1.2 artifact whose block was edited and resealed without validating,
+/// so the validator, not the builder, rejects it.
+pub fn edited_projection(
+    f: &Fixtures,
+    edit: impl FnOnce(&mut PublicSyntheticArtifact),
+) -> PublicSyntheticArtifact {
+    let base = f.artifact.to_public_synthetic().unwrap();
+    let mut doc = public_with_projection(f, projection_block(&base, ProjectionMode::Exploratory));
+    edit(&mut doc);
+    let digest = compute_digest(&doc).unwrap();
+    doc.semantic_digest = digest;
+    doc
+}

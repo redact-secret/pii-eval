@@ -44,6 +44,12 @@ fn replace_once(text: &str, from: &str, to: &str) -> String {
     text.replacen(from, to, 1)
 }
 
+/// Replace the first occurrence (the anchor repeats once per projection row).
+fn replace_once_n(text: &str, from: &str, to: &str) -> String {
+    assert!(text.contains(from), "mutation anchor must exist");
+    text.replacen(from, to, 1)
+}
+
 fn doc_probe(kind: DocumentKind, label: &str, expected: ReasonCode, bytes: Vec<u8>) -> Probe {
     Probe {
         name: format!(
@@ -197,8 +203,9 @@ fn probes() -> Vec<Probe> {
         k_snap,
         "minor-newer-than-reader",
         ReasonCode::SchemaMinorTooNew,
-        // 1.1 is readable since P7 (ADR 0008); 1.2 is the first newer minor.
-        replace_once(&snap, version_line, "\"schemaVersion\": \"1.2\","),
+        // 1.1 is readable since P7 (ADR 0008) and 1.2 since ADR 0016; 1.3 is the
+        // first newer minor.
+        replace_once(&snap, version_line, "\"schemaVersion\": \"1.3\","),
     );
     raw(
         k_snap,
@@ -961,6 +968,77 @@ fn probes() -> Vec<Probe> {
             .unwrap()
             .into_bytes(),
     ));
+
+    // ---- Product projection (schema 1.2, ADR 0016). ----
+    let base2 = c2.artifact.to_public_synthetic().unwrap();
+    let block = projection_block(&base2, ProjectionMode::Official);
+    let mut projection =
+        |label: &str, code: ReasonCode, edit: &dyn Fn(&mut PublicSyntheticArtifact)| {
+            let mut doc = public_with_projection(&c2, block.clone());
+            edit(&mut doc);
+            let digest = compute_digest(&doc).unwrap();
+            doc.semantic_digest = digest;
+            out.push(doc_probe(
+                k_pub,
+                label,
+                code,
+                serialize_public_synthetic(&doc).unwrap().into_bytes(),
+            ));
+        };
+    projection(
+        "projection-under-schema-1-1",
+        ReasonCode::ProjectionInvalid,
+        &|d| d.schema_version = SchemaVersion::V1_1,
+    );
+    projection(
+        "required-view-without-rows",
+        ReasonCode::ProjectionViewMissing,
+        &|d| {
+            d.semantic
+                .product_projection
+                .as_mut()
+                .unwrap()
+                .rows
+                .retain(|r| r.view != ProjectionView::QualificationPlan)
+        },
+    );
+    projection(
+        "row-bound-to-another-configuration",
+        ReasonCode::ProjectionBindingMismatch,
+        &|d| {
+            d.semantic.product_projection.as_mut().unwrap().rows[0]
+                .binding
+                .configuration_digest = digest_of("another-configuration")
+        },
+    );
+    projection(
+        "row-counts-more-occurrences-than-the-population",
+        ReasonCode::ProjectionPooledDenominator,
+        &|d| {
+            let n = d.semantic.population_counts.occurrences + 1;
+            d.semantic.product_projection.as_mut().unwrap().rows[0]
+                .counts
+                .occurrences = n
+        },
+    );
+    projection(
+        "duplicate-family-view-row",
+        ReasonCode::DuplicateIdentity,
+        &|d| {
+            let rows = &mut d.semantic.product_projection.as_mut().unwrap().rows;
+            let again = rows[0].clone();
+            rows.insert(1, again);
+        },
+    );
+    {
+        let text = serialize_public_synthetic(&public_with_projection(&c2, block.clone())).unwrap();
+        out.push(doc_probe(
+            k_pub,
+            "unknown-projection-mode",
+            ReasonCode::SchemaViolation,
+            replace_once_n(&text, "\"mode\": \"official\"", "\"mode\": \"pilot\"").into_bytes(),
+        ));
+    }
 
     // ---- Cross-document bindings (in code, no committed file). ----
     let mut bind = |name: &str, code: ReasonCode, outcome: Result<(), Violations>| {

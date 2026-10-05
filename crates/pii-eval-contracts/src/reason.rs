@@ -153,6 +153,19 @@ reason_codes! {
     // Publication.
     /// A protected-class record cannot be projected into a public-synthetic artifact.
     PublicProjectionForbidden => "public-projection-forbidden",
+    // Product projection (schema 1.2, ADR 0016).
+    /// The product-projection block is malformed: declared under a schema or
+    /// protocol that has no such block, a row for a view the roster did not
+    /// require, or rows of mixed modes.
+    ProjectionInvalid => "projection-invalid",
+    /// A required view has no row for a scanner.
+    ProjectionViewMissing => "projection-view-missing",
+    /// A projection row's scanner, configuration, activation, product or
+    /// population binding differs from the artifact that holds it.
+    ProjectionBindingMismatch => "projection-binding-mismatch",
+    /// A projection row or stratum counts more cases than it holds, or the rows
+    /// of one scanner add up to more than the population: a denominator was pooled.
+    ProjectionPooledDenominator => "projection-pooled-denominator",
 }
 
 impl fmt::Display for ReasonCode {
