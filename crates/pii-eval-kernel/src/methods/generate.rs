@@ -474,10 +474,14 @@ fn value_of<'t>(text: &'t str, range: &ByteRange) -> Option<&'t str> {
     text.get(s..e)
 }
 
-fn expected_state(t: ExpectedType) -> ValidatorState {
+/// The validator state an authored identity asserts. An authored
+/// `not-established` identity asserts none: a validator observation can neither
+/// confirm nor contradict it, and it is recorded as evidence only.
+fn expected_state(t: ExpectedType) -> Option<ValidatorState> {
     match t {
-        ExpectedType::Valid => ValidatorState::Valid,
-        ExpectedType::Invalid => ValidatorState::Invalid,
+        ExpectedType::Valid => Some(ValidatorState::Valid),
+        ExpectedType::Invalid => Some(ValidatorState::Invalid),
+        ExpectedType::NotEstablished => None,
     }
 }
 
@@ -616,7 +620,7 @@ impl<'v> Generator<'v> {
             ValidatorState::Unavailable => observation
                 .unavailable
                 .map(ReviewReason::ValidatorUnavailable),
-            state if state != expected_state(case.type_expectation) => {
+            state if expected_state(case.type_expectation).is_some_and(|e| e != state) => {
                 return Err(RefusalReason::ValidatorExpectationMismatch);
             }
             _ => None,
@@ -801,7 +805,12 @@ impl<'v> Generator<'v> {
             })?;
         let mut expectation = self.base_expectation(case)?;
         expectation.range = mutated.candidate;
-        expectation.type_expectation = mutated.type_expectation;
+        // A mutation of an authored `not-established` identity stays
+        // `not-established`: the operator invalidates a valid value, and
+        // nothing here says the source was valid.
+        if case.type_expectation != ExpectedType::NotEstablished {
+            expectation.type_expectation = mutated.type_expectation;
+        }
         Ok(vec![Draft {
             slot: slot("mutated")?,
             text: mutated.text,
@@ -824,7 +833,7 @@ impl<'v> Generator<'v> {
             ValidatorState::Unavailable => observation
                 .unavailable
                 .map(ReviewReason::ReferenceUnavailable),
-            state if state != expected_state(case.type_expectation) => {
+            state if expected_state(case.type_expectation).is_some_and(|e| e != state) => {
                 Some(ReviewReason::ReferenceDisagrees)
             }
             _ => None,

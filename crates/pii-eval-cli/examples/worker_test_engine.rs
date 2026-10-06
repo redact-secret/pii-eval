@@ -8,7 +8,9 @@
 //!     the launcher with the TestOnly adapter policy; inside the sandbox it is
 //!     started as `/stage/engine --job /job/job.json` (the defaults are /stage,
 //!     /input and /scratch). The aggregates channel is a TEST channel: the
-//!     document is written to <scratch>/aggregates.json and also as ONE line on
+//!     document is written to <scratch>/aggregates.json (a TestOnly copy; the
+//!     delivery the custodian reads is the object embedded in the one stdout result)
+//!     and also as ONE line on
 //!     stderr (`pii-eval-worker-e2e-aggregates <json>`), because the sandbox's
 //!     scratch is gone when the worker exits and the real channel is undecided (Q2).
 //! worker_test_engine stage --out DIR --node PATH --scenario NAME [--entries N]

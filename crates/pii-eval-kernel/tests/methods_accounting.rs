@@ -109,6 +109,7 @@ fn blind_rows(out: &GenerationOutput) -> Vec<Row> {
                 let (type_identity, range) = match e.type_expectation {
                     ExpectedType::Valid => (TypeState::Miss, RangeState::Miss),
                     ExpectedType::Invalid => (TypeState::InvalidCorrect, RangeState::Miss),
+                    ExpectedType::NotEstablished => (TypeState::Unresolved, RangeState::Miss),
                 };
                 let sensitivity_context = match e.sensitivity {
                     SensitivityExpectation::Sensitive => SensitivityState::Miss,

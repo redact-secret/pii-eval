@@ -19,6 +19,24 @@ aggregates reach it, which labels a pii policy allows, how a package tree travel
 as one staged file, or where Node, the shim and the package live. The engine had
 no launcher (ADR 0014 D4 left it as a proposal).
 
+## Amendment 2026-10-06 (issue #30)
+
+private-custodian ADR 0135 and its `docs/pii-eval-adoption.md` decided the five slots
+that D2 left `Proposed`. `Adapters::production()` now holds five `Decided` adapters
+(`worker/production.rs`): the fixed `/stage`, `/input`, `/scratch` layout; the
+`pii-eval-bundle/1` bundle (file digest before extraction, tree digest after,
+never substituted); the `pii-eval-worker-entry/1` entry (`roster = entries.len()`);
+the aggregates object embedded in the one `worker-result/1` document, the whole
+document at most 65536 bytes, a renderer failure printing no result; and the closed
+nine-label profile in stratum `overall` (`measurable-share` is not emitted there and
+stays in the engine-private measurement). D2's rule is unchanged: a production build
+admits only `Decided` adapters, refuses `Proposed` and `TestOnly` ones with
+`contract-not-final` and has no operator or environment selector. The job is parsed
+before the stage directories are resolved, so a malformed job never touches a staged
+artifact. The file and stderr channels are removed from production; they remain
+`TestOnly` behind the feature. Scanner-failure accounting is unchanged (`complete`,
+`observed == expected`, `failed > 0`, no aggregates). Decisions D1, D3 and D4 stand.
+
 ## Decisions
 
 ### D1. A launcher inside the CLI crate, reusing the pipeline

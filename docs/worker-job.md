@@ -1,8 +1,14 @@
 # Worker job: the engine side of the custodian's worker protocol
 
-Status: **implemented and tested with synthetic data; not deployed; fails
-closed in every production build** because the custodian has not decided the
-items listed under "Not decided". Decisions and alternatives:
+Status: **implemented and tested with synthetic data; not deployed.** Since
+2026-10-06 (issue #30) the five contract slots are **Decided** by
+private-custodian ADR 0135 and `Adapters::production()` installs their adapters
+(`crates/pii-eval-cli/src/worker/production.rs`), so the default-feature binary runs a
+job; it still refuses any `Proposed` or `TestOnly` adapter and has no operator
+selector. The aggregates travel embedded in the one `worker-result/1` stdout document
+(at most 65536 bytes in all); there is no scratch or stderr channel. Sections below
+that describe the earlier `Proposed` state and the file channel are history; the
+tables that follow are updated. Decisions and alternatives:
 [ADR 0015](adr/0015-worker-job-launcher-and-contract-adapters.md). What the
 custodian has and has not decided, with evidence:
 [custodian-contract-status.md](custodian-contract-status.md). The boundary and
@@ -248,20 +254,20 @@ comparison (`package-tree-digest-mismatch` or `candidate-bundle-digest-mismatch`
 
 | Slot | Question | Status | Production wiring | Test adapter |
 | --- | --- | --- | --- | --- |
-| `stage-layout` | Q9 where Node, the shim and the package live | Proposed | unconfigured | `TestLayout` (directories of one test run) |
-| `bundle-format` | Q4 how a package tree travels as one staged file | Proposed | unconfigured | `TestBundle` (`pii-eval-bundle/1`) |
-| `entry-format` | Q1 what an entry holds | Proposed | unconfigured | `TestEntry` (`pii-eval-worker-entry/1`) |
-| `aggregates-channel` | Q2 how the aggregates reach the custodian | Proposed | unconfigured | `FileChannel` (`<scratch>/aggregates.json`) |
-| `aggregate-labels` | Q3 which strata and metric labels | Proposed | unconfigured | `TestLabels` (stratum `overall`, nine metric ids) |
+| `stage-layout` | Q9 where Node, the shim and the package live | **Decided** (ADR 0135) | fixed `/stage`, `/input`, `/scratch` | `TestLayout` (directories of one test run) |
+| `bundle-format` | Q4 how a package tree travels as one staged file | **Decided** | `pii-eval-bundle/1` | `TestBundle` |
+| `entry-format` | Q1 what an entry holds | **Decided** | `pii-eval-worker-entry/1`, `roster = entries.len()` | `TestEntry` |
+| `aggregates-channel` | Q2 how the aggregates reach the custodian | **Decided** | embedded object in the one result document, whole document at most 65536 bytes | `FileChannel` (`<scratch>/aggregates.json`, TestOnly) |
+| `aggregate-labels` | Q3 which strata and metric labels | **Decided** | stratum `overall`, the closed nine labels; `measurable-share` omitted | `TestLabels` |
 | job document, result document | A4, A5 | **Decided** | implemented | n/a |
 | digest syntax | A10 | **Decided** | implemented | n/a |
 | staged names, limits | A2, A3 | **Decided** | implemented | n/a |
 
-A production build admits only `Decided` adapters, so `worker-job` refuses with
-`contract-not-final: stage-layout` and exits 6 before reading anything. When the
-custodian decides a slot, enabling it means implementing a `Decided` adapter for
-that slot with tests and installing it in `Adapters::production()`; nothing else
-changes.
+A production build admits only `Decided` adapters. The bounded job document is parsed
+and validated first; a malformed or missing job is refused before any staged
+artifact is touched. A `Proposed` or `TestOnly` adapter still fails closed with
+`contract-not-final: <slot>` (exit 6); a future undecided slot is enabled only by a
+`Decided` adapter with tests installed in `Adapters::production()`.
 
 The test adapters are compiled only with the cargo feature
 `worker-test-adapters` (off by default, never enabled by the engine artifact
@@ -283,14 +289,14 @@ production wiring. Only the Rust API (`worker::launch::run_worker_job` with
 
 | Item | What the launcher does |
 | --- | --- |
-| Q1 roster unit | one entry is one authored case (proposed); every denominator must be at most `observed` or the launcher refuses (`aggregates-roster-violation`) |
-| Q2 aggregates delivery | no production channel; a release build refuses (`contract-not-final: aggregates-channel`) |
-| Q3 labels | `overall` and metric ids proposed; the policy decides |
-| Q4 package identity | two typed digests, the bundle format is proposed |
+| Q1 roster unit | **decided**: one entry is one authored case; every denominator must be at most `observed` or the launcher refuses (`aggregates-roster-violation`) |
+| Q2 aggregates delivery | **decided**: embedded in the single result document |
+| Q3 labels | **decided**: nine labels, `overall`; the operational disclosure policy (HG-9) is still the custodian's |
+| Q4 package identity | **decided**: two typed digests, the bundle format `pii-eval-bundle/1` |
 | Q6 several scanners | one scanner per run (`scanner-count-unsupported`) |
 | Q7 Node under `RLIMIT_AS` | measured separately ([custodian-isolation-node.md](custodian-isolation-node.md)); the launcher adds no Node flag and loosens no limit. Extension point: `ScannerConfig` (`crates/pii-eval-cli/src/config.rs`) and `build_adapter` (`scanners.rs`) are where a runtime option would be added after that measurement |
 | Q8 freshness | none; binding mismatch only |
-| Q9 stage layout | proposed above |
+| Q9 stage layout | **decided** (above) |
 
 ## What the custodian must decide (found while implementing)
 

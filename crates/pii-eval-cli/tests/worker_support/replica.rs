@@ -189,6 +189,10 @@ struct WireResult {
     protocol: WireProtocol,
     status: WireStatus,
     roster: WireRoster,
+    /// The aggregate object embedded in the one result document (private-custodian
+    /// ADR 0135); its content is the disclosure side's to validate.
+    #[serde(default)]
+    aggregates: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -207,6 +211,8 @@ pub struct ValidatedResult {
     pub digest: String,
     pub size: u64,
     pub protocol: ProtocolRef,
+    /// The embedded aggregates, serialized from the parsed object.
+    pub aggregates: Option<Vec<u8>>,
 }
 
 pub fn validate_result(
@@ -236,6 +242,13 @@ pub fn validate_result(
     {
         return Err(Reason::RosterMismatch);
     }
+    let aggregates = match &w.aggregates {
+        None => None,
+        Some(v @ serde_json::Value::Object(_)) => {
+            Some(serde_json::to_vec(v).map_err(|_| Reason::ResultMalformed)?)
+        }
+        Some(_) => return Err(Reason::ResultMalformed),
+    };
     let complete = r.observed == r.expected;
     match (&w.status, complete) {
         (WireStatus::Complete, true) | (WireStatus::Partial, false) => {}
@@ -257,6 +270,7 @@ pub fn validate_result(
         digest: format!("sha256:{}", sha256_hex(stdout)),
         size: stdout.len() as u64,
         protocol: protocol.clone(),
+        aggregates,
     })
 }
 
@@ -367,7 +381,10 @@ pub fn report_json(
         &protocol,
         authorized_roster,
     );
-    let aggregates_ok = match (&validated, aggregates) {
+    // The embedded object of the one result document is the delivery (ADR 0135); an
+    // externally supplied copy is only a fallback for the old test channel.
+    let embedded = validated.as_ref().and_then(|v| v.aggregates.as_deref());
+    let aggregates_ok = match (&validated, embedded.or(aggregates)) {
         (Some(v), Some(bytes)) => decode_aggregates(
             bytes,
             &ArtifactRef {

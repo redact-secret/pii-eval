@@ -63,9 +63,22 @@ fn a_job_runs_and_prints_one_closed_result_and_delivers_the_aggregates() {
     let node = node_or_return!();
     let w = World::build("wj-ok", &node, &Opts::default());
     let out = w.run_ok();
+    // One closed document: the roster result with the aggregates object embedded
+    // (private-custodian ADR 0135), the whole document within 64 KiB.
+    let mut result: Value = serde_json::from_str(&out.result).unwrap();
+    let embedded = result
+        .as_object_mut()
+        .unwrap()
+        .remove("aggregates")
+        .unwrap();
     assert_eq!(
-        out.result,
+        serde_json::to_string(&result).unwrap(),
         r#"{"domain":"pii","protocol":{"name":"pii-v1","version":"2"},"roster":{"expected":3,"failed":0,"observed":3},"schema":"private-custodian.worker-result/1","status":"complete"}"#
+    );
+    assert!(out.result.len() <= 64 * 1024);
+    assert_eq!(
+        embedded,
+        serde_json::from_slice::<Value>(out.aggregates.as_ref().unwrap()).unwrap()
     );
     let rendered = pii_eval_cli::render_worker_result(Ok(out.clone()));
     assert_eq!(

@@ -734,7 +734,7 @@
       "type": "string"
     }
   },
-  "$id": "urn:pii-eval:schema:observation-set:1.2",
+  "$id": "urn:pii-eval:schema:observation-set:1.3",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "An observation set document.",

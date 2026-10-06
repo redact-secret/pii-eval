@@ -265,10 +265,11 @@
       "type": "object"
     },
     "ExpectedType": {
-      "description": "Whether the authored occurrence is a valid or an invalid instance of its family.",
+      "description": "Whether the authored occurrence is a valid or an invalid instance of its\nfamily. `not-established` (schema 1.3, ADR 0017) preserves an authored\nuncertainty: the corpus authors did not establish the identity, and the\nengine never invents one.",
       "enum": [
         "valid",
-        "invalid"
+        "invalid",
+        "not-established"
       ],
       "type": "string"
     },
@@ -502,7 +503,7 @@
       "type": "string"
     }
   },
-  "$id": "urn:pii-eval:schema:corpus-snapshot:1.2",
+  "$id": "urn:pii-eval:schema:corpus-snapshot:1.3",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "A corpus snapshot document. Its `semanticDigest` is the population digest\nthat manifests, observations and artifacts bind to.",

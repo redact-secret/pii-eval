@@ -17,6 +17,7 @@
     "family-scope-mismatch",
     "float-not-allowed",
     "generation-binding-mismatch",
+    "identity-not-established-gate",
     "incompatible-schema-major",
     "incomplete-context-trio",
     "input-digest-mismatch",
@@ -60,5 +61,5 @@
     "unknown-schema",
     "unknown-variant"
   ],
-  "schemaVersion": "1.2"
+  "schemaVersion": "1.3"
 }

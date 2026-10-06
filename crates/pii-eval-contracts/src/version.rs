@@ -30,7 +30,12 @@ pub const SCHEMA_MAJOR: u16 = 1;
 /// product projection. This is the highest minor a reader accepts; what a
 /// writer emits by default is [`SchemaVersion::CURRENT`] (still 1.1): a document
 /// is sealed under 1.2 only when it carries the block.
-pub const SCHEMA_MINOR: u16 = 2;
+///
+/// 1.3 (ADR 0017) adds the authored `not-established` type identity and its
+/// observation `unresolved`. It is opt-in the same way: a document is sealed
+/// under 1.3 only when its population authors such an identity (corpus
+/// snapshot) or an outcome observes one (run and public artifacts).
+pub const SCHEMA_MINOR: u16 = 3;
 
 /// The five document kinds. The string is the `schema` field value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -110,6 +115,9 @@ impl SchemaVersion {
     /// Schema 1.2: the optional product-projection block of the public
     /// artifact (ADR 0016).
     pub const V1_2: SchemaVersion = SchemaVersion { major: 1, minor: 2 };
+
+    /// Schema 1.3: the authored `not-established` type identity (ADR 0017).
+    pub const V1_3: SchemaVersion = SchemaVersion { major: 1, minor: 3 };
 
     /// Parse `"<major>.<minor>"`: ASCII digits, no sign, no leading zeros.
     pub fn parse(text: &str) -> Option<Self> {
@@ -221,7 +229,8 @@ mod tests {
         assert_eq!(v(1, 0).readable(), Ok(()));
         assert_eq!(v(1, 1).readable(), Ok(()));
         assert_eq!(v(1, 2).readable(), Ok(()));
-        assert_eq!(v(1, 3).readable(), Err(ReasonCode::SchemaMinorTooNew));
+        assert_eq!(v(1, 3).readable(), Ok(()));
+        assert_eq!(v(1, 4).readable(), Err(ReasonCode::SchemaMinorTooNew));
         assert_eq!(v(2, 0).readable(), Err(ReasonCode::IncompatibleSchemaMajor));
         assert_eq!(v(0, 9).readable(), Err(ReasonCode::IncompatibleSchemaMajor));
     }

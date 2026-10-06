@@ -153,6 +153,10 @@ reason_codes! {
     // Publication.
     /// A protected-class record cannot be projected into a public-synthetic artifact.
     PublicProjectionForbidden => "public-projection-forbidden",
+    // Not-established identity (schema 1.3, ADR 0017).
+    /// An authored `not-established` type identity, or its `unresolved`
+    /// observation, is declared under a schema older than 1.3.
+    IdentityNotEstablishedGate => "identity-not-established-gate",
     // Product projection (schema 1.2, ADR 0016).
     /// The product-projection block is malformed: declared under a schema or
     /// protocol that has no such block, a row for a view the roster did not

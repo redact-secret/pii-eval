@@ -229,19 +229,40 @@ pub struct CorpusSnapshot {
     pub semantic: CorpusSnapshotBody,
 }
 
-impl_document!(
+impl_document!(@impl
     CorpusSnapshot,
     CorpusSnapshotBody,
-    crate::version::DocumentKind::CorpusSnapshot
+    crate::version::DocumentKind::CorpusSnapshot,
+    {
+        fn validate_gates(&self, c: &mut Collector) {
+            // An authored `not-established` identity exists from schema 1.3 on
+            // (ADR 0017): an older reader must not meet a value it cannot read.
+            if self.semantic.authors_not_established_identity()
+                && self.schema_version < SchemaVersion::V1_3
+            {
+                c.push(
+                    ReasonCode::IdentityNotEstablishedGate,
+                    &Path::ROOT.field("semantic").field("cases"),
+                );
+            }
+        }
+    }
 );
 
 impl CorpusSnapshot {
     /// Wrap a body in an envelope with the current version and a placeholder
-    /// digest; call [`crate::seal`] to compute the real digest.
+    /// digest; call [`crate::seal`] to compute the real digest. A population
+    /// that authors a `not-established` identity is sealed under 1.3 (ADR 0017);
+    /// every other population keeps the current version and its bytes.
     pub fn unsealed(semantic: CorpusSnapshotBody) -> Self {
+        let schema_version = if semantic.authors_not_established_identity() {
+            SchemaVersion::V1_3
+        } else {
+            SchemaVersion::CURRENT
+        };
         Self {
             schema: CorpusSnapshotSchema::Only,
-            schema_version: SchemaVersion::CURRENT,
+            schema_version,
             semantic_digest: Sha256Digest::of_bytes(b""),
             semantic,
         }
@@ -396,6 +417,15 @@ impl Case {
 }
 
 impl CorpusSnapshotBody {
+    /// Whether any expectation authors a `not-established` type identity.
+    pub fn authors_not_established_identity(&self) -> bool {
+        self.cases
+            .iter()
+            .flat_map(|case| &case.variants)
+            .flat_map(|v| &v.expectations)
+            .any(|e| e.type_expectation == ExpectedType::NotEstablished)
+    }
+
     pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {
         let cases = path.field("cases");
         non_empty(&self.cases, &cases, c);

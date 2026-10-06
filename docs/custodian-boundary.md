@@ -144,6 +144,11 @@ valid; deleting it after the run is the custodian's job (open question Q8).
 
 ## 6. Joint contract: what is decided, what is proposed
 
+> **Update 2026-10-06 (issue #30).** Q1, Q2, Q3, Q4 and Q9 below are decided by
+> private-custodian ADR 0135 and are implemented as `Decided` production adapters; see
+> [custodian-contract-status.md](custodian-contract-status.md). The text below is the
+> original 2026-10-03 reading and is kept as history.
+
 **Current state (2026-10-03).** The launcher exists: `pii-eval worker-job`
 ([worker-job.md](worker-job.md), [ADR 0015](adr/0015-worker-job-launcher-and-contract-adapters.md)).
 What the custodian has decided is implemented as stated; every item it has not

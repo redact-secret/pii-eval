@@ -1,5 +1,30 @@
 # Custodian contract status (what is decided, what is not)
 
+> **Update 2026-10-06 (issue #30).** The five slots below that were `Proposed`
+> (Q1 entry format, Q2 aggregates channel, Q3 aggregate labels, Q4 bundle format, Q9
+> stage layout) are now **Decided** by private-custodian ADR 0135 and
+> `docs/pii-eval-adoption.md` (private-custodian `main` at `61f2a43`), and
+> `Adapters::production()` installs the five `Decided` adapters
+> (`crates/pii-eval-cli/src/worker/production.rs`). The sections below keep the original
+> 2026-10-03 reading at `142db34` as history; where they say `Proposed` or
+> `contract-not-final`, read the table in the next section instead.
+>
+> | Slot | Production adapter now |
+> | --- | --- |
+> | Q9 stage layout | fixed `/stage`, `/input`, `/scratch`; `engine` is this CLI, `adapter` the shim bundle, `candidate` the package bundle, `scanner-0` the pinned Node runtime, `config` is `pii-eval-worker-config/1` |
+> | Q4 bundle format | engine-owned `pii-eval-bundle/1`, bounded regular files; the bundle **file** digest is verified before extraction and the package **tree** digest after it, never converted into each other |
+> | Q1 entry format | engine-owned `pii-eval-worker-entry/1`, one authored case per opaque flat entry; `roster = entries.len()` |
+> | Q2 aggregates channel | the aggregates object embedded in the ONE `worker-result/1` stdout document, whole document at most 65536 bytes; no scratch or stderr channel; a renderer failure prints no result |
+> | Q3 aggregate labels | the closed nine-label profile in stratum `overall` (`type-miss-rate`, `wrong-family-rate`, `wrong-jurisdiction-rate`, `sensitive-miss-rate`, `non-sensitive-flag-rate`, `context-discrimination-rate`, `benign-suppression-rate`, `jurisdiction-collision-rate`, `range-collateral-rate`); `measurable-share` is omitted from these cells and stays in the engine-private measurement |
+>
+> Unchanged: `Proposed` and `TestOnly` adapters are still refused by a production build and
+> there is no operator or environment selector; a scanner failure after all entries are read is
+> `complete`, `observed == expected`, `failed > 0`, exit 0 and no aggregates (the custodian
+> records a consumed partial); no expiry or freshness field was added; the memory profile is
+> sized for the runtime and nothing raises it or adds `--jitless` automatically. Still open and
+> **not** claimed by this change: the production host, ARM64 and real-scanner sizing (P-C),
+> the pre-exposure probe (P-B), the operational disclosure policy (HG-9), and any deployment.
+
 Status: **read-only extraction, 2026-10-03.** Source: `redact-secret/private-custodian`
 `main` at commit `142db34dd4bc02903f47cba951a054351bb55fde` (its head when this was read,
 equal to the local checkout) and its open issues #27 to #33 (Epic 2, S1 to S6). Nothing in
