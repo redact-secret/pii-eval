@@ -1,20 +1,7 @@
-//! The seam between what the custodian has decided and what it has not.
-//!
-//! Every undecided item of the worker contract is one [`Slot`], reached through
-//! an adapter trait. Each adapter reports a [`ContractStatus`]. The production
-//! wiring ([`Adapters::production`]) holds NO adapter for any slot, so
-//! `worker-job` refuses with `contract-not-final: <slot>` before it reads
-//! anything protected. There is no flag, environment variable or configuration
-//! field that installs an adapter: the only way in is the Rust API, and the test
-//! adapters exist only in builds with the cargo feature `worker-test-adapters`.
-//!
-//! When the custodian decides a slot, enabling it means implementing a
-//! [`ContractStatus::Decided`] adapter for it, with tests, and installing it in
-//! [`Adapters::production`]. Nothing else changes.
-//!
-//! Decided items need no slot: the job and result documents (A4, A5), the digest
-//! syntax (A10) and the stage names (A2) are implemented as stated
-//! ([`DECIDED`]).
+//! Custodian issue 37 reference adoption: five Decided production adapters.
+//! Proposed and TestOnly replacements remain refused by the production policy.
+//! No operator, flag or environment variable selects test adapters. Bundle/entry
+//! codecs remain engine-owned; aggregate delivery is the bounded embedded result.
 
 use std::path::{Path, PathBuf};
 
@@ -92,9 +79,9 @@ impl Slot {
         }
     }
 
-    /// The custodian-side status of the item. Every slot is `Proposed` today.
+    /// Status agreed by private-custodian ADR 0133.
     pub const fn contract_status(self) -> ContractStatus {
-        ContractStatus::Proposed
+        ContractStatus::Decided
     }
 }
 
@@ -259,10 +246,9 @@ pub struct Resolved<'a> {
 }
 
 impl Adapters {
-    /// The production wiring: every undecided slot is unconfigured, so a
-    /// release binary refuses with `contract-not-final`.
+    /// Fixed Decided wiring agreed by private-custodian ADR 0133.
     pub fn production() -> Self {
-        Self::default()
+        super::production::adapters()
     }
 
     /// Install a layout adapter.
@@ -349,24 +335,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn production_wiring_has_no_adapter_and_names_the_first_slot() {
+    fn production_wiring_is_decided() {
         let a = Adapters::production();
         for slot in Slot::ALL {
-            assert_eq!(a.status(slot), None);
-            assert_eq!(slot.contract_status(), ContractStatus::Proposed);
+            assert_eq!(a.status(slot), Some(ContractStatus::Decided));
+            assert_eq!(slot.contract_status(), ContractStatus::Decided);
         }
-        assert_eq!(
-            a.first_not_final(AdapterPolicy::Production),
-            Some(Slot::StageLayout)
-        );
-        let Err(f) = a.resolve(AdapterPolicy::Production) else {
-            panic!("production must refuse");
-        };
-        assert_eq!(
-            (f.exit, f.reason),
-            (Exit::Execution, reason::CONTRACT_NOT_FINAL)
-        );
-        assert_eq!(f.detail.as_deref(), Some("stage-layout"));
+        assert!(a.resolve(AdapterPolicy::Production).is_ok());
     }
 
     #[test]

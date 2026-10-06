@@ -31,8 +31,11 @@ kebab_enum!(
 );
 
 kebab_enum!(
-    /// Whether the authored occurrence is a valid or an invalid instance of its family.
-    ExpectedType { Valid, Invalid }
+    /// Whether the authored occurrence is a valid or an invalid instance of its
+    /// family. `not-established` (schema 1.3, ADR 0017) preserves an authored
+    /// uncertainty: the corpus authors did not establish the identity, and the
+    /// engine never invents one.
+    ExpectedType { Valid, Invalid, NotEstablished }
 );
 
 kebab_enum!(
@@ -68,7 +71,9 @@ kebab_enum!(
 
 kebab_enum!(
     /// Observed type-identity state for one occurrence.
-    TypeState { Correct, Miss, InvalidCorrect, InvalidAccepted, WrongFamily, WrongJurisdiction, NotMeasured }
+    /// `unresolved` is the only observation of an authored `not-established`
+    /// identity (schema 1.3, ADR 0017): neither a pass nor a fail.
+    TypeState { Correct, Miss, InvalidCorrect, InvalidAccepted, WrongFamily, WrongJurisdiction, Unresolved, NotMeasured }
 );
 
 kebab_enum!(
@@ -159,6 +164,7 @@ impl TypeState {
     pub const fn status(self) -> AxisStatus {
         match self {
             TypeState::NotMeasured => AxisStatus::NotMeasured,
+            TypeState::Unresolved => AxisStatus::ReviewRequired,
             TypeState::Correct | TypeState::InvalidCorrect => AxisStatus::Pass,
             TypeState::Miss
             | TypeState::InvalidAccepted
@@ -183,6 +189,7 @@ impl TypeState {
                 TypeState::InvalidAccepted,
                 TypeState::NotMeasured,
             ],
+            ExpectedType::NotEstablished => &[TypeState::Unresolved, TypeState::NotMeasured],
         }
     }
 }

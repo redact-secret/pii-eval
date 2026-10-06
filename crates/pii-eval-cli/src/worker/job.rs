@@ -207,14 +207,33 @@ pub fn protocol_value() -> Value {
 /// The result document, single line, no trailing newline. Refuses (never
 /// truncates) above [`MAX_RESULT_BYTES`].
 pub fn render_result(roster: &Roster) -> Result<String, Failure> {
-    let text = json!({
+    render_result_with_aggregates(roster, None)
+}
+
+/// Embed the aggregate object and bound the ENTIRE stdout document.
+pub fn render_result_with_aggregates(
+    roster: &Roster,
+    aggregates: Option<&[u8]>,
+) -> Result<String, Failure> {
+    let mut value = json!({
         "schema": RESULT_SCHEMA,
         "domain": DOMAIN,
         "protocol": protocol_value(),
         "status": roster.status(),
         "roster": roster.to_value(),
-    })
-    .to_string();
+    });
+    if let Some(bytes) = aggregates {
+        let object: Value = serde_json::from_slice(bytes)
+            .map_err(|_| Failure::new(Exit::Output, reason::AGGREGATES_CHANNEL_FAILED))?;
+        if !object.is_object() {
+            return Err(Failure::new(
+                Exit::Output,
+                reason::AGGREGATES_CHANNEL_FAILED,
+            ));
+        }
+        value["aggregates"] = object;
+    }
+    let text = value.to_string();
     if text.len() > MAX_RESULT_BYTES {
         return Err(Failure::new(Exit::Output, reason::RESULT_TOO_LARGE));
     }
@@ -337,5 +356,29 @@ mod tests {
             r#"{"domain":"pii","protocol":{"name":"pii-v1","version":"2"},"roster":{"expected":2,"failed":0,"observed":2},"schema":"private-custodian.worker-result/1","status":"complete"}"#
         );
         assert!(!text.contains('\n'));
+    }
+    #[test]
+    fn embedded_aggregates_are_one_object_and_whole_output_is_bounded() {
+        let r = Roster {
+            expected: 3,
+            observed: 3,
+            failed: 0,
+        };
+        let text = render_result_with_aggregates(
+            &r,
+            Some(br#"{"schema":"private-custodian.aggregates/1"}"#),
+        )
+        .unwrap();
+        let value: Value = serde_json::from_str(&text).unwrap();
+        assert!(value["aggregates"].is_object());
+        assert!(!text.contains('\n'));
+        assert!(render_result_with_aggregates(&r, Some(br#""not-an-object""#)).is_err());
+        let huge = json!({"padding": "x".repeat(MAX_RESULT_BYTES)}).to_string();
+        assert_eq!(
+            render_result_with_aggregates(&r, Some(huge.as_bytes()))
+                .unwrap_err()
+                .reason,
+            reason::RESULT_TOO_LARGE
+        );
     }
 }

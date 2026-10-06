@@ -220,13 +220,12 @@ pub fn run_worker_job(
             cli_reason::PLATFORM_UNSUPPORTED,
         ));
     }
+    // 2. Validate the bounded job before accessing the staged artifacts.
+    let job = job::read_job(request.job)?;
     let layout: WorkerLayout = resolved.stage_layout.layout();
     let stage_dir = layout_dir(&layout.stage, "stage")?;
     let input_dir = layout_dir(&layout.input, "input")?;
     let scratch_dir = layout_dir(&layout.scratch, "scratch")?;
-
-    // 2. The job.
-    let job = job::read_job(request.job)?;
 
     ensure_live(cancel)?;
     // 3. The staged files.
@@ -457,7 +456,7 @@ pub fn run_worker_job(
             .map_err(|_| reason::output(reason::AGGREGATES_CHANNEL_FAILED, ""))?;
         delivered = Some(document);
     }
-    let result = job::render_result(&roster)?;
+    let result = job::render_result_with_aggregates(&roster, delivered.as_deref())?;
     Ok(WorkerOutput {
         result,
         roster,

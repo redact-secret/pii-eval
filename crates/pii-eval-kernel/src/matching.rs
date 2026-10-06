@@ -258,6 +258,9 @@ fn type_state(
         return TypeState::NotMeasured;
     }
     match e.type_expectation {
+        // An authored uncertainty is observed as unresolved whatever the
+        // scanner reported: the identity axis asserts neither pass nor fail.
+        ExpectedType::NotEstablished => TypeState::Unresolved,
         ExpectedType::Invalid => {
             if candidates > 0 {
                 TypeState::InvalidAccepted

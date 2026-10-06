@@ -203,9 +203,9 @@ fn probes() -> Vec<Probe> {
         k_snap,
         "minor-newer-than-reader",
         ReasonCode::SchemaMinorTooNew,
-        // 1.1 is readable since P7 (ADR 0008) and 1.2 since ADR 0016; 1.3 is the
-        // first newer minor.
-        replace_once(&snap, version_line, "\"schemaVersion\": \"1.3\","),
+        // 1.1 is readable since P7 (ADR 0008), 1.2 since ADR 0016 and 1.3 since
+        // ADR 0017; 1.4 is the first newer minor.
+        replace_once(&snap, version_line, "\"schemaVersion\": \"1.4\","),
     );
     raw(
         k_snap,
@@ -347,6 +347,18 @@ fn probes() -> Vec<Probe> {
         ),
     );
 
+    // An authored not-established identity under a schema older than 1.3 (ADR 0017).
+    let doc = typed(&f.snapshot, |d| {
+        d.schema_version = SchemaVersion::V1_2;
+        d.semantic.cases[2].variants[0].expectations[0].type_expectation =
+            ExpectedType::NotEstablished;
+    });
+    out.push(doc_probe(
+        k_snap,
+        "not-established-under-schema-1-2",
+        ReasonCode::IdentityNotEstablishedGate,
+        to_pretty_json(&doc).unwrap().into_bytes(),
+    ));
     // ---- Typed mutations of the corpus snapshot (re-sealed). ----
     let mut snap_probe = |label: &str, code, change: &dyn Fn(&mut CorpusSnapshotBody)| {
         let doc = typed(&f.snapshot, |d| change(&mut d.semantic));

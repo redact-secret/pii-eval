@@ -1,6 +1,6 @@
 {
   "schema": "pii-eval.corpus-snapshot",
-  "schemaVersion": "1.4",
+  "schemaVersion": "1.2",
   "semantic": {
     "cases": [
       {
@@ -149,7 +149,7 @@
                   "start": 5
                 },
                 "sensitivity": "sensitive",
-                "typeExpectation": "valid",
+                "typeExpectation": "not-established",
                 "validator": {
                   "id": "synthetic-mod10",
                   "version": 1
@@ -206,5 +206,5 @@
       "visibility": "public-synthetic"
     }
   },
-  "semanticDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae"
+  "semanticDigest": "bf18a11b2110f36eaed570d7d8c6f6e8e489fe5611c0b2cc79d6a872b88d4cdb"
 }

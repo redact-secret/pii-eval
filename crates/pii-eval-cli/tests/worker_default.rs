@@ -1,9 +1,6 @@
-//! The production wiring of `worker-job`: the binary has no adapter for any
-//! undecided slot, so it refuses with `contract-not-final` before it reads
-//! anything; the test adapters are not in a default build; the alias has the
-//! exact shape the custodian starts. Runs with and without the feature
-//! `worker-test-adapters` (the feature changes what the binary contains, never
-//! what it will run).
+//! Reference adoption: production adapters resolve, job and stage checks still
+//! refuse malformed inputs; test adapters stay out of default artifacts and
+//! cannot be selected through command-line flags or environment variables.
 #![cfg(unix)]
 
 mod cli_support;
@@ -42,34 +39,30 @@ fn a_feature_build_says_so_and_does_contain_the_marker_so_the_check_can_fail() {
     );
 }
 
-/// Both builds: the BINARY has no way to select a test adapter.
+/// Both builds use fixed production adapters.
 #[test]
-fn the_binary_refuses_with_contract_not_final_and_prints_nothing_on_stdout() {
+fn the_binary_reports_an_unreadable_job_and_prints_nothing_on_stdout() {
     for args in [
         vec!["worker-job", "--job", "/nonexistent/job.json"],
         vec!["--job", "/nonexistent/job.json"],
     ] {
         let out = run_cli(&args);
-        assert_eq!(code(&out), 6, "{args:?}");
+        assert_eq!(code(&out), 3, "{args:?}");
         assert!(out.stdout.is_empty(), "{args:?}: stdout must be empty");
         let err = stderr(&out);
-        assert_eq!(
-            err,
-            "pii-eval: contract-not-final (execution-refused, exit 6): stage-layout\n"
-        );
+        assert_eq!(err, "pii-eval: job-unreadable (invalid-input, exit 3)\n");
     }
 }
 
 #[test]
-fn nothing_is_read_before_the_refusal_not_even_the_job() {
+fn malformed_jobs_are_refused_before_stage_reads() {
     let ws = common::TempDir::new("wd-noread");
     let job = ws.0.join("job.json");
     std::fs::write(&job, "this is not even json").unwrap();
     let out = run_cli(&["worker-job", "--job", s(&job)]);
-    // A job that cannot be parsed would be exit 3 `job-invalid`; the refusal
-    // comes first.
-    assert_eq!(code(&out), 6);
-    assert!(stderr(&out).contains("contract-not-final"));
+    // Adapter resolution succeeds; malformed input refuses before stage access.
+    assert_eq!(code(&out), 3);
+    assert!(stderr(&out).contains("job-invalid"));
 }
 
 #[test]
@@ -106,8 +99,8 @@ fn no_environment_variable_or_flag_selects_a_test_adapter() {
             ("WORKER_TEST_ADAPTERS", "1"),
         ],
     );
-    assert_eq!(code(&out), 6);
-    assert!(stderr(&out).contains("contract-not-final"));
+    assert_eq!(code(&out), 3);
+    assert!(stderr(&out).contains("job-unreadable"));
     let out = run_cli(&["worker-job", "--job", "/x", "--test-adapters"]);
     assert_eq!(code(&out), 2);
 }

@@ -541,20 +541,57 @@ pub struct RunArtifact {
     pub diagnostics: Option<RunDiagnostics>,
 }
 
-impl_document!(
+impl_document!(@impl
     RunArtifact,
     RunArtifactBody,
     crate::version::DocumentKind::RunArtifact,
-    diagnostics,
-    protocol
+    {
+        fn validate_diagnostics(&self, path: &Path<'_>, c: &mut Collector) {
+            if let Some(d) = &self.diagnostics {
+                d.validate(path, c);
+            }
+        }
+        fn validate_gates(&self, c: &mut Collector) {
+            crate::protocol::check_revision_gate(
+                self.schema_version,
+                &self.semantic.protocol,
+                c,
+            );
+            check_identity_gate(self.schema_version, self.semantic.outcomes.iter().map(|o| o.type_identity), c);
+        }
+    }
 );
+
+/// An `unresolved` type observation (an authored `not-established` identity,
+/// ADR 0017) exists from schema 1.3 on.
+fn check_identity_gate(
+    version: SchemaVersion,
+    mut types: impl Iterator<Item = TypeState>,
+    c: &mut Collector,
+) {
+    if version < SchemaVersion::V1_3 && types.any(|t| t == TypeState::Unresolved) {
+        c.push(
+            ReasonCode::IdentityNotEstablishedGate,
+            &Path::ROOT.field("semantic").field("outcomes"),
+        );
+    }
+}
 
 impl RunArtifact {
     /// Wrap a body in an envelope with the current version and a placeholder digest.
     pub fn unsealed(semantic: RunArtifactBody) -> Self {
+        let schema_version = if semantic
+            .outcomes
+            .iter()
+            .any(|o| o.type_identity == TypeState::Unresolved)
+        {
+            SchemaVersion::V1_3
+        } else {
+            SchemaVersion::CURRENT
+        };
         Self {
             schema: RunArtifactSchema::Only,
-            schema_version: SchemaVersion::CURRENT,
+            schema_version,
             semantic_digest: Sha256Digest::of_bytes(b""),
             semantic,
             diagnostics: None,
@@ -647,6 +684,11 @@ impl_document!(@impl
                 &self.semantic.protocol,
                 c,
             );
+            check_identity_gate(
+                self.schema_version,
+                self.semantic.outcomes.iter().map(|o| o.type_identity),
+                c,
+            );
             // The product projection exists from schema 1.2 on, and only with
             // the canonical protocol (it restates revision-2 accounting).
             if self.semantic.product_projection.is_some()
@@ -700,7 +742,15 @@ impl RunArtifact {
         // (revision 1, schema 1.0) artifact projects to a legacy public one.
         let mut public = PublicSyntheticArtifact {
             schema: PublicSyntheticArtifactSchema::Only,
-            schema_version: if projection.is_some() {
+            schema_version: if body
+                .outcomes
+                .iter()
+                .any(|o| o.type_identity == TypeState::Unresolved)
+            {
+                // The projection block is also valid under 1.3 (1.3 is a
+                // superset of 1.2).
+                SchemaVersion::V1_3
+            } else if projection.is_some() {
                 SchemaVersion::V1_2
             } else if body.protocol.is_canonical() {
                 SchemaVersion::CURRENT

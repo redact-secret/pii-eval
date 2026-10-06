@@ -276,10 +276,10 @@ fn a_revision_1_artifact_cannot_carry_a_block() {
 }
 
 #[test]
-fn schema_1_2_is_the_highest_readable_minor() {
-    // The block is the only 1.2 addition; the next minor is not readable yet.
+fn schema_1_2_is_still_readable_and_1_4_is_not() {
+    // The block is the 1.2 addition (1.3 is ADR 0017); the next minor is not readable yet.
     assert_eq!(
-        SchemaVersion { major: 1, minor: 3 }.readable(),
+        SchemaVersion { major: 1, minor: 4 }.readable(),
         Err(ReasonCode::SchemaMinorTooNew)
     );
     assert_eq!(SchemaVersion::V1_2.readable(), Ok(()));

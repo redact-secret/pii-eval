@@ -120,6 +120,9 @@ pub fn interpret(expected: &LegacyExpectation<'_>, scanner: &LegacyScanner<'_>) 
     let first = overlapping.first().copied();
 
     let type_identity = match expected.expected_type {
+        // The oracle's contract is closed over valid/invalid and never carries
+        // this; the neutral observation is kept rather than a fabricated one.
+        ExpectedType::NotEstablished => TypeState::Unresolved,
         ExpectedType::Invalid => {
             if overlapping.is_empty() {
                 TypeState::InvalidCorrect

@@ -51,10 +51,12 @@ staged files, runs the same pipeline as `run` and prints exactly one
 `private-custodian.worker-result/1` document on stdout (and **nothing** on
 stdout when it refuses). It takes no other option and no environment variable.
 
-**In a production build it always refuses**: the custodian has not decided the
-stage layout, the bundle and entry formats, the aggregates channel or the labels,
-so the command exits 6 with `contract-not-final` (detail: the first undecided
-slot) before it reads anything. Everything else (format, layout, order of work,
+**In a production build it runs only `Decided` adapters** (issue #30: the stage
+layout, the bundle and entry formats, the embedded aggregates and the nine labels are
+decided by the custodian's ADR 0135). A `Proposed` or `TestOnly` adapter, which a
+production build never contains, would make the command exit 6 with
+`contract-not-final`. The job is parsed and validated before any staged artifact is
+touched. Everything else (format, layout, order of work,
 adapters and their statuses, bounds, reason codes) is in
 [worker-job.md](worker-job.md) and [ADR 0015](adr/0015-worker-job-launcher-and-contract-adapters.md).
 

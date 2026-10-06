@@ -641,6 +641,7 @@ const A_TFAIL: u32 = 1 << 20; // any row: type fail (A8)
 const E_REV: u32 = 1 << 21; // context endpoint: sensitivity review-required
 const E_NM: u32 = 1 << 22; // context endpoint: not-measured
 const E_FAIL: u32 = 1 << 23; // context endpoint: fail
+const A_TREV: u32 = 1 << 24; // any row: type unresolved (authored not-established, ADR 0017)
 
 fn row_flags(occ: &OccInfo, row: &OutcomeRow) -> u32 {
     let mut f = 0;
@@ -653,7 +654,10 @@ fn row_flags(occ: &OccInfo, row: &OutcomeRow) -> u32 {
             TypeState::Miss => f |= VT_MISS,
             TypeState::WrongFamily => f |= VT_WF,
             TypeState::WrongJurisdiction => f |= VT_WJ,
-            TypeState::Correct | TypeState::InvalidCorrect | TypeState::InvalidAccepted => {}
+            TypeState::Correct
+            | TypeState::InvalidCorrect
+            | TypeState::InvalidAccepted
+            | TypeState::Unresolved => {}
         }
         match row.range {
             RangeState::Miss => {}
@@ -696,7 +700,8 @@ fn row_flags(occ: &OccInfo, row: &OutcomeRow) -> u32 {
     match type_status {
         AxisStatus::NotMeasured => f |= A_TNM,
         AxisStatus::Fail => f |= A_TFAIL,
-        AxisStatus::Pass | AxisStatus::ReviewRequired => {}
+        AxisStatus::ReviewRequired => f |= A_TREV,
+        AxisStatus::Pass => {}
     }
     if occ.endpoint {
         match sens_status {
@@ -758,8 +763,9 @@ impl Buckets {
 
 fn group_buckets(metric: MetricId, f: u32, case: &CaseInfo<'_>) -> Buckets {
     let has = |bit: u32| f & bit != 0;
-    // Valid-type metrics judge only valid-type occurrences (review cannot occur
-    // on the type axis: `TypeState::status` never yields review-required).
+    // Valid-type metrics judge only valid-type occurrences: an authored
+    // `not-established` identity (ADR 0017) is outside their population, so it
+    // changes no numerator, denominator or effective N of the type metrics.
     let valid_type = |event: u32| {
         if has(VT_ANY) {
             resolve(false, has(VT_NM), has(event))
@@ -806,7 +812,7 @@ fn group_buckets(metric: MetricId, f: u32, case: &CaseInfo<'_>) -> Buckets {
         }),
         MetricId::JurisdictionCollisionRate => {
             Buckets::one(if case.method == MethodId::JurisdictionCollision {
-                resolve(false, has(A_TNM), !has(A_TFAIL))
+                resolve(has(A_TREV), has(A_TNM), !has(A_TFAIL))
             } else {
                 Bucket::NotApplicable
             })
@@ -821,7 +827,7 @@ fn group_buckets(metric: MetricId, f: u32, case: &CaseInfo<'_>) -> Buckets {
             Bucket::Other
         }),
         MetricId::MeasurableShare => {
-            let type_axis = resolve(false, has(A_TNM), true);
+            let type_axis = resolve(has(A_TREV), has(A_TNM), true);
             let sensitivity_axis = if case.has_not_established {
                 Bucket::Unresolved
             } else {
