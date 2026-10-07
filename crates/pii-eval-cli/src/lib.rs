@@ -17,6 +17,7 @@ pub mod cmd_run;
 pub mod cmd_validate;
 pub mod cmd_worker;
 pub mod config;
+pub mod evidence;
 pub mod exec;
 pub mod files;
 pub mod projection;

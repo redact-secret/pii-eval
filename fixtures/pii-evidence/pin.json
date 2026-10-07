@@ -1,0 +1,24 @@
+{
+  "contract": {
+    "digestSpec": "files-v1",
+    "name": "pii-evidence-consumer-contract",
+    "version": "1"
+  },
+  "release": {
+    "archive": {
+      "name": "pii-evidence-public-pii-phi-2026-10-07-9d4e8e036bbb.tar.gz",
+      "tarGzSha256": "8962f02ec04687c3b26bc70a95c57629eb31161b809f8b8317851ff1baa7498b",
+      "tarSha256": "05d9dcd1483c70c5e763338a70366364b650658af1883b6a98bae0f4ab08b5a6"
+    },
+    "commit": "c436ae013011b9c8b1126f589d1b14d99a84baf5",
+    "repository": "redact-secret/pii-evidence",
+    "tag": "snapshot-public-pii-phi-2026-10-07-9d4e8e036bbb"
+  },
+  "schema": "pii-eval-evidence-pin/1",
+  "snapshot": {
+    "contentDigest": "9d4e8e036bbb180fb3a09569a2993e51ad10fbc183765882325f2bc10b321ba2",
+    "id": "public-pii-phi/2026-10-07/9d4e8e036bbb",
+    "manifestSha256": "a9e24b6dc73bc876f9fce341c7305421b054ae399df83d198513bede03555ca9",
+    "sourceManifestDigest": "e6f26033e83341c9a106dfa2542573e956912266cacfae0fcc1a6fb46d07c47c"
+  }
+}

@@ -21,7 +21,7 @@ The crates exist as identity-only placeholders. They are internal: names, APIs, 
 | `pii-eval-contracts` | Typed inputs/outputs, version constants, JSON Schema |
 | `pii-eval-kernel` | Methods, outcome interpretation, range relationships, accounting |
 | `pii-eval-adapters` | Process adapters, scanner identity, observation normalization |
-| `pii-eval-cli` | Configuration, resource limits, run/replay/validate/compare orchestration |
+| `pii-eval-cli` | Configuration, resource limits, run/replay/validate/compare orchestration; also the `pii-eval-evidence` binary, the loader and mapper for pii-evidence snapshots ([docs/evidence-consumer.md](docs/evidence-consumer.md), [ADR 0019](docs/adr/0019-pii-evidence-snapshot-consumer.md)): file reading and verification before mapping, no network, and no change to the five-command contract |
 | `pii-eval-compat` | Isolated, removable legacy projection and parity support |
 | `pii-eval-app` | GitHub-independent core of the internal App: webhook authentication, allowlist authorization, bounded job queue and workers, sanitized Checks ([ADR 0011](docs/adr/0011-internal-github-app.md)). Nothing depends on it; the CLI works without it |
 

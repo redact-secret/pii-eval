@@ -1,0 +1,120 @@
+{
+  "schema": "pii-eval-evidence-measurement/1",
+  "title": "First public-synthetic measurement over the pii-evidence snapshot public-pii-phi/2026-10-07/9d4e8e036bbb",
+  "recordedOn": "2026-10-07",
+  "notAClaim": [
+    "Not Redact Secret product qualification: no threshold, support state, ranking, release approval or stable/provisional decision.",
+    "Not a protected evaluation: no protected corpus, private custodian, private ledger, EC2 or production key was used or is needed.",
+    "Not accuracy evidence about real-world values: the corpus is reserved or documented-test values by design, mostly unlabeled, authored by one project without independent review.",
+    "A complete measurement is not a verdict: every rate below is a descriptive count under the protocol, with the denominators and withheld states the artifact records."
+  ],
+  "evidence": {
+    "contract": {"name": "pii-evidence-consumer-contract", "version": "1", "digestSpec": "files-v1"},
+    "pin": "fixtures/pii-evidence/pin.json",
+    "snapshotId": "public-pii-phi/2026-10-07/9d4e8e036bbb",
+    "contentDigest": "9d4e8e036bbb180fb3a09569a2993e51ad10fbc183765882325f2bc10b321ba2",
+    "manifestSha256": "a9e24b6dc73bc876f9fce341c7305421b054ae399df83d198513bede03555ca9",
+    "release": {
+      "repository": "redact-secret/pii-evidence",
+      "tag": "snapshot-public-pii-phi-2026-10-07-9d4e8e036bbb",
+      "commit": "c436ae013011b9c8b1126f589d1b14d99a84baf5"
+    },
+    "population": "public"
+  },
+  "mapping": {
+    "rule": {"id": "pii-evidence-to-corpus", "revision": 1},
+    "populationId": "pii-evidence-public-pii-phi-2026-10-07-9d4e8e036bbb",
+    "populationVersion": 1,
+    "corpusSchemaVersion": "1.4",
+    "counts": {
+      "evidenceCases": 49,
+      "evidenceCasesCarried": 47,
+      "evidenceFixtures": 139,
+      "corpusCases": 55,
+      "corpusVariants": 139,
+      "locatedOccurrences": 98,
+      "rangeLessOccurrences": 41
+    }
+  },
+  "engine": {
+    "name": "pii-eval",
+    "version": "0.0.0",
+    "protocol": {"id": "pii-v1", "revision": 2},
+    "buildBase": "b1c097e40bad456e52f904f626cca00b69c45612",
+    "buildSourceTreeDigest": {
+      "algorithm": "sha256 of `git ls-tree -r HEAD -- crates Cargo.toml Cargo.lock rust-toolchain.toml` (survives a squash merge while those paths are unchanged)",
+      "value": "271fd1e7a61b7cd8f10a855bbbd249e6336dadbe1cdd9bf31d70192d1b128ba0"
+    },
+    "cargoLockSha256": "e646a917c7dc8a5d5f5744bbfc56456661ebeb5505ac18788b7d5262f29a956a",
+    "build": "cargo build --release --locked -p pii-eval-cli",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "binaries": {
+      "pii-eval": "dee8ea89b3d78e5d36ab4aa5ac7daf3a9697cc8d730e80c288d15b0f167e8350",
+      "pii-eval-evidence": "53add85cecefb9fb10ccc82e735d09ae8d36381edb014dd6790a95d41bf5e591"
+    },
+    "binariesNote": "Host and toolchain specific (darwin-arm64); recorded for audit, not compared by the reproduction."
+  },
+  "scanner": {
+    "selection": "The only real scanner adapter this repository ships: @redact-secret/core 0.1.0-beta.12 through the production shim, run locally from the public npm registry. The repository ships no other real scanner; the inert fake package is a test double and was not used.",
+    "adapter": {"adapterId": "redact-secret-core-node", "adapterVersion": "1.0.0", "normalizationVersion": 1},
+    "scannerId": "redact-secret-core",
+    "product": "released",
+    "shimSha256": "21664407345b099d3f5e44db26bcfb037b2e981635dec0a7b5383b42b737e0a8",
+    "runtime": {"node": "v22.16.0", "npm": "11.4.1"},
+    "install": "npm ci --ignore-scripts from tools/pii-evidence/scanner (committed package.json and package-lock.json)",
+    "artifacts": {
+      "packageTreeSha256": "726421636189573bc76024ecf23ec6bd1d71fef6d8272e5da1b3967dee036d03",
+      "npmIntegrity": {
+        "@redact-secret/core": "sha512-fDVwt2U7VFSKb/0ixSuU5e+TOGVaUnyR1sIYwgS4S6gMndFnaq0M7ikaqac8wnTMYfYO/LS12JayXXeKbhE4aw==",
+        "@redact-secret/node-darwin-arm64": "sha512-xAA09sFA0bX1+4Ab7fT8Irgf3eLL0+SWB0hvVZ61xuR5WOGhKxpSFOgU1Gteyp/EmvX2RksqYEySijXYiRd+PA==",
+        "@redact-secret/wasm": "sha512-i9XV+P0j92z+00jujDe9MQdnniYGirSf3VJkqWe9iUwcn8T4e0++euDqxthIWXRQykIYPoHduM7AVyeUwo6iKg=="
+      },
+      "addonTrees": {
+        "darwin-arm64": "a497e2c365dd497ce054cbbfa9c1db6c8b0376dfc1aef4c09f87c208286cc1eb"
+      },
+      "wasmTreeSha256": "56544fcd943c4b1266899ac6ff8056c1910a1b3d4d722bc91b9b7fd22d8733b4"
+    },
+    "configuration": {
+      "parameters": {"detectorProfile": "full", "findingSource": "pii-domain-only", "offsetUnit": "utf16-code-units", "sanitizedOutput": true},
+      "activation": ["pii:global", "pii:us"],
+      "configurationDigest": "d213ca5dd371adcea382769b656cd9b3d7b6543ea157dbf63e9a3f50eaeb3f21",
+      "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3"
+    }
+  },
+  "execution": {
+    "kind": "execution",
+    "meaning": "A live scanner process was launched by `pii-eval run` (official mode, run class public-synthetic, product released); its normalized observations are the observation set.",
+    "command": "node tools/pii-evidence/reproduce.mjs (steps verify, import, plan, run)",
+    "mode": "official",
+    "runClass": "public-synthetic",
+    "replaysPerInput": 2,
+    "replaysAgreed": true,
+    "freshExecutionsWithEqualDigests": 3,
+    "completeness": "complete",
+    "scannersLaunched": 1
+  },
+  "replay": {
+    "kind": "replay",
+    "meaning": "`pii-eval replay` re-derived the artifacts from the observation set alone. No scanner was launched. It is a stability check of the engine's scoring, not an additional sample.",
+    "command": "pii-eval replay --snapshot <imported snapshot.json> --manifest manifest.json --observation observation-redact-secret-core.json --original run-artifact.json --out <dir> --expect-snapshot-digest <populationDigest> --expect-manifest-digest <manifestDigest>",
+    "parity": "identical",
+    "scannersLaunched": 0,
+    "recomputed": ["accounting", "artifact-digest", "matching", "metrics", "review-gate"],
+    "carriedFromOriginal": ["output-verdicts"],
+    "outputsByteIdentical": true
+  },
+  "digests": {
+    "populationDigest": "612a8cf629c24c8e92be474a8129a592c7f1f75cbe4e2e2afcc60383cc6347d8",
+    "bindingDigest": "f481baee5aa3d812f7858902c5024618e09e0a2868993d31dc10525c53ddf9fb",
+    "manifestDigest": "a2ee0b5bcc81f945e60bde49ad8a018c82276ab0f04b9dbc162710b565e75c5f",
+    "observationDigest": "79bf8087b18fc8ca767e13198d23ce1bcf0bd120baaf69ab68e66b24703641e3",
+    "runArtifactDigest": "2d06741eb857162aef240e3e5275717023d20b3af5a8a24dee5da30c6c8c86af",
+    "publicArtifactDigest": "d54f96f9b71f89c4960d7d3e086de6d1a19f24d9012fa63d08015f9a605faa6d"
+  },
+  "files": {
+    "manifest.json": "75b3dc487ea5285fd8c2602377feacd35119409a624f5d8220849ca85b62a7fe",
+    "observation-redact-secret-core.json": "9d2473d059254f5781a53ce0f28b6d7c8e45aea89b55dfae14d9d6402e3b1208",
+    "public-synthetic-artifact.json": "077b1ea0f545a43ceacbc0ea94ab6fd4c517c18e48d06132a7d1d1e73408a9a3",
+    "run-artifact.json": "d96cbe622f407662b4302382018d4237e102065f653f4aeba65130bdaec25b50"
+  }
+}
