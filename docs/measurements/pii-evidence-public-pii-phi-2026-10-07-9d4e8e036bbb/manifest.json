@@ -1,0 +1,169 @@
+{
+  "schema": "pii-eval.run-manifest",
+  "schemaVersion": "1.1",
+  "semantic": {
+    "engine": {
+      "name": "pii-eval",
+      "version": "0.0.0"
+    },
+    "generation": {
+      "generator": "pii-evidence-snapshot-consumer",
+      "generatorVersion": 1,
+      "seedDerivation": "none"
+    },
+    "limits": {
+      "batchVariants": 1,
+      "maxMemoryBytes": 17179869184,
+      "maxStderrBytes": 1048576,
+      "maxStdoutBytes": 16777216,
+      "maxTemporaryBytes": 4294967296,
+      "pendingTasks": 4,
+      "perScannerParallelism": 1,
+      "scannerTimeoutMs": 120000,
+      "workers": 2
+    },
+    "mechanics": {
+      "intervalPrecision": 6,
+      "intervalZ": {
+        "mantissa": 196,
+        "scale": 2
+      },
+      "minDenominator": 4,
+      "replays": 2
+    },
+    "methods": [
+      {
+        "id": "pii-benign",
+        "version": 3
+      },
+      {
+        "id": "schema-only",
+        "version": 1
+      },
+      {
+        "id": "type-validation",
+        "version": 2
+      }
+    ],
+    "metrics": [
+      {
+        "id": "benign-suppression-rate",
+        "version": 1
+      },
+      {
+        "id": "context-discrimination-rate",
+        "version": 1
+      },
+      {
+        "id": "jurisdiction-collision-rate",
+        "version": 1
+      },
+      {
+        "id": "measurable-share",
+        "version": 1
+      },
+      {
+        "id": "non-sensitive-flag-rate",
+        "version": 1
+      },
+      {
+        "id": "range-collateral-rate",
+        "version": 1
+      },
+      {
+        "id": "sensitive-miss-rate",
+        "version": 1
+      },
+      {
+        "id": "type-miss-rate",
+        "version": 1
+      },
+      {
+        "id": "wrong-family-rate",
+        "version": 1
+      },
+      {
+        "id": "wrong-jurisdiction-rate",
+        "version": 1
+      }
+    ],
+    "population": {
+      "populationDigest": "612a8cf629c24c8e92be474a8129a592c7f1f75cbe4e2e2afcc60383cc6347d8",
+      "populationId": "pii-evidence-public-pii-phi-2026-10-07-9d4e8e036bbb",
+      "populationVersion": 1,
+      "visibility": "public-synthetic"
+    },
+    "protocol": {
+      "accounting": "pii-v1",
+      "id": "pii-v1",
+      "rules": {
+        "accounting": {
+          "id": "pii-v1-canonical-accounting",
+          "revision": 2
+        },
+        "matching": {
+          "id": "pii-v1-canonical",
+          "revision": 2
+        },
+        "statistics": {
+          "id": "pii-v1-wilson-exact",
+          "revision": 1
+        }
+      },
+      "version": 2
+    },
+    "runClass": "public-synthetic",
+    "scanners": [
+      {
+        "configuration": {
+          "activation": [
+            "pii:global",
+            "pii:us"
+          ],
+          "parameters": [
+            {
+              "key": "detectorProfile",
+              "value": "full"
+            },
+            {
+              "key": "findingSource",
+              "value": "pii-domain-only"
+            },
+            {
+              "key": "offsetUnit",
+              "value": "utf16-code-units"
+            },
+            {
+              "key": "sanitizedOutput",
+              "value": true
+            }
+          ]
+        },
+        "identity": {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "redact-secret-core-node",
+            "adapterVersion": "1.0.0",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "726421636189573bc76024ecf23ec6bd1d71fef6d8272e5da1b3967dee036d03",
+          "configurationDigest": "d213ca5dd371adcea382769b656cd9b3d7b6543ea157dbf63e9a3f50eaeb3f21",
+          "product": {
+            "kind": "released"
+          },
+          "scannerId": "redact-secret-core",
+          "scannerVersion": "0.1.0-beta.12"
+        }
+      }
+    ],
+    "scope": {
+      "jurisdictions": [
+        "US"
+      ],
+      "languages": [
+        "und"
+      ]
+    }
+  },
+  "semanticDigest": "a2ee0b5bcc81f945e60bde49ad8a018c82276ab0f04b9dbc162710b565e75c5f"
+}

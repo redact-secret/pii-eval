@@ -1,0 +1,496 @@
+{
+  "consumerContract": "pii-evidence-consumer-contract",
+  "consumerContractVersion": "1",
+  "contentDigest": "9d4e8e036bbb180fb3a09569a2993e51ad10fbc183765882325f2bc10b321ba2",
+  "contentDigestSpec": "files-v1",
+  "counts": {
+    "cases": 49,
+    "claims": 24,
+    "excludedCases": 33,
+    "excludedClaims": 3,
+    "excludedFixtures": 102,
+    "excludedSources": 3,
+    "fixtures": 139,
+    "reviewEvents": 0,
+    "rules": 10,
+    "skipped": 8,
+    "sources": 14
+  },
+  "coverage": {
+    "contexts": [
+      "field-label/global/general",
+      "health-plan/us/general",
+      "medical/global/general"
+    ],
+    "domains": [
+      "phi",
+      "pii"
+    ],
+    "evidenceClasses": {
+      "authored-adversarial": 8,
+      "authored-baseline": 11,
+      "public-authority": 11,
+      "reference-backed": 1,
+      "research-needed": 5,
+      "standards-body": 13
+    },
+    "identityStates": {
+      "invalid": 17,
+      "not-established": 11,
+      "valid": 21
+    },
+    "jurisdictions": [
+      "global",
+      "us"
+    ],
+    "kinds": [
+      "email/global/basic",
+      "health-claim-identifier/us/claim-field",
+      "health-plan-member-id/us/member-field",
+      "medical-record-number/us/labeled-field",
+      "phone/global/basic",
+      "prescription-order-identifier/us/order-field",
+      "us-ssn/us/structured"
+    ],
+    "kindsWithoutCases": [
+      "iban/global/basic",
+      "national-id/unresolved/placeholder",
+      "payment-card/global/basic"
+    ],
+    "perKind": {
+      "email/global/basic": {
+        "cases": 20,
+        "fixtures": 92
+      },
+      "health-claim-identifier/us/claim-field": {
+        "cases": 1,
+        "fixtures": 1
+      },
+      "health-plan-member-id/us/member-field": {
+        "cases": 5,
+        "fixtures": 9
+      },
+      "medical-record-number/us/labeled-field": {
+        "cases": 9,
+        "fixtures": 17
+      },
+      "phone/global/basic": {
+        "cases": 2,
+        "fixtures": 10
+      },
+      "prescription-order-identifier/us/order-field": {
+        "cases": 1,
+        "fixtures": 1
+      },
+      "us-ssn/us/structured": {
+        "cases": 11,
+        "fixtures": 9
+      }
+    },
+    "roles": {
+      "ambiguous": 3,
+      "collision": 7,
+      "context": 3,
+      "mutation": 11,
+      "negative": 8,
+      "positive": 10,
+      "twin": 7
+    }
+  },
+  "exclusions": {
+    "cases": [
+      {
+        "id": "iban/global/basic/collision/alphanumeric-product-key",
+        "reasons": [
+          "relates to excluded case iban/global/basic/positive/gb-electronic"
+        ]
+      },
+      {
+        "id": "iban/global/basic/mutation/adjacent-transposition",
+        "reasons": [
+          "relates to excluded case iban/global/basic/positive/gb-electronic"
+        ]
+      },
+      {
+        "id": "iban/global/basic/mutation/check-digits-altered",
+        "reasons": [
+          "relates to excluded case iban/global/basic/positive/gb-electronic"
+        ]
+      },
+      {
+        "id": "iban/global/basic/mutation/country-code-swapped",
+        "reasons": [
+          "relates to excluded case iban/global/basic/positive/gb-electronic"
+        ]
+      },
+      {
+        "id": "iban/global/basic/mutation/lowercase-form",
+        "reasons": [
+          "cites excluded source iban/swift-registry",
+          "cites excluded claim iban/registry-authority"
+        ]
+      },
+      {
+        "id": "iban/global/basic/mutation/nbsp-grouping",
+        "reasons": [
+          "cites excluded source iban/swift-registry",
+          "cites excluded claim iban/registry-authority"
+        ]
+      },
+      {
+        "id": "iban/global/basic/mutation/over-34-characters",
+        "reasons": [
+          "relates to excluded case iban/global/basic/positive/gb-electronic"
+        ]
+      },
+      {
+        "id": "iban/global/basic/mutation/truncated-last-character",
+        "reasons": [
+          "relates to excluded case iban/global/basic/positive/gb-electronic"
+        ]
+      },
+      {
+        "id": "iban/global/basic/positive/gb-electronic",
+        "reasons": [
+          "relates to excluded case iban/global/basic/mutation/lowercase-form"
+        ]
+      },
+      {
+        "id": "iban/global/basic/positive/gb-json-field",
+        "reasons": [
+          "relates to excluded case iban/global/basic/positive/gb-electronic"
+        ]
+      },
+      {
+        "id": "iban/global/basic/positive/gb-print-groups",
+        "reasons": [
+          "relates to excluded case iban/global/basic/positive/gb-electronic",
+          "relates to excluded case iban/global/basic/mutation/nbsp-grouping"
+        ]
+      },
+      {
+        "id": "payment-card/global/basic/collision/epoch-milliseconds",
+        "reasons": [
+          "relates to excluded case payment-card/global/basic/positive/visa-test-plain"
+        ]
+      },
+      {
+        "id": "payment-card/global/basic/collision/order-number-sixteen-digits",
+        "reasons": [
+          "relates to excluded case payment-card/global/basic/positive/visa-test-plain"
+        ]
+      },
+      {
+        "id": "payment-card/global/basic/mutation/adjacent-transposition",
+        "reasons": [
+          "relates to excluded case payment-card/global/basic/positive/mastercard-test-spaced"
+        ]
+      },
+      {
+        "id": "payment-card/global/basic/mutation/check-digit-altered",
+        "reasons": [
+          "relates to excluded case payment-card/global/basic/positive/visa-test-plain"
+        ]
+      },
+      {
+        "id": "payment-card/global/basic/mutation/fullwidth-digits",
+        "reasons": [
+          "relates to excluded case payment-card/global/basic/positive/visa-test-plain"
+        ]
+      },
+      {
+        "id": "payment-card/global/basic/mutation/twenty-digit-run",
+        "reasons": [
+          "relates to excluded case payment-card/global/basic/positive/visa-test-plain"
+        ]
+      },
+      {
+        "id": "payment-card/global/basic/mutation/wrong-length-for-prefix",
+        "reasons": [
+          "relates to excluded case payment-card/global/basic/positive/visa-test-plain"
+        ]
+      },
+      {
+        "id": "payment-card/global/basic/positive/mastercard-test-spaced",
+        "reasons": [
+          "cites excluded source payment-card/stripe-testing",
+          "cites excluded claim payment-card/stripe-test-numbers"
+        ]
+      },
+      {
+        "id": "payment-card/global/basic/positive/visa-test-hyphenated",
+        "reasons": [
+          "cites excluded source payment-card/stripe-testing",
+          "cites excluded claim payment-card/stripe-test-numbers"
+        ]
+      },
+      {
+        "id": "payment-card/global/basic/positive/visa-test-plain",
+        "reasons": [
+          "cites excluded source payment-card/stripe-testing",
+          "cites excluded claim payment-card/stripe-test-numbers"
+        ]
+      },
+      {
+        "id": "payment-card/global/basic/twin/tracking-label-twin",
+        "reasons": [
+          "cites excluded source payment-card/stripe-testing",
+          "cites excluded claim payment-card/stripe-test-numbers"
+        ]
+      },
+      {
+        "id": "phone/global/basic/ambiguous/local-seven-digit",
+        "reasons": [
+          "relates to excluded case phone/global/basic/positive/nanp-dashed"
+        ]
+      },
+      {
+        "id": "phone/global/basic/collision/iso-timestamp-digits",
+        "reasons": [
+          "relates to excluded case phone/global/basic/positive/nanp-dashed"
+        ]
+      },
+      {
+        "id": "phone/global/basic/collision/zip-plus-four",
+        "reasons": [
+          "relates to excluded case phone/global/basic/positive/nanp-dashed"
+        ]
+      },
+      {
+        "id": "phone/global/basic/mutation/fullwidth-digits",
+        "reasons": [
+          "relates to excluded case phone/global/basic/positive/nanp-parenthesized"
+        ]
+      },
+      {
+        "id": "phone/global/basic/mutation/overlong-digit-run",
+        "reasons": [
+          "cites excluded source phone/itu-e164",
+          "cites excluded claim phone/e164-maximum-length"
+        ]
+      },
+      {
+        "id": "phone/global/basic/mutation/truncated-line-number",
+        "reasons": [
+          "cites excluded source phone/itu-e164",
+          "cites excluded claim phone/e164-maximum-length"
+        ]
+      },
+      {
+        "id": "phone/global/basic/positive/dotted-groups",
+        "reasons": [
+          "relates to excluded case phone/global/basic/positive/nanp-dashed"
+        ]
+      },
+      {
+        "id": "phone/global/basic/positive/e164-compact",
+        "reasons": [
+          "relates to excluded case phone/global/basic/positive/nanp-dashed"
+        ]
+      },
+      {
+        "id": "phone/global/basic/positive/e164-spaced",
+        "reasons": [
+          "relates to excluded case phone/global/basic/positive/nanp-dashed",
+          "relates to excluded case phone/global/basic/mutation/overlong-digit-run"
+        ]
+      },
+      {
+        "id": "phone/global/basic/positive/nanp-dashed",
+        "reasons": [
+          "relates to excluded case phone/global/basic/mutation/truncated-line-number"
+        ]
+      },
+      {
+        "id": "phone/global/basic/positive/nanp-parenthesized",
+        "reasons": [
+          "relates to excluded case phone/global/basic/positive/nanp-dashed"
+        ]
+      }
+    ],
+    "claims": [
+      {
+        "id": "iban/registry-authority",
+        "reasons": [
+          "depends on excluded source iban/swift-registry"
+        ]
+      },
+      {
+        "id": "payment-card/stripe-test-numbers",
+        "reasons": [
+          "depends on excluded source payment-card/stripe-testing"
+        ]
+      },
+      {
+        "id": "phone/e164-maximum-length",
+        "reasons": [
+          "depends on excluded source phone/itu-e164"
+        ]
+      }
+    ],
+    "fixtureCount": 102,
+    "rule": [
+      "A source is included only if scripts/lint-provenance.mjs derives public-safe for it (the --public-release condition); otherwise it is excluded with the lint reasons.",
+      "A claim is included only if its source is included and its review state is not rejected.",
+      "A case is excluded if any source or claim it cites is excluded or its review state is rejected.",
+      "Exclusion propagates across case relationships to a fixed point: a case that relates to an excluded case is excluded, so no included case points at a missing case. Relationships carry no direction, so this is deliberately conservative.",
+      "A fixture rule is excluded if any case in its justifiedBy is excluded or its review state is rejected; fixtures exist only for included cases projected through included rules.",
+      "Taxonomy entries are copied as taxonomy, not corpus. The only change is removing references to excluded claims, each recorded under taxonomyClaimRefsRemoved.",
+      "Cases that cite no source are not gated by sources. They are included with their evidenceClass (including research-needed) and authored expectation unchanged; research-needed cases assert only not-established.",
+      "No record is edited. Excluded records are not copied; their ids and reasons are listed in the manifest."
+    ],
+    "rules": [],
+    "sources": [
+      {
+        "id": "iban/swift-registry",
+        "reasons": [
+          "provenance: evidenceClass is research-needed",
+          "provenance: redistribution unknown"
+        ]
+      },
+      {
+        "id": "payment-card/stripe-testing",
+        "reasons": [
+          "provenance: redistribution unknown"
+        ]
+      },
+      {
+        "id": "phone/itu-e164",
+        "reasons": [
+          "provenance: redistribution unknown"
+        ]
+      }
+    ],
+    "taxonomyClaimRefsRemoved": [
+      {
+        "claim": "iban/registry-authority",
+        "entry": "iban/global/basic"
+      },
+      {
+        "claim": "payment-card/stripe-test-numbers",
+        "entry": "payment-card/global/basic"
+      },
+      {
+        "claim": "phone/e164-maximum-length",
+        "entry": "phone/global/basic"
+      }
+    ]
+  },
+  "files": [
+    {
+      "bytes": 67817,
+      "path": "cases.jsonl",
+      "records": 49,
+      "sha256": "65dacad41e66f8dc73f18fba21df29e4c93489a039c323c02e21e2cb849de388"
+    },
+    {
+      "bytes": 20908,
+      "path": "claims.jsonl",
+      "records": 24,
+      "sha256": "7c700d5e90eeda3f997810c702f3027d151d282ca8daf75b8b0756b726e98a52"
+    },
+    {
+      "bytes": 11570,
+      "path": "fixture-rules.jsonl",
+      "records": 10,
+      "sha256": "696974e589ad8fb19d39332fe7443e7d7558bbcd89b03cb85c838cd155537f0d"
+    },
+    {
+      "bytes": 117894,
+      "path": "fixtures.jsonl",
+      "records": 139,
+      "sha256": "2a7eead8ef711b460a0072301472047b12279c6c3e95e8eaed802893de7547fd"
+    },
+    {
+      "bytes": 3580,
+      "path": "skipped.jsonl",
+      "records": 8,
+      "sha256": "2cba4632acd4dc720f870042b45420cab7a9f7207288244959309888829d124b"
+    },
+    {
+      "bytes": 12136,
+      "path": "sources.jsonl",
+      "records": 14,
+      "sha256": "e6f26033e83341c9a106dfa2542573e956912266cacfae0fcc1a6fb46d07c47c"
+    },
+    {
+      "bytes": 5046,
+      "path": "taxonomy/contexts.json",
+      "sha256": "cf5704bd6316dc5dc9f04e537067efe0b068dcb3a15352167db1e08e78e28bf6"
+    },
+    {
+      "bytes": 1085,
+      "path": "taxonomy/jurisdictions.json",
+      "sha256": "6a5fdbdc3c671a6a2011f2d588039ce28ce78681e2d53c7cdd446e68a69675fe"
+    },
+    {
+      "bytes": 11732,
+      "path": "taxonomy/privacy-kinds.json",
+      "sha256": "4a770b2553d66f9687e7bfd36de7c4a9854f48ac684b5d1f7c5105835a946832"
+    }
+  ],
+  "fixtureGenerator": {
+    "name": "pii-evidence-fixture-projector",
+    "version": "1.0.0"
+  },
+  "generator": {
+    "name": "pii-evidence-snapshot-builder",
+    "version": "1.0.0"
+  },
+  "id": "public-pii-phi/2026-10-07/9d4e8e036bbb",
+  "kind": "snapshot-manifest",
+  "population": "public",
+  "schemaVersion": "1",
+  "schemaVersions": {
+    "case": "1",
+    "claim": "1",
+    "contexts": "1",
+    "fixture-projection": "1",
+    "fixture-rule": "1",
+    "fixture-skip": "1",
+    "jurisdictions": "1",
+    "privacy-kinds": "1",
+    "snapshot-manifest": "1",
+    "source": "1"
+  },
+  "snapshotDate": "2026-10-07",
+  "sourceManifestDigest": "e6f26033e83341c9a106dfa2542573e956912266cacfae0fcc1a6fb46d07c47c",
+  "taxonomyVersion": "0.1.0",
+  "validation": {
+    "checks": [
+      {
+        "name": "population: every record is public; no protected or mixed population",
+        "status": "passed"
+      },
+      {
+        "name": "validate: schema, references, ids and lineage over the included set (npm run validate semantics)",
+        "status": "passed"
+      },
+      {
+        "detail": "14 sources, all public-safe",
+        "name": "lint-provenance --public-release over the included sources",
+        "status": "passed"
+      },
+      {
+        "name": "fixtures:materialize:check semantics: two projections byte-identical and valid against cases and rules",
+        "status": "passed"
+      },
+      {
+        "detail": "16 files scanned",
+        "name": "lint-safe-data over the included evidence and the published snapshot bytes",
+        "status": "passed"
+      },
+      {
+        "name": "neutrality: no scanner, detector, support-state, threshold or score field in any record",
+        "status": "passed"
+      },
+      {
+        "name": "snapshot:verify standalone checks over the assembled directory",
+        "status": "passed"
+      }
+    ],
+    "privacy": "passed",
+    "provenance": "passed",
+    "schema": "passed"
+  }
+}

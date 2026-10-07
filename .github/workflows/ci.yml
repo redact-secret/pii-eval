@@ -101,6 +101,17 @@ jobs:
           for f in tools/oracle-parity/*.mjs tools/oracle-parity/real-scanner/*.mjs tools/oracle-parity/stubs/*.mjs; do node --check "$f"; done
           bash -n tools/oracle-parity/regenerate.sh
           bash -n tools/oracle-parity/real-scanner/run.sh
+      # pii-evidence snapshot consumer (ADR 0019): the released snapshot loads, every wrong,
+      # tampered, incomplete or non-public snapshot fails closed before mapping, and the committed
+      # measurement is replayed with no scanner and no network. Also part of the full run above.
+      - name: pii-evidence consumer (fail-closed loader, mapping, committed measurement replay)
+        run: cargo test -p pii-eval-cli --locked --test evidence_consumer --test evidence_measurement
+      # The live measurement and the release fetch are manual (npm registry, gh); CI runs the
+      # fetch tool's offline tests and checks the syntax of both scripts.
+      - name: pii-evidence tooling (offline fetch tests, syntax)
+        run: |
+          node --test tools/pii-evidence/test/fetch.test.mjs
+          for f in tools/pii-evidence/*.mjs; do node --check "$f"; done
       # Consumer example (P12, ADR 0014): standard library only, no install step,
       # no network. Runs against committed fixtures produced by the real engine.
       - name: Consumer example (exact pins, stale and wrong artifacts, no pooling, no decisions)

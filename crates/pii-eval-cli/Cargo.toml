@@ -40,6 +40,12 @@ pii-eval-compat.workspace = true
 name = "pii-eval"
 path = "src/main.rs"
 
+# The pii-evidence snapshot consumer (ADR 0019): verify, import, plan. A separate
+# binary so the five-command contract of `pii-eval` (docs/cli.md) is unchanged.
+[[bin]]
+name = "pii-eval-evidence"
+path = "src/evidence_main.rs"
+
 # TEST ONLY (docs/worker-job.md, "real sandbox end to end"): the engine the custodian's
 # bubblewrap replica runs as `/stage/engine --job /job/job.json`, with the worker test
 # adapters. It needs the feature, so it is never built by `cargo build`, by `cargo test`

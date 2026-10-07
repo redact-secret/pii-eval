@@ -1,0 +1,53 @@
+{
+  "schema": "pii-eval-run-config/1",
+  "mode": "official",
+  "runClass": "public-synthetic",
+  "product": "released",
+  "engineVersion": "0.0.0",
+  "protocol": {
+    "id": "pii-v1",
+    "revision": 2
+  },
+  "snapshot": {
+    "path": "import/snapshot.json",
+    "semanticDigest": "612a8cf629c24c8e92be474a8129a592c7f1f75cbe4e2e2afcc60383cc6347d8"
+  },
+  "manifest": {
+    "path": "manifest.json",
+    "semanticDigest": "a2ee0b5bcc81f945e60bde49ad8a018c82276ab0f04b9dbc162710b565e75c5f"
+  },
+  "scanners": [
+    {
+      "adapter": "redact-secret-core",
+      "shim": {
+        "path": "../../crates/pii-eval-adapters/shims/node/redact-secret-core.mjs"
+      },
+      "package": {
+        "dir": "scanner/node_modules/@redact-secret/core",
+        "entry": "dist/index.js",
+        "version": "0.1.0-beta.12",
+        "treeSha256": "726421636189573bc76024ecf23ec6bd1d71fef6d8272e5da1b3967dee036d03"
+      },
+      "extraArtifacts": [
+        {
+          "path": "scanner/node_modules/@redact-secret/node-darwin-arm64",
+          "target": "tree",
+          "sha256": "a497e2c365dd497ce054cbbfa9c1db6c8b0376dfc1aef4c09f87c208286cc1eb"
+        },
+        {
+          "path": "scanner/node_modules/@redact-secret/wasm",
+          "target": "tree",
+          "sha256": "56544fcd943c4b1266899ac6ff8056c1910a1b3d4d722bc91b9b7fd22d8733b4"
+        }
+      ]
+    }
+  ],
+  "host": {
+    "maxWorkers": 2,
+    "resources": "enforce"
+  },
+  "output": {
+    "dir": "run",
+    "overwrite": "refuse"
+  }
+}

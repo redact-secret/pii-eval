@@ -1,0 +1,2998 @@
+{
+  "schema": "pii-eval.run-artifact",
+  "schemaVersion": "1.4",
+  "semantic": {
+    "completeness": "complete",
+    "engine": {
+      "name": "pii-eval",
+      "version": "0.0.0"
+    },
+    "failures": [],
+    "manifestDigest": "a2ee0b5bcc81f945e60bde49ad8a018c82276ab0f04b9dbc162710b565e75c5f",
+    "mechanics": {
+      "intervalPrecision": 6,
+      "intervalZ": {
+        "mantissa": 196,
+        "scale": 2
+      },
+      "minDenominator": 4,
+      "replays": 2
+    },
+    "methodCoverage": [
+      {
+        "cases": 1,
+        "method": {
+          "id": "pii-benign",
+          "version": 3
+        },
+        "variants": 1
+      },
+      {
+        "cases": 33,
+        "method": {
+          "id": "schema-only",
+          "version": 1
+        },
+        "variants": 41
+      },
+      {
+        "cases": 21,
+        "method": {
+          "id": "type-validation",
+          "version": 2
+        },
+        "variants": 97
+      }
+    ],
+    "outcomes": [
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-1235876d78c3802b7e12267d",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-1dd5c466cafc7ddd1f32a53b"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-17a01d145ce283587302f77b",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-34b0170a9c853dadbf811d30"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-17a01d145ce283587302f77b",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-431aa0f3b714202e9575066d"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-17a01d145ce283587302f77b",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-4e1c5674e8d5fcf5f587eeff"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-17a01d145ce283587302f77b",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-69b71ccbc92c2b6ce7f535ee"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-17a01d145ce283587302f77b",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-7a6b24e4d2a804ec421a44f5"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-17a01d145ce283587302f77b",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-a37f2cf7a7c00c7a477cbdba"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-1e41a4c8510e074d46e9dc18",
+        "method": "pii-benign",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "correct",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-3e842d5c902c91c3265645b1"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-20369298e83a78a1b7e08784",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-011ba2f16c30b355e59bcbdd"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-20369298e83a78a1b7e08784",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-031af7500d92520d68543ba9"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-20369298e83a78a1b7e08784",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-27fd419d6b4e4af99d69d498"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-20369298e83a78a1b7e08784",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-5157a2e18b2c2788d4045ad1"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-20369298e83a78a1b7e08784",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-c166badd198981473bfda249"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-20369298e83a78a1b7e08784",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-d3a78d93036eb10ae98cfb74"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-20369298e83a78a1b7e08784",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-fc0d9bf8f3d8debe5e16cbef"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-26aa7744423b7b6c3593dabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "miss",
+        "variantId": "ev-944512954920a6933a950851"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-26aa7744423b7b6c3593dabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "miss",
+        "variantId": "ev-c9127a9bbca270c6b4d824c0"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-26aa7744423b7b6c3593dabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "miss",
+        "variantId": "ev-f2d804ae4bdb2074f4fcc031"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-26aa7744423b7b6c3593dabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "miss",
+        "variantId": "ev-fa17fdcf269c86cd59678779"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-26aa7744423b7b6c3593dabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "miss",
+        "variantId": "ev-fba1f0f0d76576e881854105"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-29a8dcc067ecefac970b9260",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-4a1552e04ed4b3ee1f8f2688"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-29a8dcc067ecefac970b9260",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-8e507a72ccdf6eb9fa636420"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-29a8dcc067ecefac970b9260",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-9f149857546d3f97e9b1580f"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-29a8dcc067ecefac970b9260",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-d30a0d491d27ae9bf6348641"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-29a8dcc067ecefac970b9260",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-e7634d6c0931d8583b3c2abd"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-46a9ffd03cd59bdfb3a0d3d1",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-30def4d29f8219808dac987d"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-47265f5aa7d98c42d5aea7ff",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-b50b67c27bda2d5f0d10f2af"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-6208a433e3ead0c123df7077",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-94f0613b2a45070a87c91042"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-64e1ba4c0292b3639d528ce4",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-1067145272c8df86df0d6320"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-64e1ba4c0292b3639d528ce4",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-1e1fb0cc8941d6b987c1a77f"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-64e1ba4c0292b3639d528ce4",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-2204e213a9ace974df04241a"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-64e1ba4c0292b3639d528ce4",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-2ddec93286648b5f9b81454e"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-64e1ba4c0292b3639d528ce4",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-5aa00d84eb7138e6ef86614e"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-64e1ba4c0292b3639d528ce4",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-7b2348dc9d04bd5dc9900425"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-64e1ba4c0292b3639d528ce4",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-9700f9202a2a7a1b095a3e2d"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-687896fb15ae849b919ed10a",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "miss",
+        "variantId": "ev-543cdb66ee095b33bd26f843"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-687896fb15ae849b919ed10a",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "miss",
+        "variantId": "ev-7de38ef2487b96122be9c83d"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-687896fb15ae849b919ed10a",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "miss",
+        "variantId": "ev-91ead0006b1ef38d9e18822f"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-687896fb15ae849b919ed10a",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "miss",
+        "variantId": "ev-d7b23f700451bf714eb0cd82"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-687896fb15ae849b919ed10a",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "miss",
+        "variantId": "ev-da2773577c4fcf44d0ec26d0"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-720bedcfc4fd9cbfe4a75fc8",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-10cf9c58689864c032c18a40"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-720bedcfc4fd9cbfe4a75fc8",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-36c48a5be6fab972324c822f"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-720bedcfc4fd9cbfe4a75fc8",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-4b01fe5c3f28221fe8b0f503"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-720bedcfc4fd9cbfe4a75fc8",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-ac4d332dbb33e24708f35167"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-720bedcfc4fd9cbfe4a75fc8",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-e23840304fbd3d1a8649a8f0"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-720bedcfc4fd9cbfe4a75fc8",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-e29c78b0cfe0a88efd922551"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-737711f09148549d7e853447",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-72d5752ac6f66ee2cc2b5651"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-737711f09148549d7e853447",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-9735a3d9235df87bc1586268"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-737711f09148549d7e853447",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-cc08cbd648e1ccd090939d24"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-737711f09148549d7e853447",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-e2702be72ab2a544a196613e"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-737711f09148549d7e853447",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-eb34f9ad14028d3dbb477ee6"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-7bee12f2ab9b043444a87ca9",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-f577c561cd73b087d0aac985"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9a8c02528269e95f6129cabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-36dd26ba72ba3e5ccd42eec2"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9a8c02528269e95f6129cabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-370b3d596ae6744c6636cad4"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9a8c02528269e95f6129cabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-507cde41ce95f699d3b27e01"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9a8c02528269e95f6129cabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-98fcdd786333cb0099123328"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9a8c02528269e95f6129cabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-afbf65b6153f31c09d457b30"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9a8c02528269e95f6129cabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-da3878e7c43458c6029f078f"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9a8c02528269e95f6129cabb",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-ec06f068aa544dcc25554991"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9e9846cf2e8425870e767aba",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-0df50530819d8df170b1180f"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9e9846cf2e8425870e767aba",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-1bcb0eb59945ae6520c89611"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9e9846cf2e8425870e767aba",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-2ce9939796bcdfdab9de74b5"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9e9846cf2e8425870e767aba",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-4fb0eec8d3ad4eef0cbc976e"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9e9846cf2e8425870e767aba",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-b819d9e35a94b19bab7c2991"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9e9846cf2e8425870e767aba",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-c407b2bc8a37eaab03b22c35"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9e9846cf2e8425870e767aba",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-fb1049eaaac79a27dac73fb2"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9fc37fb593c5ac4f295d67cf",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-39a4cfca1ba28b15a09810ad"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9fc37fb593c5ac4f295d67cf",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-4230e9530604ca4ab90df5f7"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9fc37fb593c5ac4f295d67cf",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-5d359dd0a49b07e1aa9af239"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9fc37fb593c5ac4f295d67cf",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-6a7ca4d5f759669949fb3c6d"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9fc37fb593c5ac4f295d67cf",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-6afb1fc895a373e1baeb7305"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9fc37fb593c5ac4f295d67cf",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-91c1f7de0ddc1841108f860b"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-9fc37fb593c5ac4f295d67cf",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-ade19cb2c3ab61a2cebb47d5"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-cbbad3c9f271f40c68022ba9",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-2d713f7e71a24d017f720d9d"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-cbbad3c9f271f40c68022ba9",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-86e1e75f536717f50331e4a4"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-cbbad3c9f271f40c68022ba9",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-8cf40ab845057766873dc26f"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-cbbad3c9f271f40c68022ba9",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-be994a89585cc802d8196c19"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-cbbad3c9f271f40c68022ba9",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-e78cb24faf8e11fdb6ad630f"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-cf5a4f5b8317a1a82b68c3fc",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-81a6ec207556d1c82e258b3d"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-e7caa230a0920e5a8d0aa19e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-281f9abd87375eceb304ba0c"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-e7caa230a0920e5a8d0aa19e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-50b3344e3208f1174c0ab969"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-e7caa230a0920e5a8d0aa19e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-5bc892ebc1538d84c2b78cf1"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-e7caa230a0920e5a8d0aa19e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-9a01ee71c27147be7c961db8"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-e7caa230a0920e5a8d0aa19e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-b1b0e8c3f4564c3842dc0d71"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-e7caa230a0920e5a8d0aa19e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-d7246edd774039a595079200"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-e7caa230a0920e5a8d0aa19e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-d9aa75849776d86da97f5a2f"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f78fe4c9c1a06973dd55439e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-3719c87ef2f7b61e180e7f33"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f78fe4c9c1a06973dd55439e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-706f33232b19f8f262b242b9"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f78fe4c9c1a06973dd55439e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-c41304f0ba9e045c551b19fc"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f78fe4c9c1a06973dd55439e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-dcf80016e5cb904e3514057b"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f78fe4c9c1a06973dd55439e",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-fc83ab40a7e2f5315101cf2b"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f846c6bc3bbc02cfc768bc5f",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-10cc28f817c002a7c10c145d"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f846c6bc3bbc02cfc768bc5f",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-1d0aad922913efccf5eb4134"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f846c6bc3bbc02cfc768bc5f",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-8799d8dd8958184a7422499e"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f846c6bc3bbc02cfc768bc5f",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-b212eb922623f094170a964a"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f846c6bc3bbc02cfc768bc5f",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-b3c72eda4ea0a81cfd7ba5ff"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f846c6bc3bbc02cfc768bc5f",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-c081bc3634f563763472c340"
+      },
+      {
+        "action": {
+          "state": "output-verified",
+          "verification": "residual-present"
+        },
+        "caseId": "ec-f846c6bc3bbc02cfc768bc5f",
+        "method": "type-validation",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "miss",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "miss",
+        "typeIdentity": "miss",
+        "variantId": "ev-ce7e954e6db9facbbbbc9d34"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-10947a12aba4d33397602390",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-429eebd70a636084c24d3179"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-2f1a2a735d5b391d7601172c",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-5ce908212eb87ba86bbbe4f6"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-32fee77f63835a753b4cd6f1",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-3beaa3a061bf01d841aefe05"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-32fee77f63835a753b4cd6f1",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-e68d87437648d97f35ce42b0"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-38447900674ea70373fe57d0",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-f2f3b59104dec1c8515dad36"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-3d5d95f21cc982715b909a93",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-35ae654e77292a537b1ac2d9"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-4a8091be36e189208d6a3590",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-185c3607c1e8c1ca508144d0"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-516726151b19d941d7a53027",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-6c8ee31da2f9309475ebdc21"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-539c57ef6c1c694e0dfea78d",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-b17fed3a7a5be7d2e1a21176"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-6f1ad9d219ff8983b48a966d",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-64e6000bd1e3789dac86099d"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-7d7458b7b0986bdddd03fbfa",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-627b13712706168ac6a4402a"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-88f880c9def1832f8163a9b0",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-0dce865213432ceca27c922d"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-88f880c9def1832f8163a9b0",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-100e39423378fa4ae3a01ca8"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-92a8f0536a7d52900831f415",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-d030ade83a2316a24a00799b"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-9a3ccc3bfe40c25f5f91736a",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-3c58c1a36c4b09c4647f61ed"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-9a54df1d862b225aa851c15e",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-bd10fc4557d25150ca4b5cfc"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-9be70640076079149d74cd40",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-34fa762457bea45f3fce65a3"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-a44a68509b78a076cc43a2b7",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-cd7d866992d2eb983d3f492e"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-a44a68509b78a076cc43a2b7",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-eb614440a5cacfa51caa64b9"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-a74033ce23b1a0e32958b57e",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-57a1a9938fb8dbb573a121de"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-aabdef5c0c2e562fffee2c6e",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-7261f881469aa753e22125f7"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-acc77d723ca416506d832df7",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-4760139334ea28e0716bb169"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-b299add54c5ff5aa6b2b6a8e",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-20cd697fb04b8487159d73cb"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-b299add54c5ff5aa6b2b6a8e",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-b10b97814995ec8f4c804590"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-bb703f4f910d28672462289b",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-a758c49db64f94a76ee566f8"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-c068f317ac015f48f94f0fc2",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-3b6f0029f162bee389fa643e"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-c3285eb02e9a97e31684af74",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-6980e97f5698293414168a37"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-c3285eb02e9a97e31684af74",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-9b4093cd21280099693176ee"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-c3dd077da4a406a2bbee30ff",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-10cd5efa9977da71aed2d775"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-cee51671d304bb9bdd59263e",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-418d1a977e49e6ecaa5ea0bc"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-cf46a4dccfa7a95405739243",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-70d52ab35d38f982572774b5"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-d8f2b64a1e0dc30e85608e6f",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-525795fa1b2c26da4f028299"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-d8f2b64a1e0dc30e85608e6f",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-6ef92f52b1ac07b3e692c17b"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-d9d117c73d6ad59614100183",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-2cf035a92d6fbc27e148e440"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-d9d117c73d6ad59614100183",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-8e4f6e8de49ae45dece50389"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-ddc9b381b909e1919edaa54c",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-7cabd9ba1afc5371a4974e7d"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-e2f1ca5b841ded9975ced018",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-532cf4c40d3f07e0bfb567ad"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-ef750fb7b1eaac6a7f1f0c17",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-b1f6078dc887c22fc85dc312"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-f3708e61caf9dcd7465a469d",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-41f683a0bb0d5e0b80e7cdb5"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-f3708e61caf9dcd7465a469d",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-a03bb9b2002518a6e3f671a6"
+      },
+      {
+        "action": {
+          "state": "not-measured"
+        },
+        "caseId": "eu-ff766a932c4da74cdf001c93",
+        "method": "schema-only",
+        "observed": {
+          "families": [],
+          "findingCount": 0,
+          "jurisdictions": []
+        },
+        "occurrenceId": "occurrence-1",
+        "range": "unresolved",
+        "scannerId": "redact-secret-core",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved",
+        "variantId": "ev-d34940cf5a076903e2eb04a0"
+      }
+    ],
+    "population": {
+      "populationDigest": "612a8cf629c24c8e92be474a8129a592c7f1f75cbe4e2e2afcc60383cc6347d8",
+      "populationId": "pii-evidence-public-pii-phi-2026-10-07-9d4e8e036bbb",
+      "populationVersion": 1,
+      "visibility": "public-synthetic"
+    },
+    "populationCounts": {
+      "authoredCases": 55,
+      "occurrences": 139,
+      "variants": 139
+    },
+    "protocol": {
+      "accounting": "pii-v1",
+      "id": "pii-v1",
+      "rules": {
+        "accounting": {
+          "id": "pii-v1-canonical-accounting",
+          "revision": 2
+        },
+        "matching": {
+          "id": "pii-v1-canonical",
+          "revision": 2
+        },
+        "statistics": {
+          "id": "pii-v1-wilson-exact",
+          "revision": 1
+        }
+      },
+      "version": 2
+    },
+    "runClass": "public-synthetic",
+    "scannerMetrics": [
+      {
+        "metrics": [
+          {
+            "counts": {
+              "eligible": 1,
+              "measured": 1,
+              "notApplicable": 54,
+              "notMeasured": 0,
+              "numerator": 1,
+              "total": 55,
+              "unresolved": 0
+            },
+            "effectiveN": 1,
+            "metric": {
+              "id": "benign-suppression-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 0,
+              "measured": 0,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 0,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "context-discrimination-rate",
+              "version": 1
+            },
+            "status": "not-applicable",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 0,
+              "measured": 0,
+              "notApplicable": 55,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 55,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "jurisdiction-collision-rate",
+              "version": 1
+            },
+            "status": "not-applicable",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 110,
+              "measured": 39,
+              "notApplicable": 0,
+              "notMeasured": 0,
+              "numerator": 39,
+              "total": 110,
+              "unresolved": 71
+            },
+            "effectiveN": 110,
+            "metric": {
+              "id": "measurable-share",
+              "version": 1
+            },
+            "status": "partial",
+            "value": {
+              "bound": {
+                "mantissa": 27144,
+                "scale": 5
+              },
+              "point": {
+                "mantissa": 354545,
+                "scale": 6
+              },
+              "state": "measured"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 1,
+              "measured": 1,
+              "notApplicable": 54,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 55,
+              "unresolved": 0
+            },
+            "effectiveN": 1,
+            "metric": {
+              "id": "non-sensitive-flag-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "reason": "insufficient-evidence",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 0,
+              "measured": 0,
+              "notApplicable": 55,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 55,
+              "unresolved": 0
+            },
+            "effectiveN": 0,
+            "metric": {
+              "id": "range-collateral-rate",
+              "version": 1
+            },
+            "status": "not-applicable",
+            "value": {
+              "reason": "zero-denominator",
+              "state": "withheld"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 18,
+              "measured": 18,
+              "notApplicable": 37,
+              "notMeasured": 0,
+              "numerator": 18,
+              "total": 55,
+              "unresolved": 0
+            },
+            "effectiveN": 18,
+            "metric": {
+              "id": "sensitive-miss-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "bound": {
+                "mantissa": 1,
+                "scale": 0
+              },
+              "point": {
+                "mantissa": 1,
+                "scale": 0
+              },
+              "state": "measured"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 20,
+              "measured": 20,
+              "notApplicable": 35,
+              "notMeasured": 0,
+              "numerator": 20,
+              "total": 55,
+              "unresolved": 0
+            },
+            "effectiveN": 20,
+            "metric": {
+              "id": "type-miss-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "bound": {
+                "mantissa": 1,
+                "scale": 0
+              },
+              "point": {
+                "mantissa": 1,
+                "scale": 0
+              },
+              "state": "measured"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 20,
+              "measured": 20,
+              "notApplicable": 35,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 55,
+              "unresolved": 0
+            },
+            "effectiveN": 20,
+            "metric": {
+              "id": "wrong-family-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "bound": {
+                "mantissa": 16113,
+                "scale": 5
+              },
+              "point": {
+                "mantissa": 0,
+                "scale": 0
+              },
+              "state": "measured"
+            }
+          },
+          {
+            "counts": {
+              "eligible": 8,
+              "measured": 8,
+              "notApplicable": 47,
+              "notMeasured": 0,
+              "numerator": 0,
+              "total": 55,
+              "unresolved": 0
+            },
+            "effectiveN": 8,
+            "metric": {
+              "id": "wrong-jurisdiction-rate",
+              "version": 1
+            },
+            "status": "measured",
+            "value": {
+              "bound": {
+                "mantissa": 324416,
+                "scale": 6
+              },
+              "point": {
+                "mantissa": 0,
+                "scale": 0
+              },
+              "state": "measured"
+            }
+          }
+        ],
+        "scannerId": "redact-secret-core"
+      }
+    ],
+    "scanners": [
+      {
+        "capabilities": {
+          "action": "sanitized-output",
+          "families": [
+            {
+              "family": "pii:global:email",
+              "state": "supported"
+            },
+            {
+              "family": "pii:global:iban",
+              "state": "supported"
+            },
+            {
+              "family": "pii:global:network-address",
+              "state": "supported"
+            },
+            {
+              "family": "pii:global:payment-card",
+              "state": "supported"
+            },
+            {
+              "family": "pii:global:phone",
+              "state": "supported"
+            },
+            {
+              "family": "pii:us:ssn",
+              "state": "supported"
+            }
+          ],
+          "familyClassification": "supported",
+          "jurisdictionReporting": "supported",
+          "jurisdictions": [
+            {
+              "jurisdiction": "US",
+              "state": "supported"
+            }
+          ],
+          "ranges": "supported",
+          "sensitivityClassification": "supported"
+        },
+        "identity": {
+          "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+          "adapter": {
+            "adapterId": "redact-secret-core-node",
+            "adapterVersion": "1.0.0",
+            "normalizationVersion": 1
+          },
+          "artifactDigest": "726421636189573bc76024ecf23ec6bd1d71fef6d8272e5da1b3967dee036d03",
+          "configurationDigest": "d213ca5dd371adcea382769b656cd9b3d7b6543ea157dbf63e9a3f50eaeb3f21",
+          "product": {
+            "kind": "released"
+          },
+          "scannerId": "redact-secret-core",
+          "scannerVersion": "0.1.0-beta.12"
+        },
+        "observationDigest": "79bf8087b18fc8ca767e13198d23ce1bcf0bd120baaf69ab68e66b24703641e3",
+        "replays": {
+          "agreed": true,
+          "count": 2
+        },
+        "status": "complete"
+      }
+    ]
+  },
+  "semanticDigest": "2d06741eb857162aef240e3e5275717023d20b3af5a8a24dee5da30c6c8c86af"
+}
