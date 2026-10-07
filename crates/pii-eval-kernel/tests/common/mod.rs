@@ -38,7 +38,7 @@ pub fn exp(
 ) -> Expectation {
     Expectation {
         occurrence_id: Id::new(id).unwrap(),
-        range: range(start, end),
+        range: Some(range(start, end)),
         family: FamilyId::new(family).unwrap(),
         type_expectation: ty,
         validator: None,

@@ -62,7 +62,7 @@ fn perfect_rows(out: &GenerationOutput, gate: bool) -> Vec<Row> {
                 .iter()
                 .filter(|e| e.type_expectation == ExpectedType::Valid)
                 .map(|e| Finding {
-                    range: e.range,
+                    range: e.range.expect("authored range"),
                     family: Some(e.family.clone()),
                     jurisdiction: g.case.jurisdiction.clone(),
                     sensitive: Some(e.sensitivity == SensitivityExpectation::Sensitive),

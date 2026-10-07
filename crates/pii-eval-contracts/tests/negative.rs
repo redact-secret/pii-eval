@@ -204,8 +204,8 @@ fn probes() -> Vec<Probe> {
         "minor-newer-than-reader",
         ReasonCode::SchemaMinorTooNew,
         // 1.1 is readable since P7 (ADR 0008), 1.2 since ADR 0016 and 1.3 since
-        // ADR 0017; 1.4 is the first newer minor.
-        replace_once(&snap, version_line, "\"schemaVersion\": \"1.4\","),
+        // ADR 0017 and 1.4 since ADR 0018; 1.5 is the first newer minor.
+        replace_once(&snap, version_line, "\"schemaVersion\": \"1.5\","),
     );
     raw(
         k_snap,
@@ -359,6 +359,37 @@ fn probes() -> Vec<Probe> {
         ReasonCode::IdentityNotEstablishedGate,
         to_pretty_json(&doc).unwrap().into_bytes(),
     ));
+    // An authored not-established range under a schema older than 1.4 (ADR 0018).
+    let rangeless = |e: &mut Expectation| {
+        e.range = None;
+        e.type_expectation = ExpectedType::NotEstablished;
+        e.sensitivity = SensitivityExpectation::NotEstablished;
+    };
+    let doc = typed(&f.snapshot, |d| {
+        d.schema_version = SchemaVersion::V1_3;
+        d.semantic.cases[2].method = MethodId::SchemaOnly;
+        rangeless(&mut d.semantic.cases[2].variants[0].expectations[0]);
+    });
+    out.push(doc_probe(
+        k_snap,
+        "not-established-range-under-schema-1-3",
+        ReasonCode::RangeNotEstablishedGate,
+        to_pretty_json(&doc).unwrap().into_bytes(),
+    ));
+    // A range-less occurrence must not carry an authored identity (ADR 0018).
+    let doc = typed(&f.snapshot, |d| {
+        d.schema_version = SchemaVersion::V1_4;
+        d.semantic.cases[2].method = MethodId::SchemaOnly;
+        let e = &mut d.semantic.cases[2].variants[0].expectations[0];
+        e.range = None;
+        e.sensitivity = SensitivityExpectation::NotEstablished;
+    });
+    out.push(doc_probe(
+        k_snap,
+        "not-established-range-with-authored-identity",
+        ReasonCode::RangeNotEstablishedInvalid,
+        to_pretty_json(&doc).unwrap().into_bytes(),
+    ));
     // ---- Typed mutations of the corpus snapshot (re-sealed). ----
     let mut snap_probe = |label: &str, code, change: &dyn Fn(&mut CorpusSnapshotBody)| {
         let doc = typed(&f.snapshot, |d| change(&mut d.semantic));
@@ -370,22 +401,35 @@ fn probes() -> Vec<Probe> {
         ));
     };
     snap_probe("empty-range", ReasonCode::RangeInvalid, &|b| {
-        let r = &mut b.cases[2].variants[0].expectations[0].range;
+        let r = b.cases[2].variants[0].expectations[0]
+            .range
+            .as_mut()
+            .unwrap();
         r.end = r.start;
     });
     snap_probe("inverted-range", ReasonCode::RangeInvalid, &|b| {
-        let r = &mut b.cases[2].variants[0].expectations[0].range;
+        let r = b.cases[2].variants[0].expectations[0]
+            .range
+            .as_mut()
+            .unwrap();
         std::mem::swap(&mut r.start, &mut r.end);
     });
     snap_probe("end-past-text", ReasonCode::RangeOutOfBounds, &|b| {
-        b.cases[2].variants[0].expectations[0].range.end = 10_000;
+        b.cases[2].variants[0].expectations[0]
+            .range
+            .as_mut()
+            .unwrap()
+            .end = 10_000;
     });
     snap_probe(
         "inside-korean-character",
         ReasonCode::RangeNotOnCharBoundary,
         &|b| {
             // The Korean prefix is multi-byte: byte 1 is inside the first character.
-            let r = &mut b.cases[1].variants[0].expectations[0].range;
+            let r = b.cases[1].variants[0].expectations[0]
+                .range
+                .as_mut()
+                .unwrap();
             r.start = 1;
         },
     );
@@ -1079,7 +1123,8 @@ fn probes() -> Vec<Probe> {
         let v = &mut d.semantic.cases[2].variants[0];
         v.text = v.text.replace("on file", "on  file");
         v.text_digest = Sha256Digest::of_bytes(v.text.as_bytes());
-        v.expectations[0].range.end = v.expectations[0].range.end.min(v.text.len() as u64);
+        let r = v.expectations[0].range.as_mut().unwrap();
+        r.end = r.end.min(v.text.len() as u64);
     });
     bind(
         "population-digest-changed-by-text-edit",

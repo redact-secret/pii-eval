@@ -1,0 +1,352 @@
+{
+ "schema": "pii-eval-population-handoff/1",
+ "issue": "redact-secret/pii-eval#32",
+ "note": "Public synthetic. Integers, enumerated states and digests only; no input text, matched value or scanner output. A verification on a local darwin build, never an official run; the semantic digests are host independent by contract and the linux replay is the consumer's (benchmarks #665).",
+ "contract": {
+  "adr": "docs/adr/0018-not-established-range-and-schema-1-4.md",
+  "schemaVersion": "1.4",
+  "protocol": "pii-v1 revision 2",
+  "artifactSchema": "pii-eval.public-synthetic-artifact",
+  "engineVersion": "0.0.0"
+ },
+ "engine": {
+  "repository": "redact-secret/pii-eval",
+  "source": "the merge commit of the pull request that carries this file (recorded in the pull request and in the issue #32 handoff comment, with the CI artifact digest)",
+  "cargoLockSha256": "e646a917c7dc8a5d5f5744bbfc56456661ebeb5505ac18788b7d5262f29a956a",
+  "build": "cargo build --release --locked -p pii-eval-cli",
+  "ciArtifact": "pii-eval-engine-<merge commit>-linux-x86_64 (build-info.json and SHA256SUMS inside)",
+  "localVerificationBinarySha256": "3bb255edc4775cfd7f92ab937f126c478d8aaa9c2437ea88c59236202e98d4d9 (darwin-arm64, verification only)"
+ },
+ "benchmarksInputs": {
+  "baseCommit": "6e87a7caf2e6bba1fcd2c962f86c141eafd45cf6",
+  "planSet": "b11-population-v2",
+  "oracleCommit": "4b846967346505baca11e0b98cab1475fbce6773",
+  "candidate": {
+   "version": "0.1.0-beta.13",
+   "sourceCommit": "401158d09a677b110fa60209256ba184b1f08f8f",
+   "artifactSetCommitment": "a26968fe74077d1b814c5069488b8a7537833a231d981da2b515c393af6212f5"
+  },
+  "scannerConfigurationDigest": "d213ca5dd371adcea382769b656cd9b3d7b6543ea157dbf63e9a3f50eaeb3f21",
+  "scannerActivationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+  "converterBeforeSha256": "551c02ab8261c29d18b7845ea22e38e84aa795014c67d71acde43149d8866646",
+  "converterAfterSha256": "c44ad88a3cdef7ccd8e352455d480d71acdad2d6cb2e77d95363e0d49b13cba3",
+  "converterPatch": "docs/migration/populations-32/benchmarks-converter.patch",
+  "frozenSchema12DualRunReport": "docs/reports/2026-10-05-pii-eval-population-dual-run.md (1032 of 1188 memberships)"
+ },
+ "excludedInventory": {
+  "totalMemberships": 156,
+  "distinctCases": 110,
+  "authoredState": "identity not-established, sensitivity not-established, no candidate range",
+  "byPopulation": {
+   "oracle-plan": {
+    "memberships": 51,
+    "byFamily": {
+     "pii:global:email": 9,
+     "pii:global:iban": 13,
+     "pii:global:network-address": 3,
+     "pii:global:payment-card": 5,
+     "pii:global:phone": 16,
+     "pii:us:ssn": 5
+    },
+    "withBuiltTargetButNoCandidate": 0
+   },
+   "qualification-plan": {
+    "memberships": 36,
+    "byFamily": {
+     "pii:global:email": 9,
+     "pii:global:iban": 9,
+     "pii:global:network-address": 1,
+     "pii:global:payment-card": 11,
+     "pii:global:phone": 4,
+     "pii:us:ssn": 2
+    },
+    "withBuiltTargetButNoCandidate": 6
+   },
+   "diagnostic-balanced": {
+    "memberships": 49,
+    "byFamily": {
+     "pii:global:email": 13,
+     "pii:global:iban": 16,
+     "pii:global:network-address": 6,
+     "pii:global:payment-card": 11,
+     "pii:global:phone": 2,
+     "pii:us:ssn": 1
+    },
+    "withBuiltTargetButNoCandidate": 3
+   },
+   "benign-heavy-stress": {
+    "memberships": 20,
+    "byFamily": {
+     "pii:global:email": 4,
+     "pii:global:iban": 7,
+     "pii:global:network-address": 6,
+     "pii:global:phone": 3
+    },
+    "withBuiltTargetButNoCandidate": 3
+   }
+  }
+ },
+ "populations": [
+  {
+   "view": "oracle-plan",
+   "benchmarkMemberships": 146,
+   "carried": 146,
+   "notRepresentable": 0,
+   "snapshotDigest": "7b39dab9154e33f2d2b946a5ca87b9c7aec50511337fa1dad2c4660744ae6839",
+   "manifestDigest": "f7a96b75053f460efe87af77f9aebbf1e319522526d4b9fa92a89d76ed1d1a84",
+   "observationDigest": "421319ca78053000f07c520eb62fe22c75a9fbecb5fbfd5268970fcefba53fae",
+   "rosterSha256": "ed34b0fbdb24f64a8388169e9b34146b575a9611a8de2613540ff0448db0c1ec",
+   "artifactSemanticDigest": "37a74f301c30b854a698b3d4aeb313d24e637d8860c5a49d390f904f1246b868",
+   "artifactSchemaVersion": "1.4",
+   "artifactFileSha256": "9e8e7f328ebcc795a9097ba9058593449cbd584ea35df3470d441bf05dd090ff",
+   "replaysByteEqual": true,
+   "outcomes": 146,
+   "typeIdentity": {
+    "miss": 43,
+    "correct": 36,
+    "unresolved": 51,
+    "invalid-correct": 16
+   },
+   "sensitivityContext": {
+    "unresolved": 93,
+    "correct": 53
+   },
+   "range": {
+    "miss": 59,
+    "exact": 36,
+    "unresolved": 51
+   }
+  },
+  {
+   "view": "qualification-plan",
+   "benchmarkMemberships": 266,
+   "carried": 266,
+   "notRepresentable": 0,
+   "snapshotDigest": "631d616d86d360cae4e839dfb884b8862da623f76050b204a08209c4b21f36f3",
+   "manifestDigest": "c49f36a2bce27fb47618076c71804aad5e363a0e6572effbec8e1e9191534906",
+   "observationDigest": "afb8690a63b5cbc28f72cc512f161ad6a26bc7424cbc695050fe81de413208b2",
+   "rosterSha256": "a8b216a58b76b114640abe88f11d1efb4e7ce85c7631ab572814df2fed7bc729",
+   "artifactSemanticDigest": "6f41e411e27de75f48b64ac6a66571ed82dc309643b804ac55ac9a95c791fba9",
+   "artifactSchemaVersion": "1.4",
+   "artifactFileSha256": "4b51bc0d7d3f45630af003b50516686f9fe20748a025a4d9ce152a18a29c1835",
+   "replaysByteEqual": true,
+   "outcomes": 266,
+   "typeIdentity": {
+    "correct": 176,
+    "invalid-correct": 39,
+    "miss": 15,
+    "unresolved": 36
+   },
+   "sensitivityContext": {
+    "correct": 177,
+    "unresolved": 89
+   },
+   "range": {
+    "exact": 176,
+    "miss": 54,
+    "unresolved": 36
+   }
+  },
+  {
+   "view": "diagnostic-balanced",
+   "benchmarkMemberships": 477,
+   "carried": 477,
+   "notRepresentable": 0,
+   "snapshotDigest": "d0ce54f06089ae0c4969c00f958a241324c01b938df41df3eae75497e18447ab",
+   "manifestDigest": "4dd090d3dd4be6c39657703ac49a4a85b275d62e3a3fdf1099d4a083c877a9e2",
+   "observationDigest": "c1c22536d4dc3db2848c513c4c9f2a5bf71e2b3a37516de9a45465e611641961",
+   "rosterSha256": "dca84d9a1ef0784b51402d7c43518dfd33115abcae4d906cf478ff5f0a787fa5",
+   "artifactSemanticDigest": "134d30a3c6f9c21f38ae46fdc74c861eae38feeb1cc3ea6c8b171f800a733166",
+   "artifactSchemaVersion": "1.4",
+   "artifactFileSha256": "203b88a8533076327e6380f03bfc7151a6d679427100ea393adb36f885971185",
+   "replaysByteEqual": true,
+   "outcomes": 477,
+   "typeIdentity": {
+    "miss": 143,
+    "correct": 213,
+    "invalid-correct": 72,
+    "unresolved": 49
+   },
+   "sensitivityContext": {
+    "unresolved": 227,
+    "correct": 250
+   },
+   "range": {
+    "miss": 215,
+    "exact": 213,
+    "unresolved": 49
+   }
+  },
+  {
+   "view": "benign-heavy-stress",
+   "benchmarkMemberships": 299,
+   "carried": 299,
+   "notRepresentable": 0,
+   "snapshotDigest": "3a8e7ac637174d6a37b65ef0f8ae51110ff7d5e3e90c4b0298badb3d29d8e8e2",
+   "manifestDigest": "2de68476d08a82605cb882592aad791e453796fe23ddbe427ad58ddd565aff3d",
+   "observationDigest": "d0b7d4b9020a5e4acb708ceb31103f3b8044a1d7db934e87e85883e31bc0bf72",
+   "rosterSha256": "2905c8551b86c71ee8526912896b5fa3747a9d54305bce93bdbd7110396b7f93",
+   "artifactSemanticDigest": "a82ac5144a4ae22336cd66318e37a2010ec7a8fc3129233630b130f3df082767",
+   "artifactSchemaVersion": "1.4",
+   "artifactFileSha256": "3a05e89ff36bb001a7036d994f7d5c98d70648846021e34c54f748809ebf6189",
+   "replaysByteEqual": true,
+   "outcomes": 299,
+   "typeIdentity": {
+    "miss": 179,
+    "correct": 68,
+    "invalid-correct": 32,
+    "unresolved": 20
+   },
+   "sensitivityContext": {
+    "unresolved": 184,
+    "correct": 115
+   },
+   "range": {
+    "miss": 211,
+    "exact": 68,
+    "unresolved": 20
+   }
+  }
+ ],
+ "totals": {
+  "benchmarkMemberships": 1188,
+  "carried": 1188,
+  "notRepresentable": 0
+ },
+ "locatedMetricsUnchanged": {
+  "oracle-plan": {
+   "type-miss-rate": {
+    "numerator": 43,
+    "eligible": 79,
+    "status": "measured"
+   },
+   "wrong-family-rate": {
+    "numerator": 0,
+    "eligible": 79,
+    "status": "measured"
+   },
+   "sensitive-miss-rate": {
+    "numerator": 0,
+    "eligible": 36,
+    "status": "measured"
+   },
+   "non-sensitive-flag-rate": {
+    "numerator": 0,
+    "eligible": 17,
+    "status": "measured"
+   },
+   "range-collateral-rate": {
+    "numerator": 0,
+    "eligible": 36,
+    "status": "measured"
+   }
+  },
+  "qualification-plan": {
+   "type-miss-rate": {
+    "numerator": 15,
+    "eligible": 191,
+    "status": "measured"
+   },
+   "wrong-family-rate": {
+    "numerator": 0,
+    "eligible": 191,
+    "status": "measured"
+   },
+   "sensitive-miss-rate": {
+    "numerator": 0,
+    "eligible": 176,
+    "status": "measured"
+   },
+   "non-sensitive-flag-rate": {
+    "numerator": 0,
+    "eligible": 1,
+    "status": "measured"
+   },
+   "range-collateral-rate": {
+    "numerator": 0,
+    "eligible": 176,
+    "status": "measured"
+   }
+  },
+  "diagnostic-balanced": {
+   "type-miss-rate": {
+    "numerator": 143,
+    "eligible": 356,
+    "status": "measured"
+   },
+   "wrong-family-rate": {
+    "numerator": 0,
+    "eligible": 356,
+    "status": "measured"
+   },
+   "sensitive-miss-rate": {
+    "numerator": 0,
+    "eligible": 213,
+    "status": "measured"
+   },
+   "non-sensitive-flag-rate": {
+    "numerator": 0,
+    "eligible": 37,
+    "status": "measured"
+   },
+   "range-collateral-rate": {
+    "numerator": 0,
+    "eligible": 213,
+    "status": "measured"
+   }
+  },
+  "benign-heavy-stress": {
+   "type-miss-rate": {
+    "numerator": 179,
+    "eligible": 247,
+    "status": "measured"
+   },
+   "wrong-family-rate": {
+    "numerator": 0,
+    "eligible": 247,
+    "status": "measured"
+   },
+   "sensitive-miss-rate": {
+    "numerator": 0,
+    "eligible": 68,
+    "status": "measured"
+   },
+   "non-sensitive-flag-rate": {
+    "numerator": 0,
+    "eligible": 47,
+    "status": "measured"
+   },
+   "range-collateral-rate": {
+    "numerator": 0,
+    "eligible": 68,
+    "status": "measured"
+   }
+  }
+ },
+ "measurableShareChanged": {
+  "oracle-plan": {
+   "numerator": 148,
+   "eligible": 292,
+   "unresolved": 144,
+   "status": "partial"
+  },
+  "qualification-plan": {
+   "numerator": 407,
+   "eligible": 532,
+   "unresolved": 125,
+   "status": "partial"
+  },
+  "diagnostic-balanced": {
+   "numerator": 678,
+   "eligible": 954,
+   "unresolved": 276,
+   "status": "partial"
+  },
+  "benign-heavy-stress": {
+   "numerator": 394,
+   "eligible": 598,
+   "unresolved": 204,
+   "status": "partial"
+  }
+ }
+}

@@ -91,7 +91,11 @@ pub fn variant_tasks(snapshot: &CorpusSnapshot) -> Vec<VariantTask<'_>> {
         .map(|variant| VariantTask {
             variant_id: &variant.variant_id,
             text: &variant.text,
-            ranges: variant.expectations.iter().map(|e| e.range).collect(),
+            ranges: variant
+                .expectations
+                .iter()
+                .filter_map(|e| e.range)
+                .collect(),
         })
         .collect()
 }

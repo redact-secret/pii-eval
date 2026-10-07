@@ -108,7 +108,7 @@ fn schema_only_derives_the_authored_variant_unchanged() {
     assert_eq!(v.text, c.text);
     assert_eq!(v.expectations.len(), 1);
     let e = &v.expectations[0];
-    assert_eq!(e.range, ByteRange { start: 8, end: 30 });
+    assert_eq!(e.range, Some(ByteRange { start: 8, end: 30 }));
     assert_eq!(e.type_expectation, ExpectedType::Valid);
     assert_eq!(e.sensitivity, SensitivityExpectation::NonSensitive);
     assert_eq!(
@@ -378,10 +378,10 @@ fn context_discrimination_derives_one_variant_per_frame() {
         let e = &v.expectations[0];
         assert_eq!(
             e.range,
-            ByteRange {
+            Some(ByteRange {
                 start,
                 end: start + 23
-            }
+            })
         );
         assert_eq!(
             &v.text[start as usize..(start + 23) as usize],
@@ -418,7 +418,10 @@ fn context_frames_keep_korean_byte_offsets() {
     }
     let g = ok(&c);
     let (v, _) = by_slot(&g, "frame-sensitive");
-    assert_eq!(v.expectations[0].range, ByteRange { start: 11, end: 34 });
+    assert_eq!(
+        v.expectations[0].range,
+        Some(ByteRange { start: 11, end: 34 })
+    );
     assert_eq!(v.text.len(), 34);
     assert!(v.text.is_char_boundary(11));
 }
@@ -709,7 +712,7 @@ fn mutation_invalidates_the_final_digit_and_derives_a_seeded_variant() {
     assert_eq!(v.variant_id.as_str(), "mutated-26d2db97da61c3ac7875063e");
     assert_eq!(v.text, "ref=SYNTHETIC-1237");
     let e = &v.expectations[0];
-    assert_eq!(e.range, ByteRange { start: 4, end: 18 });
+    assert_eq!(e.range, Some(ByteRange { start: 4, end: 18 }));
     assert_eq!(e.type_expectation, ExpectedType::Invalid);
     assert_eq!(e.sensitivity, SensitivityExpectation::NotEstablished);
     assert_eq!(v.derivation.strategy, Strategy::Derived);
@@ -736,7 +739,10 @@ fn mutation_wraps_nine_and_keeps_multibyte_offsets() {
     let g = ok(&c);
     let v = &g.case.variants[0];
     assert_eq!(v.text, "번호=111111110");
-    assert_eq!(v.expectations[0].range, ByteRange { start: 7, end: 16 });
+    assert_eq!(
+        v.expectations[0].range,
+        Some(ByteRange { start: 7, end: 16 })
+    );
     // An already-invalid authored type stays invalid.
     let c = with(
         mutation_case("case-mutation", "ref=", "SYNTHETIC-1237"),

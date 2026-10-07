@@ -157,6 +157,13 @@ reason_codes! {
     /// An authored `not-established` type identity, or its `unresolved`
     /// observation, is declared under a schema older than 1.3.
     IdentityNotEstablishedGate => "identity-not-established-gate",
+    // Not-established range (schema 1.4, ADR 0018).
+    /// An authored `not-established` range (an expectation without `range`), or
+    /// its `unresolved` observation, is declared under a schema older than 1.4.
+    RangeNotEstablishedGate => "range-not-established-gate",
+    /// An expectation without `range` whose type identity or sensitivity is
+    /// authored, or whose case is not `schema-only`.
+    RangeNotEstablishedInvalid => "range-not-established-invalid",
     // Product projection (schema 1.2, ADR 0016).
     /// The product-projection block is malformed: declared under a schema or
     /// protocol that has no such block, a row for a view the roster did not

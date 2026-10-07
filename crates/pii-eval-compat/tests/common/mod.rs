@@ -85,7 +85,7 @@ pub fn canonical_with(
 ) -> OccurrenceAssessment {
     let e = [Expectation {
         occurrence_id: Id::new("occ-a").unwrap(),
-        range: case.candidate,
+        range: Some(case.candidate),
         family: case.family.clone(),
         type_expectation: case.expected_type,
         validator: None,

@@ -95,10 +95,10 @@ pub fn snapshot_body(mut cases: Vec<CaseSpec>) -> CorpusSnapshotBody {
                         .enumerate()
                         .map(|(i, o)| Expectation {
                             occurrence_id: id(o.id),
-                            range: ByteRange {
+                            range: Some(ByteRange {
                                 start: (i as u64) * 5,
                                 end: (i as u64) * 5 + 4,
-                            },
+                            }),
                             family: fam.clone(),
                             type_expectation: o.ty,
                             validator: None,

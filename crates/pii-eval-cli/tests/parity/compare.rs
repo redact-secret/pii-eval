@@ -513,7 +513,7 @@ fn check_variants(ds: &Dataset, rc: &RustCorpus, cmp: &mut Comparison) {
                     uint(get(v, "candidate"), "start"),
                     uint(get(v, "candidate"), "end")
                 ),
-                format!("{}..{}", e.range.start, e.range.end),
+                format!("{}..{}", e.range.unwrap().start, e.range.unwrap().end),
             );
             check(
                 "strategy",
@@ -661,7 +661,7 @@ fn check_variants(ds: &Dataset, rc: &RustCorpus, cmp: &mut Comparison) {
 /// therefore cannot hide behind the D1 counterfactual below.
 pub fn independent_primary_ok(v: &RVariant, emission: &[Finding], primary: &Finding) -> bool {
     let e = &v.variant.expectations[0];
-    let (es, ee) = (e.range.start, e.range.end);
+    let (es, ee) = (e.range.unwrap().start, e.range.unwrap().end);
     let key = |f: &Finding| -> Option<(u8, u64, u8)> {
         let (fs, fe) = (f.range.start, f.range.end);
         if !(fs < ee && es < fe) {
@@ -1463,7 +1463,7 @@ fn vector_parts(
                 text_digest: Sha256Digest::of_bytes(TEXT.as_bytes()),
                 expectations: vec![Expectation {
                     occurrence_id: id("o1"),
-                    range: ByteRange { start: 0, end: 4 },
+                    range: Some(ByteRange { start: 0, end: 4 }),
                     family: family.clone(),
                     type_expectation: ty,
                     validator: None,

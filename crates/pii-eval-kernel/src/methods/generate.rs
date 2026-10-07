@@ -536,7 +536,7 @@ impl<'v> Generator<'v> {
     fn base_expectation(&self, case: &AuthoredCase) -> Result<Expectation, RefusalReason> {
         Ok(Expectation {
             occurrence_id: occurrence_id()?,
-            range: case.candidate,
+            range: Some(case.candidate),
             family: case.family.clone(),
             type_expectation: case.type_expectation,
             validator: case.validator.clone(),
@@ -696,7 +696,7 @@ impl<'v> Generator<'v> {
             let start = prefix.len() as u64;
             let end = start + value.len() as u64;
             let mut expectation = self.base_expectation(case)?;
-            expectation.range = ByteRange { start, end };
+            expectation.range = Some(ByteRange { start, end });
             expectation.sensitivity = frame.sensitivity;
             expectation.context_class = frame.context_class;
             drafts.push(Draft {
@@ -804,7 +804,7 @@ impl<'v> Generator<'v> {
                 OperatorError::NotApplicable => RefusalReason::OperatorNotApplicable,
             })?;
         let mut expectation = self.base_expectation(case)?;
-        expectation.range = mutated.candidate;
+        expectation.range = Some(mutated.candidate);
         // A mutation of an authored `not-established` identity stays
         // `not-established`: the operator invalidates a valid value, and
         // nothing here says the source was valid.

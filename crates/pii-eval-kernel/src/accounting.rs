@@ -661,7 +661,10 @@ fn row_flags(occ: &OccInfo, row: &OutcomeRow) -> u32 {
         }
         match row.range {
             RangeState::Miss => {}
-            RangeState::NotApplicable => f |= RV_NONMISS | RV_NA,
+            // `unresolved` needs a not-established range, and that needs a
+            // not-established type (ADR 0018): unreachable for a valid type,
+            // kept total and conservative (not a miss, not applicable).
+            RangeState::NotApplicable | RangeState::Unresolved => f |= RV_NONMISS | RV_NA,
             RangeState::Exact => f |= RV_NONMISS,
             RangeState::Overbroad | RangeState::Partial => f |= RV_NONMISS | RV_COLL,
         }
