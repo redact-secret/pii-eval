@@ -247,7 +247,7 @@ fn compare_variants(
         // Identical to the oracle.
         assert_eq!(v.text, ov.text, "{}: text", o.name);
         assert_eq!(
-            (e.range.start, e.range.end),
+            (e.range.unwrap().start, e.range.unwrap().end),
             (ov.start, ov.end),
             "{}: range",
             o.name

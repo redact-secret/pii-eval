@@ -119,8 +119,13 @@ pub struct ValidatorRef {
 pub struct Expectation {
     /// Identifier unique within the variant.
     pub occurrence_id: Id,
-    /// Expected byte range in the variant text.
-    pub range: ByteRange,
+    /// Expected byte range in the variant text. Absent when the authors did
+    /// not establish where the occurrence is (schema 1.4, ADR 0018): then the
+    /// type identity and the sensitivity must be `not-established` too, the
+    /// case must be `schema-only`, and the range axis is observed as
+    /// `unresolved`. The engine never invents a range.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<ByteRange>,
     /// Expected family. Its scope must agree with the case jurisdiction.
     pub family: FamilyId,
     /// Type axis: is the occurrence a valid or invalid instance of the family.
@@ -237,6 +242,14 @@ impl_document!(@impl
         fn validate_gates(&self, c: &mut Collector) {
             // An authored `not-established` identity exists from schema 1.3 on
             // (ADR 0017): an older reader must not meet a value it cannot read.
+            if self.semantic.authors_not_established_range()
+                && self.schema_version < SchemaVersion::V1_4
+            {
+                c.push(
+                    ReasonCode::RangeNotEstablishedGate,
+                    &Path::ROOT.field("semantic").field("cases"),
+                );
+            }
             if self.semantic.authors_not_established_identity()
                 && self.schema_version < SchemaVersion::V1_3
             {
@@ -255,7 +268,9 @@ impl CorpusSnapshot {
     /// that authors a `not-established` identity is sealed under 1.3 (ADR 0017);
     /// every other population keeps the current version and its bytes.
     pub fn unsealed(semantic: CorpusSnapshotBody) -> Self {
-        let schema_version = if semantic.authors_not_established_identity() {
+        let schema_version = if semantic.authors_not_established_range() {
+            SchemaVersion::V1_4
+        } else if semantic.authors_not_established_identity() {
             SchemaVersion::V1_3
         } else {
             SchemaVersion::CURRENT
@@ -277,7 +292,18 @@ impl Expectation {
         path: &Path<'_>,
         c: &mut Collector,
     ) {
-        self.range.check(text, &path.field("range"), c);
+        match &self.range {
+            Some(range) => range.check(text, &path.field("range"), c),
+            None => {
+                // Nothing locates the occurrence, so no judgment about its
+                // identity or sensitivity could be anchored to a span.
+                if self.type_expectation != ExpectedType::NotEstablished
+                    || self.sensitivity != SensitivityExpectation::NotEstablished
+                {
+                    c.push(ReasonCode::RangeNotEstablishedInvalid, &path.field("range"));
+                }
+            }
+        }
         let scope_ok = match (self.family.scope(), jurisdiction) {
             (FamilyScope::Global, None) => true,
             (FamilyScope::Jurisdiction(a), Some(b)) => a == *b,
@@ -362,6 +388,17 @@ impl Case {
                 v.validate(self.jurisdiction.as_ref(), &variants.index(i), c);
             }
         }
+        // A range-less occurrence (ADR 0018) has no span for a method to
+        // frame, mutate, reference or collide on: only `schema-only` cases.
+        if self.method != MethodId::SchemaOnly
+            && self
+                .variants
+                .iter()
+                .flat_map(|v| &v.expectations)
+                .any(|e| e.range.is_none())
+        {
+            c.push(ReasonCode::RangeNotEstablishedInvalid, &variants);
+        }
         // Collision declaration exists exactly for jurisdiction-collision cases.
         let is_collision = self.method == MethodId::JurisdictionCollision;
         match (&self.collision, is_collision) {
@@ -424,6 +461,16 @@ impl CorpusSnapshotBody {
             .flat_map(|case| &case.variants)
             .flat_map(|v| &v.expectations)
             .any(|e| e.type_expectation == ExpectedType::NotEstablished)
+    }
+
+    /// Whether any expectation authors a `not-established` range, that is,
+    /// carries no `range` (schema 1.4, ADR 0018).
+    pub fn authors_not_established_range(&self) -> bool {
+        self.cases
+            .iter()
+            .flat_map(|case| &case.variants)
+            .flat_map(|v| &v.expectations)
+            .any(|e| e.range.is_none())
     }
 
     pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {

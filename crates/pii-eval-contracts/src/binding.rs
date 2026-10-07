@@ -363,6 +363,7 @@ fn check_snapshot_parts(parts: &SnapshotParts<'_>, snapshot: &CorpusSnapshot) ->
         let authored = AuthoredAxes {
             expected_type: expectation.type_expectation,
             sensitivity: expectation.sensitivity,
+            range_established: expectation.range.is_some(),
             family: &expectation.family,
             jurisdiction: case.jurisdiction.as_ref(),
         };

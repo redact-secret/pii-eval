@@ -51,7 +51,7 @@ fn text_snapshot() -> CorpusSnapshot {
             text_digest: pii_eval_contracts::Sha256Digest::of_bytes(text.as_bytes()),
             expectations: vec![Expectation {
                 occurrence_id: Id::new("occurrence-1").unwrap(),
-                range: ByteRange { start: 6, end: 26 },
+                range: Some(ByteRange { start: 6, end: 26 }),
                 family: FamilyId::new("pii:global:email").unwrap(),
                 type_expectation: ExpectedType::Valid,
                 validator: None,

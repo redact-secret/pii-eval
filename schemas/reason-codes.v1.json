@@ -47,6 +47,8 @@
     "protocol-binding-mismatch",
     "public-projection-forbidden",
     "range-invalid",
+    "range-not-established-gate",
+    "range-not-established-invalid",
     "range-not-on-char-boundary",
     "range-out-of-bounds",
     "run-class-mismatch",
@@ -61,5 +63,5 @@
     "unknown-schema",
     "unknown-variant"
   ],
-  "schemaVersion": "1.3"
+  "schemaVersion": "1.4"
 }

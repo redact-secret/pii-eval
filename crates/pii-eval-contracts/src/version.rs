@@ -35,7 +35,11 @@ pub const SCHEMA_MAJOR: u16 = 1;
 /// observation `unresolved`. It is opt-in the same way: a document is sealed
 /// under 1.3 only when its population authors such an identity (corpus
 /// snapshot) or an outcome observes one (run and public artifacts).
-pub const SCHEMA_MINOR: u16 = 3;
+///
+/// 1.4 (ADR 0018) adds the authored `not-established` range: an occurrence whose
+/// location the corpus authors did not establish carries no `range`, and its
+/// range axis is observed as `unresolved`. Opt-in in the same way.
+pub const SCHEMA_MINOR: u16 = 4;
 
 /// The five document kinds. The string is the `schema` field value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -118,6 +122,9 @@ impl SchemaVersion {
 
     /// Schema 1.3: the authored `not-established` type identity (ADR 0017).
     pub const V1_3: SchemaVersion = SchemaVersion { major: 1, minor: 3 };
+
+    /// Schema 1.4: the authored `not-established` range (ADR 0018).
+    pub const V1_4: SchemaVersion = SchemaVersion { major: 1, minor: 4 };
 
     /// Parse `"<major>.<minor>"`: ASCII digits, no sign, no leading zeros.
     pub fn parse(text: &str) -> Option<Self> {
@@ -230,7 +237,8 @@ mod tests {
         assert_eq!(v(1, 1).readable(), Ok(()));
         assert_eq!(v(1, 2).readable(), Ok(()));
         assert_eq!(v(1, 3).readable(), Ok(()));
-        assert_eq!(v(1, 4).readable(), Err(ReasonCode::SchemaMinorTooNew));
+        assert_eq!(v(1, 4).readable(), Ok(()));
+        assert_eq!(v(1, 5).readable(), Err(ReasonCode::SchemaMinorTooNew));
         assert_eq!(v(2, 0).readable(), Err(ReasonCode::IncompatibleSchemaMajor));
         assert_eq!(v(0, 9).readable(), Err(ReasonCode::IncompatibleSchemaMajor));
     }

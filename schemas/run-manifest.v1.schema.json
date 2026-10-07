@@ -784,7 +784,7 @@
       "type": "string"
     }
   },
-  "$id": "urn:pii-eval:schema:run-manifest:1.3",
+  "$id": "urn:pii-eval:schema:run-manifest:1.4",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "A run manifest document. Its `semanticDigest` is the plan digest.",

@@ -85,6 +85,13 @@ exact authoring, pins and re-run steps. Upstream completion does not close the b
 acceptance; the benchmarks re-run all four populations and decide their own scorer and
 thresholds.
 
+## Amendment (ADR 0018)
+
+Section 6 and the benchmarks handoff said the 156 memberships were carried by 1.3. They
+were not: the benchmarks author them with no candidate range either, which 1.3 still
+required. [ADR 0018](0018-not-established-range-and-schema-1-4.md) adds the authored
+not-established range (schema 1.4). The identity decisions here are unchanged.
+
 ## Consequences
 
 - A reader older than 1.3 refuses a 1.3 document by `schema-minor-too-new`; it cannot

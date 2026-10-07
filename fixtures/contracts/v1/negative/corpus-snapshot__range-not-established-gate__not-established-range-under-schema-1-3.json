@@ -1,6 +1,6 @@
 {
   "schema": "pii-eval.corpus-snapshot",
-  "schemaVersion": "1.5",
+  "schemaVersion": "1.3",
   "semantic": {
     "cases": [
       {
@@ -131,7 +131,7 @@
           "sourceDigest": "ced2915fa5f98fde382c985124eed950117f20b8425724004e5802df13f477a9",
           "sourceId": "synthetic-source-type"
         },
-        "method": "type-validation",
+        "method": "schema-only",
         "variants": [
           {
             "derivation": {
@@ -144,12 +144,8 @@
                 "contextObligation": "none",
                 "family": "pii:global:payment-card",
                 "occurrenceId": "occurrence-1",
-                "range": {
-                  "end": 24,
-                  "start": 5
-                },
-                "sensitivity": "sensitive",
-                "typeExpectation": "valid",
+                "sensitivity": "not-established",
+                "typeExpectation": "not-established",
                 "validator": {
                   "id": "synthetic-mod10",
                   "version": 1
@@ -206,5 +202,5 @@
       "visibility": "public-synthetic"
     }
   },
-  "semanticDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae"
+  "semanticDigest": "35a431ed3c65448d85de37eeeaedff92c138cb3ab4f7d568b63ff21411e16658"
 }

@@ -669,7 +669,7 @@ pub fn measure_compat(w: &Workload, repeat: usize) -> Value {
                         // comparison below says whether that happened.
                         let outcome = interpret(
                             &LegacyExpectation {
-                                candidate: e.range,
+                                candidate: e.range.unwrap(),
                                 expected_type: e.type_expectation,
                                 family: &e.family,
                                 jurisdiction: v.case_jurisdiction.as_ref(),

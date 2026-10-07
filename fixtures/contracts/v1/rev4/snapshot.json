@@ -1,6 +1,6 @@
 {
   "schema": "pii-eval.corpus-snapshot",
-  "schemaVersion": "1.5",
+  "schemaVersion": "1.4",
   "semantic": {
     "cases": [
       {
@@ -193,6 +193,66 @@
             "variantId": "type-card-demo-mutated"
           }
         ]
+      },
+      {
+        "caseId": "undetermined-address-demo",
+        "language": "en",
+        "lineage": {
+          "sourceDigest": "b3cc0475bb78a5026098858e9889acf666d31062d513d303314eca31d36e72f2",
+          "sourceId": "synthetic-source"
+        },
+        "method": "schema-only",
+        "variants": [
+          {
+            "derivation": {
+              "strategy": "authored"
+            },
+            "expectations": [
+              {
+                "action": "not-specified",
+                "contextClass": "neutral",
+                "contextObligation": "none",
+                "family": "pii:global:network-address",
+                "occurrenceId": "occurrence-1",
+                "sensitivity": "not-established",
+                "typeExpectation": "not-established"
+              }
+            ],
+            "text": "client_ip=v192.168.1.7",
+            "textDigest": "1793441e1d775a00c463ced4a357d30b7443d31bd54b1bf4ff73cb721cf1c77c",
+            "variantId": "undetermined-address-demo-authored"
+          }
+        ]
+      },
+      {
+        "caseId": "undetermined-card-demo",
+        "language": "en",
+        "lineage": {
+          "sourceDigest": "b3cc0475bb78a5026098858e9889acf666d31062d513d303314eca31d36e72f2",
+          "sourceId": "synthetic-source"
+        },
+        "method": "schema-only",
+        "variants": [
+          {
+            "derivation": {
+              "strategy": "authored"
+            },
+            "expectations": [
+              {
+                "action": "not-specified",
+                "contextClass": "neutral",
+                "contextObligation": "none",
+                "family": "pii:global:payment-card",
+                "occurrenceId": "occurrence-1",
+                "sensitivity": "not-established",
+                "typeExpectation": "not-established"
+              }
+            ],
+            "text": "ref 4111 1111 1111 111x end",
+            "textDigest": "b900a2e8bd0debee070147a97d2c60ade48566cc53ad55243f3e3f01fa6091d6",
+            "variantId": "undetermined-card-demo-authored"
+          }
+        ]
       }
     ],
     "generation": {
@@ -206,5 +266,5 @@
       "visibility": "public-synthetic"
     }
   },
-  "semanticDigest": "c5249874335d21c02447bac23954d70e20748899f16a43efc56c5568a34a3bae"
+  "semanticDigest": "52037a1dd3764e733657ef7c70c97d09c7fc7cf21a1ff346d663ee269e43b9d4"
 }

@@ -71,7 +71,7 @@ fn variant(
         text_digest: Sha256Digest::of_bytes(text.as_bytes()),
         expectations: vec![Expectation {
             occurrence_id: id("occurrence-1"),
-            range: range_of(text, needle),
+            range: Some(range_of(text, needle)),
             family: fam(family),
             type_expectation,
             validator,
@@ -421,7 +421,7 @@ fn alpha_observation(snapshot: &CorpusSnapshot) -> Vec<InputObservation> {
             let mut findings = Vec::new();
             // One scanner miss: the invalid mutated card is not flagged.
             if e.type_expectation == ExpectedType::Valid {
-                let mut range = e.range;
+                let mut range = e.range.expect("authored range");
                 if v.variant_id.as_str() == "type-card-demo-authored" {
                     // Overbroad by one trailing ASCII byte.
                     range.end += 1;

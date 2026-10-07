@@ -558,6 +558,7 @@ impl_document!(@impl
                 c,
             );
             check_identity_gate(self.schema_version, self.semantic.outcomes.iter().map(|o| o.type_identity), c);
+            check_range_gate(self.schema_version, self.semantic.outcomes.iter().map(|o| o.range), c);
         }
     }
 );
@@ -577,10 +578,31 @@ fn check_identity_gate(
     }
 }
 
+/// An `unresolved` range observation (an authored `not-established` range,
+/// ADR 0018) exists from schema 1.4 on.
+fn check_range_gate(
+    version: SchemaVersion,
+    mut ranges: impl Iterator<Item = RangeState>,
+    c: &mut Collector,
+) {
+    if version < SchemaVersion::V1_4 && ranges.any(|r| r == RangeState::Unresolved) {
+        c.push(
+            ReasonCode::RangeNotEstablishedGate,
+            &Path::ROOT.field("semantic").field("outcomes"),
+        );
+    }
+}
+
 impl RunArtifact {
     /// Wrap a body in an envelope with the current version and a placeholder digest.
     pub fn unsealed(semantic: RunArtifactBody) -> Self {
         let schema_version = if semantic
+            .outcomes
+            .iter()
+            .any(|o| o.range == RangeState::Unresolved)
+        {
+            SchemaVersion::V1_4
+        } else if semantic
             .outcomes
             .iter()
             .any(|o| o.type_identity == TypeState::Unresolved)
@@ -689,6 +711,11 @@ impl_document!(@impl
                 self.semantic.outcomes.iter().map(|o| o.type_identity),
                 c,
             );
+            check_range_gate(
+                self.schema_version,
+                self.semantic.outcomes.iter().map(|o| o.range),
+                c,
+            );
             // The product projection exists from schema 1.2 on, and only with
             // the canonical protocol (it restates revision-2 accounting).
             if self.semantic.product_projection.is_some()
@@ -743,6 +770,13 @@ impl RunArtifact {
         let mut public = PublicSyntheticArtifact {
             schema: PublicSyntheticArtifactSchema::Only,
             schema_version: if body
+                .outcomes
+                .iter()
+                .any(|o| o.range == RangeState::Unresolved)
+            {
+                // 1.4 is a superset of 1.3 and 1.2.
+                SchemaVersion::V1_4
+            } else if body
                 .outcomes
                 .iter()
                 .any(|o| o.type_identity == TypeState::Unresolved)

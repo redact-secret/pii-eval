@@ -842,6 +842,7 @@ fn rows_always_satisfy_the_contract_lattice() {
                             let authored = AuthoredAxes {
                                 expected_type: ty,
                                 sensitivity: sens,
+                                range_established: true,
                                 family: &family,
                                 jurisdiction: jur,
                             };

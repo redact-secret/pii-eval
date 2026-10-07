@@ -83,7 +83,10 @@ kebab_enum!(
 
 kebab_enum!(
     /// Relationship between the reported range and the expected range.
-    RangeState { Exact, Overbroad, Partial, Miss, NotApplicable }
+    /// `unresolved` (schema 1.4, ADR 0018) is the only observation of an
+    /// occurrence whose range the authors did not establish: there is no
+    /// expected range to compare with, so it is neither a hit nor a miss.
+    RangeState { Exact, Overbroad, Partial, Miss, NotApplicable, Unresolved }
 );
 
 /// What was observed about action. Never inferred from a finding flag: removal
@@ -237,6 +240,19 @@ pub fn validate_outcome_lattice(
     capabilities: &ScannerCapabilities,
     row: &OutcomeRow,
 ) -> Result<(), ReasonCode> {
+    // A range is observed against an authored range only; an authored
+    // `not-established` range is observed as `unresolved` (or unmeasured).
+    let range_ok = if authored.range_established {
+        row.range != RangeState::Unresolved
+    } else {
+        matches!(
+            row.range,
+            RangeState::Unresolved | RangeState::NotApplicable
+        )
+    };
+    if !range_ok {
+        return Err(ReasonCode::OutcomeContradiction);
+    }
     if !TypeState::reachable(authored.expected_type).contains(&row.type_identity)
         || !SensitivityState::reachable(authored.sensitivity).contains(&row.sensitivity_context)
     {
@@ -265,6 +281,8 @@ pub struct AuthoredAxes<'a> {
     pub expected_type: ExpectedType,
     /// Authored sensitivity expectation.
     pub sensitivity: SensitivityExpectation,
+    /// Whether the authors established a range (`false`: schema 1.4, ADR 0018).
+    pub range_established: bool,
     /// Expected family.
     pub family: &'a FamilyId,
     /// Case jurisdiction, or `None` for a global case.
@@ -386,6 +404,7 @@ mod tests {
         let authored = AuthoredAxes {
             expected_type: expected,
             sensitivity: sens,
+            range_established: true,
             family: &family,
             jurisdiction: None,
         };

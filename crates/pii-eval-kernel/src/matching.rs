@@ -146,7 +146,7 @@ pub fn closeness(expected: &ByteRange, reported: &ByteRange) -> Option<(u8, u64)
             (2, len(expected).saturating_sub(overlap))
         }
         // `relation` never yields these.
-        RangeState::Miss | RangeState::NotApplicable => return None,
+        RangeState::Miss | RangeState::NotApplicable | RangeState::Unresolved => return None,
     })
 }
 
@@ -376,10 +376,12 @@ pub fn assess_variant(
         return Err(AssessError::DuplicateOccurrence);
     }
     for e in &expectations {
-        validate_range(input.text, &e.range).map_err(|error| AssessError::Range {
-            subject: Subject::Expectation(e.range),
-            error,
-        })?;
+        if let Some(range) = &e.range {
+            validate_range(input.text, range).map_err(|error| AssessError::Range {
+                subject: Subject::Expectation(*range),
+                error,
+            })?;
+        }
     }
 
     let caps = scanner.capabilities;
@@ -413,6 +415,26 @@ pub fn assess_variant(
 
     let mut occurrences = Vec::with_capacity(expectations.len());
     for e in &expectations {
+        // An occurrence whose range the authors did not establish (ADR 0018)
+        // has nothing to overlap: no finding is a candidate for it, whatever
+        // the scanner reported. Identity and sensitivity keep their own
+        // observation (`unresolved`, or `not-measured` for a missing
+        // capability); the range axis is `unresolved` and the action axis
+        // has no located occurrence to judge.
+        let Some(expected_range) = e.range else {
+            occurrences.push(OccurrenceAssessment {
+                occurrence_id: e.occurrence_id.clone(),
+                row: OutcomeRow {
+                    type_identity: type_state(e, input.case_jurisdiction, caps, None, 0),
+                    sensitivity_context: sensitivity_state(e, caps, None),
+                    range: RangeState::Unresolved,
+                    action: ActionOutcome::NotMeasured,
+                },
+                primary: None,
+                observed: empty_summary(),
+            });
+            continue;
+        };
         // Primary selection key: closeness, then identity evidence, then the
         // index. `findings` is in canonical order and `Finding: Ord` compares
         // every field, so the index is a total tie-break by finding value:
@@ -421,7 +443,7 @@ pub fn assess_variant(
         let mut candidates: Vec<(usize, (u8, u64))> = findings
             .iter()
             .enumerate()
-            .filter_map(|(i, f)| closeness(&e.range, &f.range).map(|c| (i, c)))
+            .filter_map(|(i, f)| closeness(&expected_range, &f.range).map(|c| (i, c)))
             .collect();
         candidates.sort_by_key(|&(i, c)| {
             (
@@ -443,7 +465,7 @@ pub fn assess_variant(
                 candidates.len(),
             ),
             sensitivity_context: sensitivity_state(e, caps, primary_finding),
-            range: range_state(&e.range, primary_finding.map(|p| &p.range)),
+            range: range_state(&expected_range, primary_finding.map(|p| &p.range)),
             action: action_outcome(caps, primary_finding),
         };
         occurrences.push(OccurrenceAssessment {
@@ -460,9 +482,13 @@ pub fn assess_variant(
             let mut overlapping = 0u32;
             let mut best: Option<((u8, u64), usize, RangeState)> = None;
             for (k, e) in expectations.iter().enumerate() {
-                if let (Some(c), Some(state)) =
-                    (closeness(&e.range, &f.range), relation(&e.range, &f.range))
-                {
+                let Some(expected_range) = &e.range else {
+                    continue;
+                };
+                if let (Some(c), Some(state)) = (
+                    closeness(expected_range, &f.range),
+                    relation(expected_range, &f.range),
+                ) {
                     overlapping += 1;
                     // Strict `<`: the lowest occurrence id wins a tie.
                     if best.is_none_or(|(bc, _, _)| c < bc) {
