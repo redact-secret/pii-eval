@@ -57,9 +57,9 @@ use super::{CONTRACT_NAME, CONTRACT_VERSION, EvidenceError, reason};
 pub const MAPPING_RULE_ID: &str = "pii-evidence-to-corpus";
 /// Revision of this mapping rule. A change to any decision below is a new
 /// revision and so a new population version.
-pub const MAPPING_REVISION: u32 = 1;
+pub const MAPPING_REVISION: u32 = 2;
 /// Population revision this mapping produces.
-pub const POPULATION_VERSION: u32 = 1;
+pub const POPULATION_VERSION: u32 = 2;
 /// `schema` of the binding document.
 pub const BINDING_SCHEMA: &str = "pii-eval-evidence-binding/1";
 /// Digest domain of the binding document.
@@ -97,6 +97,11 @@ pub mod loss {
 
 /// Evidence kind to pii-eval family. Fixed and versioned with the rule.
 const FAMILIES: &[(&str, &str)] = &[
+    (
+        "date-of-birth/global/labeled-field",
+        "pii:global:date-of-birth",
+    ),
+    ("uk-nino/uk/structured", "pii:gb:national-insurance-number"),
     ("email/global/basic", "pii:global:email"),
     ("phone/global/basic", "pii:global:phone"),
     ("payment-card/global/basic", "pii:global:payment-card"),
@@ -147,6 +152,17 @@ fn derived_id(prefix: &str, tag: &str, evidence_id: &str) -> Result<Id, Evidence
 }
 
 fn family_for(case: &CaseRec) -> Result<FamilyId, EvidenceError> {
+    // Birth-date structure is shared, while the authored occurrence can carry
+    // a jurisdiction. Preserve that scope rather than discard it.
+    if case.privacy_kind == "date-of-birth/global/labeled-field" {
+        let name = match case.jurisdiction.as_str() {
+            "global" => "pii:global:date-of-birth",
+            "us" => "pii:us:date-of-birth",
+            "uk" => "pii:gb:date-of-birth",
+            _ => return Err(invalid(reason::JURISDICTION_UNMAPPED, case.id.as_str())),
+        };
+        return FamilyId::new(name).map_err(|_| invalid(reason::MAPPING_INVALID, case.id.as_str()));
+    }
     let (_, name) = FAMILIES
         .iter()
         .find(|(kind, _)| *kind == case.privacy_kind)
@@ -157,6 +173,9 @@ fn family_for(case: &CaseRec) -> Result<FamilyId, EvidenceError> {
 fn jurisdiction_for(case: &CaseRec) -> Result<Option<JurisdictionCode>, EvidenceError> {
     match case.jurisdiction.as_str() {
         "global" => Ok(None),
+        "uk" => JurisdictionCode::new("GB")
+            .map(Some)
+            .map_err(|_| invalid(reason::MAPPING_INVALID, case.id.as_str())),
         "us" => JurisdictionCode::new("US")
             .map(Some)
             .map_err(|_| invalid(reason::MAPPING_INVALID, case.id.as_str())),
@@ -203,6 +222,17 @@ pub fn map(verified: &Verified, pin: &SnapshotPin) -> Result<Mapped, EvidenceErr
             .or_default()
             .push(f);
     }
+
+    // Legacy-only populations retain the exact revision-1 corpus and binding.
+    // The expanded vocabulary is revision 2 only when a new family is carried.
+    let expanded = groups.keys().any(|(id, _)| {
+        matches!(
+            case_by_id[id].privacy_kind.as_str(),
+            "date-of-birth/global/labeled-field" | "uk-nino/uk/structured"
+        )
+    });
+    let mapping_revision = if expanded { MAPPING_REVISION } else { 1 };
+    let population_version = if expanded { POPULATION_VERSION } else { 1 };
 
     let mut cases: Vec<Case> = Vec::new();
     let mut rows: Vec<Row> = Vec::new();
@@ -405,13 +435,13 @@ pub fn map(verified: &Verified, pin: &SnapshotPin) -> Result<Mapped, EvidenceErr
     let body = CorpusSnapshotBody {
         population: Population {
             population_id: population_id.clone(),
-            population_version: POPULATION_VERSION,
+            population_version,
             visibility: Visibility::PublicSynthetic,
         },
         generation: GenerationRules {
             generator: Id::new(GENERATOR)
                 .map_err(|_| invalid(reason::MAPPING_INVALID, "generation"))?,
-            generator_version: MAPPING_REVISION,
+            generator_version: mapping_revision,
             seed_derivation: Seed::new("none")
                 .map_err(|_| invalid(reason::MAPPING_INVALID, "generation"))?,
         },
@@ -442,7 +472,7 @@ pub fn map(verified: &Verified, pin: &SnapshotPin) -> Result<Mapped, EvidenceErr
     doc.insert("schema".into(), json!(BINDING_SCHEMA));
     doc.insert(
         "mappingRule".into(),
-        json!({"id": MAPPING_RULE_ID, "revision": MAPPING_REVISION}),
+        json!({"id": MAPPING_RULE_ID, "revision": mapping_revision}),
     );
     doc.insert(
         "evidence".into(),
@@ -465,7 +495,7 @@ pub fn map(verified: &Verified, pin: &SnapshotPin) -> Result<Mapped, EvidenceErr
         "population".into(),
         json!({
             "id": population_id.as_str(),
-            "version": POPULATION_VERSION,
+            "version": population_version,
             "visibility": "public-synthetic",
             "schemaVersion": snapshot.schema_version.to_string(),
             "semanticDigest": snapshot.semantic_digest.as_str(),
