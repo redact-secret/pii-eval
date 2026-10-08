@@ -129,10 +129,29 @@ The first failure is reported and nothing after it is read. Every step is a hard
 | `exclusion-inconsistent` | 3 | An excluded record is present, or an exclusion count is wrong |
 | `taxonomy-invalid` | 3 | Reserved for a taxonomy file that cannot be read as the vocabulary it claims |
 | `kind-unmapped` | 3 | An evidence kind has no family in the mapping table (for example `national-id`) |
-| `jurisdiction-unmapped` | 3 | A jurisdiction is neither `global` nor `us`, or disagrees with the family scope |
+| `jurisdiction-unmapped` | 3 | A jurisdiction is neither `global`, `us` nor `uk`, or disagrees with the family scope |
 | `mapping-invalid` | 3 | The mapped corpus does not validate, or the output cannot be written |
 | `nothing-to-map` | 3 | The snapshot holds no fixture |
 | `plan-invalid` | 3, 4 | The run manifest cannot be built or does not bind to the corpus |
+
+## Expanded mapping revision 2
+
+The consumer additionally maps `date-of-birth/global/labeled-field` to
+`pii:global:date-of-birth` for global occurrences, `pii:us:date-of-birth`
+for US occurrences and `pii:gb:date-of-birth` for UK occurrences, preserving
+the authored jurisdiction. It maps `uk-nino/uk/structured` to
+`pii:gb:national-insurance-number`. Evidence jurisdiction `uk` becomes ISO 3166-1
+`GB`; it is not mapped to an unrelated existing family. A population carrying
+one of these families uses mapping revision 2, generation version 2 and
+population version 2. The artifact schema and measurement protocol do not change.
+Unknown kinds and jurisdictions still fail closed, and family scope must agree
+with the jurisdiction.
+
+Legacy-only populations use revision 1 and retain their exact corpus and binding
+bytes, including the committed first-snapshot golden digests and replay. This is
+an additive vocabulary mapping, not a change to authored truth, sensitivity,
+range handling, scoring, or product qualification. Existing context/PHI and
+span-less mapping losses still apply to the candidate.
 
 ## Mapping (rule `pii-evidence-to-corpus`, revision 1)
 

@@ -1042,6 +1042,71 @@ fn an_unmapped_kind_or_jurisdiction_is_refused_at_mapping_not_guessed() {
 }
 
 #[test]
+fn expanded_families_have_faithful_identity_and_a_distinct_mapping_revision() {
+    for (kind, jurisdiction, family, iso) in [
+        (
+            "date-of-birth/global/labeled-field",
+            "global",
+            "pii:global:date-of-birth",
+            None,
+        ),
+        (
+            "date-of-birth/global/labeled-field",
+            "us",
+            "pii:us:date-of-birth",
+            Some("US"),
+        ),
+        (
+            "date-of-birth/global/labeled-field",
+            "uk",
+            "pii:gb:date-of-birth",
+            Some("GB"),
+        ),
+        (
+            "uk-nino/uk/structured",
+            "uk",
+            "pii:gb:national-insurance-number",
+            Some("GB"),
+        ),
+    ] {
+        let mut v = verify(&files(), &pin()).unwrap();
+        v.cases[0].privacy_kind = kind.into();
+        v.cases[0].jurisdiction = jurisdiction.into();
+        let a = map(&v, &pin()).unwrap();
+        let b = map(&v, &pin()).unwrap();
+        assert_eq!(snapshot_json(&a).unwrap(), snapshot_json(&b).unwrap());
+        assert_eq!(a.binding, b.binding);
+        assert_eq!(a.binding["semantic"]["mappingRule"]["revision"], 2);
+        assert_eq!(a.snapshot.semantic.population.population_version, 2);
+        assert_eq!(a.snapshot.semantic.generation.generator_version, 2);
+        // Inspect the generated corpus directly: family and jurisdiction must
+        // agree, never coerced onto an existing unrelated privacy family.
+        assert!(a.snapshot.semantic.cases.iter().any(|c| {
+            c.variants.iter().any(|variant| {
+                variant
+                    .expectations
+                    .iter()
+                    .any(|e| e.family.as_str() == family)
+            }) && c.jurisdiction.as_ref().map(|j| j.as_str()) == iso
+        }));
+    }
+    let legacy = map(&verify(&files(), &pin()).unwrap(), &pin()).unwrap();
+    assert_eq!(legacy.binding["semantic"]["mappingRule"]["revision"], 1);
+    assert_eq!(legacy.snapshot.semantic.population.population_version, 1);
+}
+
+#[test]
+fn expanded_kind_with_wrong_jurisdiction_is_refused() {
+    let mut v = verify(&files(), &pin()).unwrap();
+    v.cases[0].privacy_kind = "uk-nino/uk/structured".into();
+    v.cases[0].jurisdiction = "us".into();
+    assert_eq!(
+        map(&v, &pin()).unwrap_err().code,
+        reason::JURISDICTION_UNMAPPED
+    );
+}
+
+#[test]
 fn errors_name_files_and_ids_never_text() {
     let mut f = Forge::new();
     f.edit_first(
