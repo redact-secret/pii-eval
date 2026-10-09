@@ -134,7 +134,21 @@ pub fn plans_from_config(
     snapshot: &CorpusSnapshot,
     node: Option<&Path>,
 ) -> Result<Vec<ScannerPlan>, EvidenceError> {
-    let configuration = scanner_configuration(snapshot)?;
+    plans_from_config_with_activation(config, snapshot, node, None)
+}
+
+/// An explicit activation measures the whole population with a separately
+/// reviewed scanner configuration. It never filters cases or expectations.
+pub fn plans_from_config_with_activation(
+    config: &RunConfig,
+    snapshot: &CorpusSnapshot,
+    node: Option<&Path>,
+    activation: Option<&str>,
+) -> Result<Vec<ScannerPlan>, EvidenceError> {
+    let configuration = match activation {
+        None => scanner_configuration(snapshot)?,
+        Some(value) => explicit_configuration(value)?,
+    };
     let mut plans = Vec::new();
     for scanner in &config.scanners {
         let node = scanner
@@ -151,4 +165,45 @@ pub fn plans_from_config(
         );
     }
     Ok(plans)
+}
+
+fn explicit_configuration(value: &str) -> Result<ScannerConfiguration, EvidenceError> {
+    let mut selectors = BTreeSet::new();
+    for value in value.split(',') {
+        let selector = ActivationSelector::new(value.to_owned()).map_err(|_| bad("activation"))?;
+        if !selectors.insert(selector)
+            || selectors.len() > pii_eval_contracts::limits::MAX_ACTIVATION_SELECTORS
+        {
+            return Err(bad("activation"));
+        }
+    }
+    Ok(ScannerConfiguration {
+        parameters: parameters(),
+        activation: selectors.into_iter().collect(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn explicit_activation_is_sorted_bounded_and_closed() {
+        let configuration = explicit_configuration("pii:us,pii:global").unwrap();
+        let selectors: Vec<_> = configuration
+            .activation
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
+        assert_eq!(selectors, ["pii:global", "pii:us"]);
+        assert_eq!(configuration.parameters, parameters());
+        for value in ["", "pii:us,", "pii:us,pii:us", " pii:us", "unknown!"] {
+            assert!(explicit_configuration(value).is_err(), "{value:?}");
+        }
+        let over_limit = (0..257)
+            .map(|n| format!("pii:global:family-{n}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        assert!(explicit_configuration(&over_limit).is_err());
+    }
 }

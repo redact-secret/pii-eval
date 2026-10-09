@@ -22,6 +22,73 @@ const FILES: [&str; 4] = [
     "run-artifact.json",
 ];
 
+#[test]
+fn evidence_plan_explicit_activation_preserves_population_and_default_identity() {
+    let node = node_or_return!();
+    let ws = Workspace::new("evidence-activation", &node);
+    let snapshot = read_snapshot(&ws.snapshot);
+    let config =
+        pii_eval_cli::config::RunConfig::parse(&std::fs::read(&ws.config).unwrap(), &ws.tmp.0)
+            .unwrap();
+    let default =
+        pii_eval_cli::evidence::plan::plans_from_config(&config, &snapshot, Some(&node)).unwrap();
+    let unchanged = pii_eval_cli::evidence::plan::plans_from_config_with_activation(
+        &config,
+        &snapshot,
+        Some(&node),
+        None,
+    )
+    .unwrap();
+    assert_eq!(default, unchanged);
+    std::fs::remove_file(&ws.manifest).unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_pii-eval-evidence"))
+        .args([
+            "plan",
+            "--config",
+            s(&ws.config),
+            "--node",
+            s(&node),
+            "--activation",
+            "pii:global",
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(code(&output), 0, "{}", stderr(&output));
+    let manifest: RunManifest = parse_default(&std::fs::read(&ws.manifest).unwrap()).unwrap();
+    let default_manifest = pii_eval_cli::evidence::plan::manifest(
+        &snapshot,
+        default,
+        pii_eval_cli::evidence::plan::default_limits(),
+        2,
+    )
+    .unwrap();
+    assert_eq!(
+        manifest.semantic.population,
+        default_manifest.semantic.population
+    );
+    assert_eq!(manifest.semantic.scope, default_manifest.semantic.scope);
+    assert_eq!(manifest.semantic.methods, default_manifest.semantic.methods);
+    assert_eq!(
+        manifest.semantic.protocol,
+        default_manifest.semantic.protocol
+    );
+    assert_ne!(manifest.semantic_digest, default_manifest.semantic_digest);
+    assert_eq!(
+        std::fs::read(&ws.snapshot).unwrap(),
+        pii_eval_contracts::to_pretty_json(&snapshot)
+            .unwrap()
+            .as_bytes()
+    );
+    assert_eq!(
+        manifest.semantic.scanners[0].configuration.activation.len(),
+        1
+    );
+    assert!(
+        !ws.tmp.0.join("output").exists(),
+        "planning writes no scanner results"
+    );
+}
+
 fn reason(v: &Value) -> &str {
     v["error"]["reason"].as_str().unwrap_or_default()
 }
