@@ -185,3 +185,17 @@ the canonical model.
 | benchmarks (#666) | Oracle period and exit, rollback rehearsal, authority switch record (tag or commit, digests, populations, policy revision), moving repetitive measurement out of PR builds, retirement under section 5 |
 | private-custodian | The engine launcher contract (worker-job to run to `worker-result/1`), the aggregates delivery and strata labels, the roster unit, candidate identity for a package tree, an isolation self-check that includes Node, receipt assembly ([custodian boundary](../custodian-boundary.md), section 6) |
 | pii-eval (follow-up) | `pii-eval worker --job` launcher once the open questions are answered; schema 1.2 if benchmarks needs the missing projections; a release tag, a signed or attested binary and a longer retention when a release process exists |
+
+## Opt-in PHI/context follow-up (#37)
+
+Schema `1.5`, `pii-v1` revision 3, matching/accounting revision 3, and evidence
+mapping/population version 3 preserve authored evidence domains, context ids,
+context-dependent sensitivity and text-wide negative expectations. Existing
+protocol-2 artifacts and consumer pins remain unchanged. Consumers opt into all
+new identities together and retain their previous pins for rollback; the
+reference consumer accepts 1.5 with explicit pins and rejects it under old pins.
+See [ADR 0020](../adr/0020-phi-context-semantics-and-protocol-3.md) and the
+[mapping](phi-context-mapping-delta-37.json) and
+[same-observation](phi-context-outcome-delta-37.json) difference reports. This does
+not activate the proposed evidence v2 snapshot, change support thresholds, or
+authorize protected execution.

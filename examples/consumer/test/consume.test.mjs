@@ -507,3 +507,24 @@ test("the consumer imports only the Node standard library and no pii-eval code",
     assert.ok(!source.replace(/\/\/.*$/gm, "").includes(forbidden), forbidden);
   }
 });
+
+test("schema 1.5 evidence and product projection require explicit new pins", () => {
+  const doc = JSON.parse(read(P2));
+  const p = JSON.parse(projectionPinsText);
+  doc.schemaVersion = "1.5";
+  doc.semantic.protocol.version = 3;
+  doc.semantic.protocol.rules.matching.revision = 3;
+  doc.semantic.protocol.rules.accounting.revision = 3;
+  doc.semantic.outcomes[0].evidence = {
+    domains: ["pii", "phi"], contexts: ["medical/global/general"],
+    textNegative: false, authoredSensitivity: "context-dependent",
+  };
+  doc.semanticDigest = semanticDigest(doc);
+  p.artifactSchema.version = "1.5";
+  p.protocol = doc.semantic.protocol;
+  p.populations[0].artifactDigest = doc.semanticDigest;
+  const explicit = consume(loadPins(JSON.stringify(p)), [art("semantic.json", JSON.stringify(doc))]);
+  assert.equal(explicit.complete, true);
+  const old = consume(projectionPins(), [art("semantic.json", JSON.stringify(doc))]);
+  assert.ok(codesOf(old, "semantic.json").includes("schema-version-unsupported"));
+});

@@ -125,9 +125,10 @@ impl ProtocolRules {
 
 /// Protocol identity bound into every plan and artifact.
 ///
-/// Two values are valid: [`ProtocolIdentity::LEGACY_V1`] (revision 1, no
+/// Legacy and canonical revisions are valid: [`ProtocolIdentity::LEGACY_V1`] (revision 1, no
 /// `rules`, the oracle's semantics) and [`ProtocolIdentity::CANONICAL_V2`]
-/// (revision 2 with the rule identities it was produced under). Anything else
+/// (revision 2 with its frozen rules), plus [`ProtocolIdentity::CANONICAL_V3`]
+/// (schema 1.5 evidence semantics). Anything else
 /// is `protocol-binding-mismatch`; a revision-2 document must also declare
 /// schema 1.1 or later.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
@@ -135,11 +136,11 @@ impl ProtocolRules {
 pub struct ProtocolIdentity {
     /// Protocol identifier.
     pub id: ProtocolId,
-    /// Protocol revision: 1 (legacy) or 2 (canonical).
+    /// Protocol revision: 1 (legacy), 2 (canonical) or 3 (evidence semantics).
     pub version: u32,
     /// Accounting family identity.
     pub accounting: AccountingId,
-    /// Rule identities; present exactly for revision 2.
+    /// Rule identities; present for canonical revisions 2 and 3.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rules: Option<ProtocolRules>,
 }
@@ -161,6 +162,24 @@ impl ProtocolIdentity {
         rules: Some(ProtocolRules::CANONICAL_V2),
     };
 
+    /// Revision 3 preserves evidence semantics and measures text-level negatives.
+    pub const CANONICAL_V3: ProtocolIdentity = ProtocolIdentity {
+        id: ProtocolId::PiiV1,
+        version: 3,
+        accounting: AccountingId::PiiV1,
+        rules: Some(ProtocolRules {
+            matching: RuleRef {
+                id: RuleId::PiiV1Canonical,
+                revision: 3,
+            },
+            accounting: RuleRef {
+                id: RuleId::PiiV1CanonicalAccounting,
+                revision: 3,
+            },
+            statistics: ProtocolRules::CANONICAL_V2.statistics,
+        }),
+    };
+
     /// Whether this is the legacy revision.
     pub fn is_legacy(&self) -> bool {
         *self == Self::LEGACY_V1
@@ -168,10 +187,10 @@ impl ProtocolIdentity {
 
     /// Whether this is the canonical revision.
     pub fn is_canonical(&self) -> bool {
-        *self == Self::CANONICAL_V2
+        *self == Self::CANONICAL_V2 || *self == Self::CANONICAL_V3
     }
 
-    /// Record `protocol-binding-mismatch` unless this is exactly one of the two
+    /// Record `protocol-binding-mismatch` unless this is exactly one of the
     /// accepted identities.
     pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {
         if !self.is_legacy() && !self.is_canonical() {
@@ -188,7 +207,9 @@ pub(crate) fn check_revision_gate(
     protocol: &ProtocolIdentity,
     c: &mut Collector,
 ) {
-    if protocol.is_canonical() && version < SchemaVersion::V1_1 {
+    if (protocol.is_canonical() && version < SchemaVersion::V1_1)
+        || (*protocol == ProtocolIdentity::CANONICAL_V3 && version < SchemaVersion::V1_5)
+    {
         c.push(
             ReasonCode::ProtocolBindingMismatch,
             &Path::ROOT.field("schemaVersion"),

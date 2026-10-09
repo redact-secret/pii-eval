@@ -204,9 +204,59 @@
       ],
       "type": "object"
     },
+    "EvidenceDomain": {
+      "description": "Evidence domain. PHI does not imply a scanner capability or product verdict.",
+      "oneOf": [
+        {
+          "const": "pii",
+          "description": "Personally identifiable information.",
+          "type": "string"
+        },
+        {
+          "const": "phi",
+          "description": "Protected health information in authored evidence context.",
+          "type": "string"
+        }
+      ]
+    },
+    "EvidenceSemantics": {
+      "additionalProperties": false,
+      "description": "Scanner-neutral authored evidence semantics (schema 1.5, ADR 0020).",
+      "properties": {
+        "authoredSensitivity": {
+          "$ref": "#/$defs/SensitivityExpectation",
+          "description": "Authored sensitivity retained in artifacts even when the result is unresolved."
+        },
+        "contexts": {
+          "description": "Exact authored context identifiers, sorted and unique. These are evidence\nlabels, not claims that a scanner observed or understood medical context.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "domains": {
+          "description": "Authored domains, independent of detector family and scanner support.",
+          "items": {
+            "$ref": "#/$defs/EvidenceDomain"
+          },
+          "type": "array"
+        },
+        "textNegative": {
+          "description": "Text-wide negative assertion rather than an unlocated occurrence.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "domains",
+        "contexts",
+        "textNegative",
+        "authoredSensitivity"
+      ],
+      "type": "object"
+    },
     "Expectation": {
       "additionalProperties": false,
-      "description": "One authored expected occurrence inside a variant's text. The four axes are\nseparate fields and none is derived from another.",
+      "description": "One authored expectation, with independent type, sensitivity, range and action axes.",
       "properties": {
         "action": {
           "$ref": "#/$defs/ActionExpectation",
@@ -219,6 +269,17 @@
         "contextObligation": {
           "$ref": "#/$defs/ContextObligation",
           "description": "Whether context is needed for a sensitive classification."
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceSemantics"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional authored evidence semantics, introduced in schema 1.5."
         },
         "family": {
           "$ref": "#/$defs/FamilyId",
@@ -237,7 +298,7 @@
               "type": "null"
             }
           ],
-          "description": "Expected byte range in the variant text. Absent when the authors did\nnot establish where the occurrence is (schema 1.4, ADR 0018): then the\ntype identity and the sensitivity must be `not-established` too, the\ncase must be `schema-only`, and the range axis is observed as\n`unresolved`. The engine never invents a range."
+          "description": "Expected byte range in the variant text. Absent when the authors did\nnot establish where the occurrence is (schema 1.4, ADR 0018): then the\ntype identity and sensitivity must be `not-established`, except explicit\nschema-1.5 text-negative assertions and context-dependent uncertainty.\nCases must be `schema-only`; no range is invented. An unlocated occurrence\nobserves `unresolved`; a text-negative assertion observes `not-applicable`."
         },
         "sensitivity": {
           "$ref": "#/$defs/SensitivityExpectation",
@@ -423,7 +484,8 @@
       "enum": [
         "sensitive",
         "non-sensitive",
-        "not-established"
+        "not-established",
+        "context-dependent"
       ],
       "type": "string"
     },
@@ -509,7 +571,7 @@
       "type": "string"
     }
   },
-  "$id": "urn:pii-eval:schema:corpus-snapshot:1.4",
+  "$id": "urn:pii-eval:schema:corpus-snapshot:1.5",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "A corpus snapshot document. Its `semanticDigest` is the population digest\nthat manifests, observations and artifacts bind to.",

@@ -1,0 +1,27 @@
+{
+  "after": {
+    "bindingDigest": "791cf2517993a7f6511b0a04d69c432045aaa09fa55420860cd3d51ceb36019a",
+    "contextDependentExpectations": 33,
+    "losses": {},
+    "mappingRevision": 3,
+    "populationDigest": "c87679d5ac9c9d505128299b227a568046fc0a4bcb399aa51657bb74a04a21d4",
+    "textNegativeExpectations": 19
+  },
+  "before": {
+    "losses": {
+      "contexts-not-carried": 37,
+      "identity-weakened-no-span": 17,
+      "phi-domain-not-carried": 37,
+      "sensitivity-context-dependent-flattened": 11,
+      "sensitivity-weakened-no-span": 19
+    },
+    "mappingRevision": 1,
+    "populationDigest": "612a8cf629c24c8e92be474a8129a592c7f1f75cbe4e2e2afcc60383cc6347d8"
+  },
+  "productMode": "not-applicable-mapping-only",
+  "remainingLossReason": "None of the five recorded losses remains on this pin. Future unlocated positive assertions still need an authored span; no occurrence is fabricated.",
+  "resultChanges": "Only new text-negative rows can change verdicts; located context-dependent rows retain unresolved sensitivity. Evidence metadata changes digests, not scanner behavior.",
+  "schema": "pii-eval-semantic-mapping-delta/1",
+  "snapshotId": "public-pii-phi/2026-10-07/9d4e8e036bbb",
+  "visibility": "public-synthetic"
+}

@@ -37,6 +37,7 @@ pub fn exp(
     sens: SensitivityExpectation,
 ) -> Expectation {
     Expectation {
+        evidence: None,
         occurrence_id: Id::new(id).unwrap(),
         range: Some(range(start, end)),
         family: FamilyId::new(family).unwrap(),

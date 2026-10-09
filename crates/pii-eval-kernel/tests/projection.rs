@@ -62,6 +62,7 @@ fn rows(scanner: &str, body: &CorpusSnapshotBody, status: ScannerStatus) -> Vec<
                 (Ts::Correct, Ss::Correct, RangeState::Exact)
             };
             CaseOutcome {
+                evidence: None,
                 scanner_id: sid(scanner),
                 case_id: c.case_id.clone(),
                 variant_id: c.variants[0].variant_id.clone(),

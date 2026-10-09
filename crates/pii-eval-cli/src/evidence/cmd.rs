@@ -21,7 +21,7 @@ use pii_eval_contracts::{
 use serde_json::{Map, Value, json};
 
 use super::files::read_dir;
-use super::map::{binding_json, map, snapshot_json};
+use super::map::{binding_json, map, map_semantic, snapshot_json};
 use super::pin::SnapshotPin;
 use super::plan::{default_limits, manifest, plans_from_config};
 use super::verify::{Verified, verify};
@@ -34,7 +34,7 @@ use crate::status::Exit;
 pub const SUMMARY_SCHEMA: &str = "pii-eval-evidence-summary/1";
 /// Usage text.
 pub const USAGE: &str = "usage: pii-eval-evidence verify --snapshot-dir DIR --pin FILE | \
-import --snapshot-dir DIR --pin FILE --out DIR | plan --config FILE [--node PATH] [--replays N]";
+import --snapshot-dir DIR --pin FILE --out DIR [--mapping-revision 3] | plan --config FILE [--node PATH] [--replays N]";
 
 /// The rendered result of one invocation.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -122,10 +122,14 @@ fn run(command: &str, args: &[String]) -> Result<(Value, Option<Value>), Evidenc
             Ok((verified_summary(&v), None))
         }
         "import" => {
-            let o = parse_options(args, &["snapshot-dir", "pin", "out"])?;
+            let o = parse_options(args, &["snapshot-dir", "pin", "out", "mapping-revision"])?;
             let out = PathBuf::from(required(&o, "out")?);
             let (pin, v) = load(&o)?;
-            let mapped = map(&v, &pin)?;
+            let mapped = match o.get("mapping-revision").map(String::as_str) {
+                None => map(&v, &pin)?,
+                Some("3") => map_semantic(&v, &pin)?,
+                _ => return Err(usage("invalid-mapping-revision")),
+            };
             let snapshot = snapshot_json(&mapped)?;
             let binding = binding_json(&mapped)?;
             if out.exists() && std::fs::read_dir(&out).map_or(true, |mut d| d.next().is_some()) {

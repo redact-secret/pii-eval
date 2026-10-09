@@ -173,7 +173,12 @@ impl RunManifest {
     pub fn unsealed(semantic: RunManifestBody) -> Self {
         Self {
             schema: RunManifestSchema::Only,
-            schema_version: SchemaVersion::CURRENT,
+            schema_version: if semantic.protocol == crate::protocol::ProtocolIdentity::CANONICAL_V3
+            {
+                SchemaVersion::V1_5
+            } else {
+                SchemaVersion::CURRENT
+            },
             semantic_digest: Sha256Digest::of_bytes(b""),
             semantic,
         }

@@ -535,6 +535,7 @@ impl<'v> Generator<'v> {
 
     fn base_expectation(&self, case: &AuthoredCase) -> Result<Expectation, RefusalReason> {
         Ok(Expectation {
+            evidence: None,
             occurrence_id: occurrence_id()?,
             range: Some(case.candidate),
             family: case.family.clone(),

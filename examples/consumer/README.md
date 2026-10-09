@@ -134,3 +134,8 @@ The consumer reads the public projection only, so it cannot recompute metrics fr
 rows; the engine's `validate --snapshot` does that for whoever holds the snapshot.
 A pin proves the artifact is the one you pinned, not that the expected results are
 right, and a digest identifies content, not authorship.
+
+Schema 1.5 / protocol 3 evidence artifacts are accepted only with explicit new
+caller pins. Authored PHI/context metadata is covered by the semantic digest;
+the consumer does not turn it into product support policy. Old pins reject the
+new population/schema. See ADR 0020 for migration and rollback.

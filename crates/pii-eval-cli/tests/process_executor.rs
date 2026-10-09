@@ -106,6 +106,7 @@ fn directive_snapshot(texts: &[String]) -> CorpusSnapshot {
             text: text.clone(),
             text_digest: pii_eval_contracts::Sha256Digest::of_bytes(text.as_bytes()),
             expectations: vec![Expectation {
+                evidence: None,
                 occurrence_id: Id::new("occurrence-1").unwrap(),
                 range: Some(ByteRange { start: 0, end: 1 }),
                 family: FamilyId::new("pii:global:email").unwrap(),

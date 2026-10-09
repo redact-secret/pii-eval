@@ -204,8 +204,8 @@ fn probes() -> Vec<Probe> {
         "minor-newer-than-reader",
         ReasonCode::SchemaMinorTooNew,
         // 1.1 is readable since P7 (ADR 0008), 1.2 since ADR 0016 and 1.3 since
-        // ADR 0017 and 1.4 since ADR 0018; 1.5 is the first newer minor.
-        replace_once(&snap, version_line, "\"schemaVersion\": \"1.5\","),
+        // ADR 0017 and 1.4 since ADR 0018; 1.6 is the first newer minor.
+        replace_once(&snap, version_line, "\"schemaVersion\": \"1.6\","),
     );
     raw(
         k_snap,

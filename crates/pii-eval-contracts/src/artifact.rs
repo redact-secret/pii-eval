@@ -344,7 +344,8 @@ pub struct ScannerMetrics {
 }
 
 /// Summary of what a scanner reported for one expected occurrence: the
-/// findings whose range overlaps that occurrence (its candidates). Contains
+/// findings whose range overlaps that occurrence (its candidates), or the target
+/// family/jurisdiction candidates of an explicit text-negative assertion. Contains
 /// family and jurisdiction identifiers only, never text or ranges.
 ///
 /// The summary is **per occurrence**, not per variant: two occurrences of one
@@ -355,8 +356,8 @@ pub struct ScannerMetrics {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ObservedSummary {
-    /// Number of findings that overlap this occurrence's range, duplicates
-    /// counted.
+    /// Number of candidates, duplicates counted; text-negative assertions use
+    /// their whole-text family/jurisdiction scope rather than a range.
     pub finding_count: u64,
     /// Families reported by those findings, ascending, unique.
     pub families: Vec<FamilyId>,
@@ -369,6 +370,9 @@ pub struct ObservedSummary {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PublicOutcome {
+    /// Authored evidence axes, independent of the observed scanner axes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence: Option<crate::corpus::EvidenceSemantics>,
     /// Scanner.
     pub scanner_id: ScannerId,
     /// Authored case.
@@ -393,6 +397,9 @@ pub struct PublicOutcome {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CaseOutcome {
+    /// Authored evidence axes, independent of the observed scanner axes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence: Option<crate::corpus::EvidenceSemantics>,
     /// Scanner.
     pub scanner_id: ScannerId,
     /// Authored case.
@@ -418,6 +425,7 @@ pub struct CaseOutcome {
 impl CaseOutcome {
     fn public(&self) -> PublicOutcome {
         PublicOutcome {
+            evidence: self.evidence.clone(),
             scanner_id: self.scanner_id.clone(),
             case_id: self.case_id.clone(),
             variant_id: self.variant_id.clone(),
@@ -557,11 +565,29 @@ impl_document!(@impl
                 &self.semantic.protocol,
                 c,
             );
+            check_evidence_gate(self.schema_version, self.semantic.protocol, self.semantic.outcomes.iter().filter_map(|o| o.evidence.as_ref()), c);
             check_identity_gate(self.schema_version, self.semantic.outcomes.iter().map(|o| o.type_identity), c);
             check_range_gate(self.schema_version, self.semantic.outcomes.iter().map(|o| o.range), c);
         }
     }
 );
+
+// New evidence axes must not appear under old schema/protocol identities.
+fn check_evidence_gate<'a>(
+    version: SchemaVersion,
+    protocol: ProtocolIdentity,
+    evidence: impl Iterator<Item = &'a crate::corpus::EvidenceSemantics>,
+    c: &mut Collector,
+) {
+    for e in evidence {
+        let semantic_path = Path::ROOT.field("semantic");
+        let path = semantic_path.field("outcomes");
+        if version < SchemaVersion::V1_5 || protocol != ProtocolIdentity::CANONICAL_V3 {
+            c.push(ReasonCode::ProtocolBindingMismatch, &path);
+        }
+        e.validate(&path, c);
+    }
+}
 
 /// An `unresolved` type observation (an authored `not-established` identity,
 /// ADR 0017) exists from schema 1.3 on.
@@ -596,7 +622,9 @@ fn check_range_gate(
 impl RunArtifact {
     /// Wrap a body in an envelope with the current version and a placeholder digest.
     pub fn unsealed(semantic: RunArtifactBody) -> Self {
-        let schema_version = if semantic
+        let schema_version = if semantic.protocol == ProtocolIdentity::CANONICAL_V3 {
+            SchemaVersion::V1_5
+        } else if semantic
             .outcomes
             .iter()
             .any(|o| o.range == RangeState::Unresolved)
@@ -706,6 +734,7 @@ impl_document!(@impl
                 &self.semantic.protocol,
                 c,
             );
+            check_evidence_gate(self.schema_version, self.semantic.protocol, self.semantic.outcomes.iter().filter_map(|o| o.evidence.as_ref()), c);
             check_identity_gate(
                 self.schema_version,
                 self.semantic.outcomes.iter().map(|o| o.type_identity),
@@ -769,7 +798,9 @@ impl RunArtifact {
         // (revision 1, schema 1.0) artifact projects to a legacy public one.
         let mut public = PublicSyntheticArtifact {
             schema: PublicSyntheticArtifactSchema::Only,
-            schema_version: if body
+            schema_version: if body.protocol == ProtocolIdentity::CANONICAL_V3 {
+                SchemaVersion::V1_5
+            } else if body
                 .outcomes
                 .iter()
                 .any(|o| o.range == RangeState::Unresolved)

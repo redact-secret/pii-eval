@@ -40,7 +40,7 @@ kebab_enum!(
 
 kebab_enum!(
     /// Authored sensitivity of an occurrence in its context.
-    SensitivityExpectation { Sensitive, NonSensitive, NotEstablished }
+    SensitivityExpectation { Sensitive, NonSensitive, NotEstablished, ContextDependent }
 );
 
 kebab_enum!(
@@ -211,7 +211,7 @@ impl SensitivityState {
     /// States reachable under an authored sensitivity expectation.
     pub const fn reachable(expected: SensitivityExpectation) -> &'static [SensitivityState] {
         match expected {
-            SensitivityExpectation::NotEstablished => {
+            SensitivityExpectation::NotEstablished | SensitivityExpectation::ContextDependent => {
                 &[SensitivityState::Unresolved, SensitivityState::NotMeasured]
             }
             SensitivityExpectation::Sensitive => &[

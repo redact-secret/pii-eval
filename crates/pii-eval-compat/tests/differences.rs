@@ -198,6 +198,7 @@ fn d6_degenerate_and_invalid_ranges_are_rejected_not_matched() {
             1
         );
         let e = [pii_eval_contracts::Expectation {
+            evidence: None,
             occurrence_id: pii_eval_contracts::Id::new("occ-a").unwrap(),
             range: Some(case.candidate),
             family: case.family.clone(),

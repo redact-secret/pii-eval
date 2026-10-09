@@ -59,6 +59,8 @@ The legacy interpreter selects the first overlapping finding. P3 decided orderin
 
 Action evidence has declared capability: reported action, available sanitized output, or unavailable. Never infer actual removal from a finding flag. Output validation must use synthetic data and account for collateral changes.
 
+Schema 1.5 / protocol revision 3 ([ADR 0020](docs/adr/0020-phi-context-semantics-and-protocol-3.md)) preserves independent authored evidence domains, context identifiers and context-dependent sensitivity on expectations and outcome rows. Explicit text-negative expectations use family/jurisdiction-scoped whole-text measurement, with range not applicable and no inferred action. The existing ten metrics and case grouping remain; old documents and default evidence imports keep their bytes.
+
 ## Methods and accounting
 
 Preserve seven methods: type-validation, context-discrimination, pii-benign, jurisdiction-collision, mutation, reference-differential, and schema-only.

@@ -32,6 +32,8 @@ A Rust-based, scanner-neutral engine for reproducible PII measurement.
 | Internal engine artifact: CI builds the release binary once per run and publishes it as a GitHub Actions artifact (linux-x86_64, 30-day retention on main, `build-info.json` + `SHA256SUMS`); `evaluate.yml` runs a public/synthetic evaluation with a prebuilt artifact and can be dispatched from other workflows ([docs/ci-artifacts.md](docs/ci-artifacts.md)) | Implemented in CI. Internal only: not a release, no signature or attestation, no macOS/Windows build |
 | Custodian contract status (what private-custodian decides and what it does not, with evidence) and a real-Linux measurement of Node and the engine under the custodian's `RLIMIT_AS` ([contract status](docs/custodian-contract-status.md), [isolation measurement](docs/custodian-isolation-node.md)) | Implemented as documentation and an `isolation` CI job (a replica of the custodian's launcher, synthetic data). Finding: an unmodified Node runtime needs a little over 772 MiB of address space (fails at 768 MiB, starts at 800 MiB), so the custodian's 512 MiB test profile cannot start it; reported to the custodian as [private-custodian#37](https://github.com/redact-secret/private-custodian/issues/37) |
 
+PHI/context preservation is opt-in through schema 1.5, protocol revision 3 and evidence mapping revision 3 ([ADR 0020](docs/adr/0020-phi-context-semantics-and-protocol-3.md)). Authored domains/context and context-dependent sensitivity survive into outcome artifacts; text-level negative expectations are measured without inventing spans. Existing imports and artifacts retain their original semantics.
+
 ## What the engine measures
 
 | Dimension | Question |

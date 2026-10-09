@@ -54,6 +54,7 @@ fn undetermined_case(case_id: &str, text: &str, family: &str) -> Case {
             text: text.to_owned(),
             text_digest: Sha256Digest::of_bytes(text.as_bytes()),
             expectations: vec![Expectation {
+                evidence: None,
                 occurrence_id: id("occurrence-1"),
                 range: None,
                 family: FamilyId::new(family).unwrap(),

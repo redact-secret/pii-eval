@@ -209,6 +209,20 @@ struct Row {
 
 /// Map a verified snapshot. Pure; never reads a file.
 pub fn map(verified: &Verified, pin: &SnapshotPin) -> Result<Mapped, EvidenceError> {
+    map_with_semantics(verified, pin, false)
+}
+
+/// Mapping revision 3 / population version 3, requiring protocol revision 3.
+/// The compatibility mapper remains the default until a consumer explicitly opts in.
+pub fn map_semantic(verified: &Verified, pin: &SnapshotPin) -> Result<Mapped, EvidenceError> {
+    map_with_semantics(verified, pin, true)
+}
+
+fn map_with_semantics(
+    verified: &Verified,
+    pin: &SnapshotPin,
+    semantics: bool,
+) -> Result<Mapped, EvidenceError> {
     let case_by_id: BTreeMap<&str, &CaseRec> =
         verified.cases.iter().map(|c| (c.id.as_str(), c)).collect();
     let rule_by_id: BTreeMap<&str, &super::model::RuleRec> =
@@ -231,8 +245,20 @@ pub fn map(verified: &Verified, pin: &SnapshotPin) -> Result<Mapped, EvidenceErr
             "date-of-birth/global/labeled-field" | "uk-nino/uk/structured"
         )
     });
-    let mapping_revision = if expanded { MAPPING_REVISION } else { 1 };
-    let population_version = if expanded { POPULATION_VERSION } else { 1 };
+    let mapping_revision = if semantics {
+        3
+    } else if expanded {
+        MAPPING_REVISION
+    } else {
+        1
+    };
+    let population_version = if semantics {
+        3
+    } else if expanded {
+        POPULATION_VERSION
+    } else {
+        1
+    };
 
     let mut cases: Vec<Case> = Vec::new();
     let mut rows: Vec<Row> = Vec::new();
@@ -268,7 +294,20 @@ pub fn map(verified: &Verified, pin: &SnapshotPin) -> Result<Mapped, EvidenceErr
         for f in fixtures {
             let e = &f.expectation;
             let mut row_losses: Vec<&'static str> = Vec::new();
-            let (type_expectation, sensitivity) = if *located {
+            let text_negative = semantics
+                && !located
+                && (e.identity == Identity::Invalid || e.sensitivity == Sensitivity::NonSensitive)
+                && e.identity != Identity::Valid
+                && e.sensitivity != Sensitivity::Sensitive;
+            let (type_expectation, sensitivity) = if semantics && (*located || text_negative) {
+                (
+                    type_of(e.identity),
+                    match e.sensitivity {
+                        Sensitivity::ContextDependent => SensitivityExpectation::ContextDependent,
+                        other => sensitivity_of(other),
+                    },
+                )
+            } else if *located {
                 (type_of(e.identity), sensitivity_of(e.sensitivity))
             } else {
                 if e.identity != Identity::NotEstablished {
@@ -282,13 +321,20 @@ pub fn map(verified: &Verified, pin: &SnapshotPin) -> Result<Mapped, EvidenceErr
                     SensitivityExpectation::NotEstablished,
                 )
             };
-            if e.sensitivity == Sensitivity::ContextDependent && *located {
+            // Unlocated positive identity still has no anchor. Context-dependent
+            // sensitivity itself is retained, even when identity is unresolved.
+            let sensitivity = if semantics && e.sensitivity == Sensitivity::ContextDependent {
+                SensitivityExpectation::ContextDependent
+            } else {
+                sensitivity
+            };
+            if !semantics && e.sensitivity == Sensitivity::ContextDependent && *located {
                 row_losses.push(loss::SENSITIVITY_CONTEXT_FLATTENED);
             }
-            if !case.contexts.is_empty() {
+            if !semantics && !case.contexts.is_empty() {
                 row_losses.push(loss::CONTEXTS_NOT_CARRIED);
             }
-            if e.domains.iter().any(|d| d == "phi") {
+            if !semantics && e.domains.iter().any(|d| d == "phi") {
                 row_losses.push(loss::PHI_DOMAIN_NOT_CARRIED);
             }
             let range = f.spans.first().map(|s| ByteRange {
@@ -323,6 +369,29 @@ pub fn map(verified: &Verified, pin: &SnapshotPin) -> Result<Mapped, EvidenceErr
                 text: f.content.clone(),
                 text_digest: Sha256Digest::of_bytes(f.content.as_bytes()),
                 expectations: vec![Expectation {
+                    evidence: if semantics {
+                        let mut domains: Vec<_> = e
+                            .domains
+                            .iter()
+                            .map(|d| match d.as_str() {
+                                "phi" => Ok(pii_eval_contracts::EvidenceDomain::Phi),
+                                "pii" => Ok(pii_eval_contracts::EvidenceDomain::Pii),
+                                _ => Err(invalid(reason::MAPPING_INVALID, "domain")),
+                            })
+                            .collect::<Result<_, _>>()?;
+                        domains.sort();
+                        domains.dedup();
+                        let mut contexts = case.contexts.clone();
+                        contexts.sort();
+                        Some(pii_eval_contracts::EvidenceSemantics {
+                            domains,
+                            contexts,
+                            text_negative,
+                            authored_sensitivity: sensitivity,
+                        })
+                    } else {
+                        None
+                    },
                     occurrence_id: Id::new("occurrence-1")
                         .map_err(|_| invalid(reason::MAPPING_INVALID, f.id.as_str()))?,
                     range,
@@ -378,6 +447,7 @@ pub fn map(verified: &Verified, pin: &SnapshotPin) -> Result<Mapped, EvidenceErr
                         SensitivityExpectation::Sensitive => "sensitive",
                         SensitivityExpectation::NonSensitive => "non-sensitive",
                         SensitivityExpectation::NotEstablished => "not-established",
+                        SensitivityExpectation::ContextDependent => "context-dependent",
                     },
                     "typeExpectation": match type_expectation {
                         ExpectedType::Valid => "valid",

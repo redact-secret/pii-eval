@@ -579,7 +579,7 @@ function dedupe(reasons) {
 const HEX64 = /^[0-9a-f]{64}$/;
 export const PUBLIC_SCHEMA_VERSION = "1.1";
 /** The schema versions a pin may name. 1.2 adds the optional product projection (ADR 0016). */
-export const PUBLIC_SCHEMA_VERSIONS = ["1.1", "1.2"];
+export const PUBLIC_SCHEMA_VERSIONS = ["1.1", "1.2", "1.5"];
 
 /**
  * Validate and normalize the caller's pin document, strictly: an unusable pin
@@ -627,7 +627,7 @@ export function loadPins(text) {
     if (q.projection !== undefined) {
       const w = q.projection;
       need(
-        p.artifactSchema.version === "1.2" && isObject(w) && Array.isArray(w.requiredViews) && w.requiredViews.length > 0 &&
+        ["1.2", "1.5"].includes(p.artifactSchema.version) && isObject(w) && Array.isArray(w.requiredViews) && w.requiredViews.length > 0 &&
           w.requiredViews.every((v) => PROJECTION_VIEWS.includes(v)) && new Set(w.requiredViews).size === w.requiredViews.length &&
           (w.mode === undefined || PROJECTION_MODES.includes(w.mode)) && (w.rosterDigest === undefined || HEX64.test(w.rosterDigest)),
         "pins-projection",
