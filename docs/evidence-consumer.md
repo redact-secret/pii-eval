@@ -43,7 +43,7 @@ five-command contract of `pii-eval` ([cli.md](cli.md)) is unchanged.
 node tools/pii-evidence/fetch-snapshot.mjs --pin fixtures/pii-evidence/pin.json --out <new-dir>
 pii-eval-evidence verify --snapshot-dir DIR --pin FILE
 pii-eval-evidence import --snapshot-dir DIR --pin FILE --out DIR        # snapshot.json + binding.json
-pii-eval-evidence plan   --config FILE [--node PATH] [--replays N]       # writes the run manifest
+pii-eval-evidence plan   --config FILE [--node PATH] [--replays N] [--activation SELECTORS]
 ```
 
 * `fetch-snapshot.mjs` (needs `gh`): the tag must resolve, through an annotated tag object, to the pinned commit; the
@@ -54,6 +54,12 @@ pii-eval-evidence plan   --config FILE [--node PATH] [--replays N]       # write
 * `import` verifies, maps and writes `snapshot.json` (a sealed schema 1.4 `CorpusSnapshot`) and `binding.json`. On any
   refusal **nothing is written**. The output directory must be new or empty.
 * `plan` builds the sealed run manifest from the mapped corpus and the scanner plan the configured adapter derives.
+  By default it requests `pii:global` and every population jurisdiction, preserving earlier manifest identities.
+  `--activation pii:global,pii:us` explicitly freezes a different configuration when the measured artifact cannot
+  activate every jurisdiction. Selectors must be valid, unique and within the contract's 256-selector bound; they
+  are sorted before sealing. The entire imported population, scope and expectations remain unchanged. Unsupported
+  evidence families remain in the denominator, and configuration and activation digests identify this separate run.
+  Planning never starts a scanner or infers its capabilities. This option changes no mapping, schema or protocol.
 
 stdout is one JSON line (`pii-eval-evidence-summary/1`), stderr one fixed-vocabulary line. Exit codes reuse the frozen
 table of `pii-eval`: 0 accepted, 2 usage, 3 invalid content, 4 identity or integrity mismatch. A refusal names a file, a

@@ -9,7 +9,7 @@
 //! ```text
 //! pii-eval-evidence verify --snapshot-dir DIR --pin FILE
 //! pii-eval-evidence import --snapshot-dir DIR --pin FILE --out DIR
-//! pii-eval-evidence plan   --config FILE [--node PATH] [--replays N]
+//! pii-eval-evidence plan   --config FILE [--node PATH] [--replays N] [--activation SELECTORS]
 //! ```
 
 use std::collections::BTreeMap;
@@ -23,7 +23,7 @@ use serde_json::{Map, Value, json};
 use super::files::read_dir;
 use super::map::{binding_json, map, map_semantic, snapshot_json};
 use super::pin::SnapshotPin;
-use super::plan::{default_limits, manifest, plans_from_config};
+use super::plan::{default_limits, manifest, plans_from_config_with_activation};
 use super::verify::{Verified, verify};
 use super::{CONTRACT_NAME, CONTRACT_VERSION, EvidenceError, reason};
 use crate::config::{MAX_CONFIG_BYTES, RunConfig};
@@ -34,7 +34,7 @@ use crate::status::Exit;
 pub const SUMMARY_SCHEMA: &str = "pii-eval-evidence-summary/1";
 /// Usage text.
 pub const USAGE: &str = "usage: pii-eval-evidence verify --snapshot-dir DIR --pin FILE | \
-import --snapshot-dir DIR --pin FILE --out DIR [--mapping-revision 3] | plan --config FILE [--node PATH] [--replays N]";
+import --snapshot-dir DIR --pin FILE --out DIR [--mapping-revision 3] | plan --config FILE [--node PATH] [--replays N] [--activation SELECTORS]";
 
 /// The rendered result of one invocation.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -164,7 +164,7 @@ fn run(command: &str, args: &[String]) -> Result<(Value, Option<Value>), Evidenc
             Ok((semantic, Some(outputs)))
         }
         "plan" => {
-            let o = parse_options(args, &["config", "node", "replays"])?;
+            let o = parse_options(args, &["config", "node", "replays", "activation"])?;
             let config_path = PathBuf::from(required(&o, "config")?);
             let bytes = read_input(&config_path, MAX_CONFIG_BYTES, "run-config")
                 .map_err(|_| EvidenceError::invalid(reason::PLAN_INVALID, "run-config"))?;
@@ -184,7 +184,12 @@ fn run(command: &str, args: &[String]) -> Result<(Value, Option<Value>), Evidenc
                 None => 2,
             };
             let node = o.get("node").map(PathBuf::from);
-            let plans = plans_from_config(&config, &snapshot, node.as_deref())?;
+            let plans = plans_from_config_with_activation(
+                &config,
+                &snapshot,
+                node.as_deref(),
+                o.get("activation").map(String::as_str),
+            )?;
             let manifest = manifest(&snapshot, plans, default_limits(), replays)?;
             let text = to_pretty_json(&manifest)
                 .map_err(|_| EvidenceError::invalid(reason::PLAN_INVALID, "manifest"))?;
