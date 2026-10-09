@@ -298,7 +298,11 @@ impl<'a> AuthoredIndex<'a> {
                         actual: occurrences.len() as u64,
                     })?;
                 for e in &variant.expectations {
-                    has_not_established |= e.sensitivity == SensitivityExpectation::NotEstablished;
+                    has_not_established |= matches!(
+                        e.sensitivity,
+                        SensitivityExpectation::NotEstablished
+                            | SensitivityExpectation::ContextDependent
+                    );
                     occurrences.push(OccInfo {
                         case: ci as u32,
                         expected: e.type_expectation,
@@ -692,7 +696,7 @@ fn row_flags(occ: &OccInfo, row: &OutcomeRow) -> u32 {
                 f |= N_FP;
             }
         }
-        SensitivityExpectation::NotEstablished => {}
+        SensitivityExpectation::NotEstablished | SensitivityExpectation::ContextDependent => {}
     }
     match sens_status {
         AxisStatus::ReviewRequired => f |= A_SREV,

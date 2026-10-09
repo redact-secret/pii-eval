@@ -70,6 +70,7 @@ fn variant(
         text: text.to_owned(),
         text_digest: Sha256Digest::of_bytes(text.as_bytes()),
         expectations: vec![Expectation {
+            evidence: None,
             occurrence_id: id("occurrence-1"),
             range: Some(range_of(text, needle)),
             family: fam(family),
@@ -630,6 +631,7 @@ impl Fixtures {
                         )
                     };
                     outcomes.push(CaseOutcome {
+                        evidence: None,
                         scanner_id: sid(scanner),
                         case_id: case.case_id.clone(),
                         variant_id: v.variant_id.clone(),

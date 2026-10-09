@@ -155,7 +155,9 @@ pub fn interpret(expected: &LegacyExpectation<'_>, scanner: &LegacyScanner<'_>) 
 
     let flagged = first.is_some_and(|f| f.sensitive == Some(true));
     let sensitivity_context = match (expected.sensitivity, flagged) {
-        (SensitivityExpectation::NotEstablished, _) => SensitivityState::Unresolved,
+        (SensitivityExpectation::NotEstablished | SensitivityExpectation::ContextDependent, _) => {
+            SensitivityState::Unresolved
+        }
         (SensitivityExpectation::Sensitive, true)
         | (SensitivityExpectation::NonSensitive, false) => SensitivityState::Correct,
         (SensitivityExpectation::Sensitive, false) => SensitivityState::Miss,

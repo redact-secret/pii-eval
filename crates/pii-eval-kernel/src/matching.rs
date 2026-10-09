@@ -302,7 +302,10 @@ fn sensitivity_state(
     if caps.sensitivity_classification == CapabilityState::Unsupported {
         return SensitivityState::NotMeasured;
     }
-    if e.sensitivity == SensitivityExpectation::NotEstablished {
+    if matches!(
+        e.sensitivity,
+        SensitivityExpectation::NotEstablished | SensitivityExpectation::ContextDependent
+    ) {
         return SensitivityState::Unresolved;
     }
     // Absence of a reported value is never a negative answer. The one
@@ -321,7 +324,9 @@ fn sensitivity_state(
         | (SensitivityExpectation::NonSensitive, false) => SensitivityState::Correct,
         (SensitivityExpectation::Sensitive, false) => SensitivityState::Miss,
         (SensitivityExpectation::NonSensitive, true) => SensitivityState::FalsePositive,
-        (SensitivityExpectation::NotEstablished, _) => SensitivityState::Unresolved,
+        (SensitivityExpectation::NotEstablished | SensitivityExpectation::ContextDependent, _) => {
+            SensitivityState::Unresolved
+        }
     }
 }
 
@@ -422,6 +427,64 @@ pub fn assess_variant(
         // capability); the range axis is `unresolved` and the action axis
         // has no located occurrence to judge.
         let Some(expected_range) = e.range else {
+            if e.is_text_negative() {
+                // Identity rejection is family/jurisdiction scoped. Unrelated
+                // PII must not turn a negative assertion for this family into a failure.
+                let candidates: Vec<&Finding> = findings
+                    .iter()
+                    .filter(|f| {
+                        f.family.as_ref() == Some(&e.family)
+                            && input
+                                .case_jurisdiction
+                                .is_none_or(|j| f.jurisdiction.as_ref() == Some(j))
+                    })
+                    .collect();
+                let missing_labels = findings.iter().any(|f| {
+                    f.family.is_none()
+                        || (f.family.as_ref() == Some(&e.family)
+                            && input.case_jurisdiction.is_some()
+                            && f.jurisdiction.is_none())
+                });
+                let primary = candidates
+                    .iter()
+                    .find(|f| f.sensitive == Some(true))
+                    .or_else(|| candidates.iter().find(|f| f.sensitive.is_none()))
+                    .or_else(|| candidates.first())
+                    .copied();
+                let mut ty =
+                    type_state(e, input.case_jurisdiction, caps, primary, candidates.len());
+                if candidates.is_empty()
+                    && (missing_labels
+                        || caps.family_classification != CapabilityState::Supported
+                        || caps.family_state(&e.family) != CapabilityState::Supported
+                        || input.case_jurisdiction.is_some_and(|j| {
+                            caps.jurisdiction_state(j) != CapabilityState::Supported
+                        }))
+                    && e.type_expectation == ExpectedType::Invalid
+                    && ty != TypeState::NotMeasured
+                {
+                    ty = TypeState::NotMeasured;
+                }
+                let mut sensitivity = sensitivity_state(e, caps, primary);
+                if sensitivity == SensitivityState::Correct
+                    && missing_labels
+                    && e.sensitivity == SensitivityExpectation::NonSensitive
+                {
+                    sensitivity = SensitivityState::NotMeasured;
+                }
+                occurrences.push(OccurrenceAssessment {
+                    occurrence_id: e.occurrence_id.clone(),
+                    row: OutcomeRow {
+                        type_identity: ty,
+                        sensitivity_context: sensitivity,
+                        range: RangeState::NotApplicable,
+                        action: ActionOutcome::NotMeasured,
+                    },
+                    primary: None,
+                    observed: summarize(&candidates),
+                });
+                continue;
+            }
             occurrences.push(OccurrenceAssessment {
                 occurrence_id: e.occurrence_id.clone(),
                 row: OutcomeRow {

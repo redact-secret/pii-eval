@@ -198,6 +198,56 @@
         }
       ]
     },
+    "EvidenceDomain": {
+      "description": "Evidence domain. PHI does not imply a scanner capability or product verdict.",
+      "oneOf": [
+        {
+          "const": "pii",
+          "description": "Personally identifiable information.",
+          "type": "string"
+        },
+        {
+          "const": "phi",
+          "description": "Protected health information in authored evidence context.",
+          "type": "string"
+        }
+      ]
+    },
+    "EvidenceSemantics": {
+      "additionalProperties": false,
+      "description": "Scanner-neutral authored evidence semantics (schema 1.5, ADR 0020).",
+      "properties": {
+        "authoredSensitivity": {
+          "$ref": "#/$defs/SensitivityExpectation",
+          "description": "Authored sensitivity retained in artifacts even when the result is unresolved."
+        },
+        "contexts": {
+          "description": "Exact authored context identifiers, sorted and unique. These are evidence\nlabels, not claims that a scanner observed or understood medical context.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "domains": {
+          "description": "Authored domains, independent of detector family and scanner support.",
+          "items": {
+            "$ref": "#/$defs/EvidenceDomain"
+          },
+          "type": "array"
+        },
+        "textNegative": {
+          "description": "Text-wide negative assertion rather than an unlocated occurrence.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "domains",
+        "contexts",
+        "textNegative",
+        "authoredSensitivity"
+      ],
+      "type": "object"
+    },
     "FailureCode": {
       "description": "Sanitized reason a scanner run did not measure.",
       "enum": [
@@ -851,7 +901,7 @@
     },
     "ProtocolIdentity": {
       "additionalProperties": false,
-      "description": "Protocol identity bound into every plan and artifact.\n\nTwo values are valid: [`ProtocolIdentity::LEGACY_V1`] (revision 1, no\n`rules`, the oracle's semantics) and [`ProtocolIdentity::CANONICAL_V2`]\n(revision 2 with the rule identities it was produced under). Anything else\nis `protocol-binding-mismatch`; a revision-2 document must also declare\nschema 1.1 or later.",
+      "description": "Protocol identity bound into every plan and artifact.\n\nLegacy and canonical revisions are valid: [`ProtocolIdentity::LEGACY_V1`] (revision 1, no\n`rules`, the oracle's semantics) and [`ProtocolIdentity::CANONICAL_V2`]\n(revision 2 with its frozen rules), plus [`ProtocolIdentity::CANONICAL_V3`]\n(schema 1.5 evidence semantics). Anything else\nis `protocol-binding-mismatch`; a revision-2 document must also declare\nschema 1.1 or later.",
       "properties": {
         "accounting": {
           "$ref": "#/$defs/AccountingId",
@@ -870,10 +920,10 @@
               "type": "null"
             }
           ],
-          "description": "Rule identities; present exactly for revision 2."
+          "description": "Rule identities; present for canonical revisions 2 and 3."
         },
         "version": {
-          "description": "Protocol revision: 1 (legacy) or 2 (canonical).",
+          "description": "Protocol revision: 1 (legacy), 2 (canonical) or 3 (evidence semantics).",
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
@@ -921,6 +971,17 @@
         "caseId": {
           "$ref": "#/$defs/Id",
           "description": "Authored case."
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceSemantics"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Authored evidence axes, independent of the observed scanner axes."
         },
         "method": {
           "$ref": "#/$defs/MethodId",
@@ -1391,6 +1452,16 @@
       "pattern": "^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})$",
       "type": "string"
     },
+    "SensitivityExpectation": {
+      "description": "Authored sensitivity of an occurrence in its context.",
+      "enum": [
+        "sensitive",
+        "non-sensitive",
+        "not-established",
+        "context-dependent"
+      ],
+      "type": "string"
+    },
     "SensitivityState": {
       "description": "Observed sensitivity-context state for one occurrence.",
       "enum": [
@@ -1437,7 +1508,7 @@
       "type": "string"
     }
   },
-  "$id": "urn:pii-eval:schema:public-synthetic-artifact:1.4",
+  "$id": "urn:pii-eval:schema:public-synthetic-artifact:1.5",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "A public-synthetic artifact document.",

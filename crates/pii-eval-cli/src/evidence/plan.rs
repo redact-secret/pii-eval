@@ -95,7 +95,11 @@ pub fn manifest(
             version: VersionString::new(pii_eval_contracts::ENGINE_VERSION)
                 .map_err(|_| bad("engine"))?,
         },
-        protocol: ProtocolIdentity::CANONICAL_V2,
+        protocol: if snapshot.semantic.authors_evidence_semantics() {
+            ProtocolIdentity::CANONICAL_V3
+        } else {
+            ProtocolIdentity::CANONICAL_V2
+        },
         run_class: RunClass::PublicSynthetic,
         population: PopulationBinding {
             population_id: snapshot.semantic.population.population_id.clone(),

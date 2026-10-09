@@ -105,7 +105,7 @@ jobs:
       # tampered, incomplete or non-public snapshot fails closed before mapping, and the committed
       # measurement is replayed with no scanner and no network. Also part of the full run above.
       - name: pii-evidence consumer (fail-closed loader, mapping, committed measurement replay)
-        run: cargo test -p pii-eval-cli --locked --test evidence_consumer --test evidence_measurement
+        run: cargo test -p pii-eval-cli --locked --test evidence_consumer --test evidence_measurement --test evidence_semantics
       # The live measurement and the release fetch are manual (npm registry, gh); CI runs the
       # fetch tool's offline tests and checks the syntax of both scripts.
       - name: pii-evidence tooling (offline fetch tests, syntax)

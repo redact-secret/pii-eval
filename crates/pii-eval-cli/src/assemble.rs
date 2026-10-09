@@ -192,7 +192,11 @@ pub fn assemble_with_projection(
             ))
         })?,
     };
-    let protocol = ProtocolIdentity::CANONICAL_V2;
+    let protocol = if m.protocol == ProtocolIdentity::CANONICAL_V3 {
+        m.protocol
+    } else {
+        ProtocolIdentity::CANONICAL_V2
+    };
     let body = &snapshot.semantic;
 
     // Rows, scanner by scanner, in canonical order. Every row passes the review
@@ -227,11 +231,15 @@ pub fn assemble_with_projection(
                 });
                 for (i, occ) in assessment.occurrences.iter().enumerate() {
                     let gated = gate.apply(variant.variant_id.as_str(), occ.row);
-                    let action = match verified.and_then(|v| v.get(i)) {
+                    let action = match verified
+                        .filter(|_| !variant.expectations[i].is_text_negative())
+                        .and_then(|v| v.get(i))
+                    {
                         Some(&verification) => ActionOutcome::OutputVerified { verification },
                         None => gated.action,
                     };
                     rows.push(CaseOutcome {
+                        evidence: variant.expectations[i].evidence.clone(),
                         scanner_id: run.plan.identity.scanner_id.clone(),
                         case_id: case.case_id.clone(),
                         variant_id: variant.variant_id.clone(),

@@ -94,6 +94,7 @@ pub fn snapshot_body(mut cases: Vec<CaseSpec>) -> CorpusSnapshotBody {
                         .iter()
                         .enumerate()
                         .map(|(i, o)| Expectation {
+                            evidence: None,
                             occurrence_id: id(o.id),
                             range: Some(ByteRange {
                                 start: (i as u64) * 5,
@@ -183,6 +184,7 @@ pub fn outcome(
         .map(|c| c.method)
         .expect("case exists");
     CaseOutcome {
+        evidence: None,
         scanner_id: sid(scanner),
         case_id: id(&spec.0),
         variant_id: id(&spec.1),

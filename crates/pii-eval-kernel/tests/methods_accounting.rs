@@ -114,7 +114,8 @@ fn blind_rows(out: &GenerationOutput) -> Vec<Row> {
                 let sensitivity_context = match e.sensitivity {
                     SensitivityExpectation::Sensitive => SensitivityState::Miss,
                     SensitivityExpectation::NonSensitive => SensitivityState::Correct,
-                    SensitivityExpectation::NotEstablished => SensitivityState::Unresolved,
+                    SensitivityExpectation::NotEstablished
+                    | SensitivityExpectation::ContextDependent => SensitivityState::Unresolved,
                 };
                 rows.push(Row {
                     case: g.case.case_id.as_str().to_owned(),

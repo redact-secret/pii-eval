@@ -1063,6 +1063,7 @@ fn kernel_rows(
 ) -> Vec<CaseOutcome> {
     let _ = body;
     rows.map(|(case, variant, occurrence, t, s, r, method)| CaseOutcome {
+        evidence: None,
         scanner_id: scanner.clone(),
         case_id: id(&case),
         variant_id: id(&variant),
@@ -1462,6 +1463,7 @@ fn vector_parts(
                 text: TEXT.to_owned(),
                 text_digest: Sha256Digest::of_bytes(TEXT.as_bytes()),
                 expectations: vec![Expectation {
+                    evidence: None,
                     occurrence_id: id("o1"),
                     range: Some(ByteRange { start: 0, end: 4 }),
                     family: family.clone(),

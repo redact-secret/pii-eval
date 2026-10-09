@@ -84,6 +84,7 @@ pub fn canonical_with(
     caps: &ScannerCapabilities,
 ) -> OccurrenceAssessment {
     let e = [Expectation {
+        evidence: None,
         occurrence_id: Id::new("occ-a").unwrap(),
         range: Some(case.candidate),
         family: case.family.clone(),

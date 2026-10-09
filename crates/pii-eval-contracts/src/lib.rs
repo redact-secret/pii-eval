@@ -55,8 +55,9 @@ pub use canonical::{
     semantic_digest,
 };
 pub use corpus::{
-    Case, Collision, CorpusSnapshot, CorpusSnapshotBody, Derivation, Expectation, GenerationRules,
-    Lineage, OperatorRef, Population, Strategy, ValidatorRef, Variant, Visibility,
+    Case, Collision, CorpusSnapshot, CorpusSnapshotBody, Derivation, EvidenceDomain,
+    EvidenceSemantics, Expectation, GenerationRules, Lineage, OperatorRef, Population, Strategy,
+    ValidatorRef, Variant, Visibility,
 };
 pub use decimal::{ByteRange, ScaledDecimal};
 pub use document::{

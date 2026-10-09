@@ -1,0 +1,1053 @@
+{
+  "afterArtifactDigest": "465789ba2ccdb1ccceb139d067281b3faacefbba29ada60c1a5264f070930d23",
+  "afterMetrics": [
+    {
+      "metrics": [
+        {
+          "counts": {
+            "eligible": 1,
+            "measured": 1,
+            "notApplicable": 54,
+            "notMeasured": 0,
+            "numerator": 1,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 1,
+          "metric": {
+            "id": "benign-suppression-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "reason": "insufficient-evidence",
+            "state": "withheld"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 0,
+            "measured": 0,
+            "notApplicable": 0,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 0,
+            "unresolved": 0
+          },
+          "effectiveN": 0,
+          "metric": {
+            "id": "context-discrimination-rate",
+            "version": 1
+          },
+          "status": "not-applicable",
+          "value": {
+            "reason": "zero-denominator",
+            "state": "withheld"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 0,
+            "measured": 0,
+            "notApplicable": 55,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 0,
+          "metric": {
+            "id": "jurisdiction-collision-rate",
+            "version": 1
+          },
+          "status": "not-applicable",
+          "value": {
+            "reason": "zero-denominator",
+            "state": "withheld"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 110,
+            "measured": 72,
+            "notApplicable": 0,
+            "notMeasured": 3,
+            "numerator": 72,
+            "total": 110,
+            "unresolved": 35
+          },
+          "effectiveN": 110,
+          "metric": {
+            "id": "measurable-share",
+            "version": 1
+          },
+          "status": "partial",
+          "value": {
+            "bound": {
+              "mantissa": 561823,
+              "scale": 6
+            },
+            "point": {
+              "mantissa": 654545,
+              "scale": 6
+            },
+            "state": "measured"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 20,
+            "measured": 20,
+            "notApplicable": 35,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 20,
+          "metric": {
+            "id": "non-sensitive-flag-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "bound": {
+              "mantissa": 16113,
+              "scale": 5
+            },
+            "point": {
+              "mantissa": 0,
+              "scale": 0
+            },
+            "state": "measured"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 0,
+            "measured": 0,
+            "notApplicable": 55,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 0,
+          "metric": {
+            "id": "range-collateral-rate",
+            "version": 1
+          },
+          "status": "not-applicable",
+          "value": {
+            "reason": "zero-denominator",
+            "state": "withheld"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 18,
+            "measured": 18,
+            "notApplicable": 37,
+            "notMeasured": 0,
+            "numerator": 18,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 18,
+          "metric": {
+            "id": "sensitive-miss-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "bound": {
+              "mantissa": 1,
+              "scale": 0
+            },
+            "point": {
+              "mantissa": 1,
+              "scale": 0
+            },
+            "state": "measured"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 20,
+            "measured": 20,
+            "notApplicable": 35,
+            "notMeasured": 0,
+            "numerator": 20,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 20,
+          "metric": {
+            "id": "type-miss-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "bound": {
+              "mantissa": 1,
+              "scale": 0
+            },
+            "point": {
+              "mantissa": 1,
+              "scale": 0
+            },
+            "state": "measured"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 20,
+            "measured": 20,
+            "notApplicable": 35,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 20,
+          "metric": {
+            "id": "wrong-family-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "bound": {
+              "mantissa": 16113,
+              "scale": 5
+            },
+            "point": {
+              "mantissa": 0,
+              "scale": 0
+            },
+            "state": "measured"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 8,
+            "measured": 8,
+            "notApplicable": 47,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 8,
+          "metric": {
+            "id": "wrong-jurisdiction-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "bound": {
+              "mantissa": 324416,
+              "scale": 6
+            },
+            "point": {
+              "mantissa": 0,
+              "scale": 0
+            },
+            "state": "measured"
+          }
+        }
+      ],
+      "scannerId": "redact-secret-core"
+    }
+  ],
+  "afterProtocol": {
+    "accounting": "pii-v1",
+    "id": "pii-v1",
+    "rules": {
+      "accounting": {
+        "id": "pii-v1-canonical-accounting",
+        "revision": 3
+      },
+      "matching": {
+        "id": "pii-v1-canonical",
+        "revision": 3
+      },
+      "statistics": {
+        "id": "pii-v1-wilson-exact",
+        "revision": 1
+      }
+    },
+    "version": 3
+  },
+  "beforeArtifactDigest": "2d06741eb857162aef240e3e5275717023d20b3af5a8a24dee5da30c6c8c86af",
+  "beforeMetrics": [
+    {
+      "metrics": [
+        {
+          "counts": {
+            "eligible": 1,
+            "measured": 1,
+            "notApplicable": 54,
+            "notMeasured": 0,
+            "numerator": 1,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 1,
+          "metric": {
+            "id": "benign-suppression-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "reason": "insufficient-evidence",
+            "state": "withheld"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 0,
+            "measured": 0,
+            "notApplicable": 0,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 0,
+            "unresolved": 0
+          },
+          "effectiveN": 0,
+          "metric": {
+            "id": "context-discrimination-rate",
+            "version": 1
+          },
+          "status": "not-applicable",
+          "value": {
+            "reason": "zero-denominator",
+            "state": "withheld"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 0,
+            "measured": 0,
+            "notApplicable": 55,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 0,
+          "metric": {
+            "id": "jurisdiction-collision-rate",
+            "version": 1
+          },
+          "status": "not-applicable",
+          "value": {
+            "reason": "zero-denominator",
+            "state": "withheld"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 110,
+            "measured": 39,
+            "notApplicable": 0,
+            "notMeasured": 0,
+            "numerator": 39,
+            "total": 110,
+            "unresolved": 71
+          },
+          "effectiveN": 110,
+          "metric": {
+            "id": "measurable-share",
+            "version": 1
+          },
+          "status": "partial",
+          "value": {
+            "bound": {
+              "mantissa": 27144,
+              "scale": 5
+            },
+            "point": {
+              "mantissa": 354545,
+              "scale": 6
+            },
+            "state": "measured"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 1,
+            "measured": 1,
+            "notApplicable": 54,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 1,
+          "metric": {
+            "id": "non-sensitive-flag-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "reason": "insufficient-evidence",
+            "state": "withheld"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 0,
+            "measured": 0,
+            "notApplicable": 55,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 0,
+          "metric": {
+            "id": "range-collateral-rate",
+            "version": 1
+          },
+          "status": "not-applicable",
+          "value": {
+            "reason": "zero-denominator",
+            "state": "withheld"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 18,
+            "measured": 18,
+            "notApplicable": 37,
+            "notMeasured": 0,
+            "numerator": 18,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 18,
+          "metric": {
+            "id": "sensitive-miss-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "bound": {
+              "mantissa": 1,
+              "scale": 0
+            },
+            "point": {
+              "mantissa": 1,
+              "scale": 0
+            },
+            "state": "measured"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 20,
+            "measured": 20,
+            "notApplicable": 35,
+            "notMeasured": 0,
+            "numerator": 20,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 20,
+          "metric": {
+            "id": "type-miss-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "bound": {
+              "mantissa": 1,
+              "scale": 0
+            },
+            "point": {
+              "mantissa": 1,
+              "scale": 0
+            },
+            "state": "measured"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 20,
+            "measured": 20,
+            "notApplicable": 35,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 20,
+          "metric": {
+            "id": "wrong-family-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "bound": {
+              "mantissa": 16113,
+              "scale": 5
+            },
+            "point": {
+              "mantissa": 0,
+              "scale": 0
+            },
+            "state": "measured"
+          }
+        },
+        {
+          "counts": {
+            "eligible": 8,
+            "measured": 8,
+            "notApplicable": 47,
+            "notMeasured": 0,
+            "numerator": 0,
+            "total": 55,
+            "unresolved": 0
+          },
+          "effectiveN": 8,
+          "metric": {
+            "id": "wrong-jurisdiction-rate",
+            "version": 1
+          },
+          "status": "measured",
+          "value": {
+            "bound": {
+              "mantissa": 324416,
+              "scale": 6
+            },
+            "point": {
+              "mantissa": 0,
+              "scale": 0
+            },
+            "state": "measured"
+          }
+        }
+      ],
+      "scannerId": "redact-secret-core"
+    }
+  ],
+  "beforeProtocol": {
+    "accounting": "pii-v1",
+    "id": "pii-v1",
+    "rules": {
+      "accounting": {
+        "id": "pii-v1-canonical-accounting",
+        "revision": 2
+      },
+      "matching": {
+        "id": "pii-v1-canonical",
+        "revision": 2
+      },
+      "statistics": {
+        "id": "pii-v1-wilson-exact",
+        "revision": 1
+      }
+    },
+    "version": 2
+  },
+  "changed": [
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-429eebd70a636084c24d3179"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-5ce908212eb87ba86bbbe4f6"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-f2f3b59104dec1c8515dad36"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-35ae654e77292a537b1ac2d9"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-185c3607c1e8c1ca508144d0"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-6c8ee31da2f9309475ebdc21"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-64e6000bd1e3789dac86099d"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-627b13712706168ac6a4402a"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "unresolved"
+      },
+      "axes": [
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-3c58c1a36c4b09c4647f61ed"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-bd10fc4557d25150ca4b5cfc"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-57a1a9938fb8dbb573a121de"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "unresolved"
+      },
+      "axes": [
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-7261f881469aa753e22125f7"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "not-measured"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-4760139334ea28e0716bb169"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-a758c49db64f94a76ee566f8"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-3b6f0029f162bee389fa643e"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-10cd5efa9977da71aed2d775"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "invalid-correct"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-418d1a977e49e6ecaa5ea0bc"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "not-measured"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-70d52ab35d38f982572774b5"
+    },
+    {
+      "after": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "not-applicable",
+        "sensitivityContext": "correct",
+        "typeIdentity": "not-measured"
+      },
+      "axes": [
+        "typeIdentity",
+        "sensitivityContext",
+        "range"
+      ],
+      "before": {
+        "action": {
+          "state": "not-measured"
+        },
+        "range": "unresolved",
+        "sensitivityContext": "unresolved",
+        "typeIdentity": "unresolved"
+      },
+      "classification": "protocol-3-text-negative-expectation",
+      "variantId": "ev-532cf4c40d3f07e0bfb567ad"
+    }
+  ],
+  "changedOutcomeRows": 19,
+  "kind": "same-observation-protocol-migration-replay",
+  "observationDigest": "79bf8087b18fc8ca767e13198d23ce1bcf0bd120baaf69ab68e66b24703641e3",
+  "productMode": "released",
+  "scanner": {
+    "activationDigest": "68785ee0037e8b4d5b0ea2b0043e5d897eb942a7bea89a3bd7191510e338b5a3",
+    "adapter": {
+      "adapterId": "redact-secret-core-node",
+      "adapterVersion": "1.0.0",
+      "normalizationVersion": 1
+    },
+    "artifactDigest": "726421636189573bc76024ecf23ec6bd1d71fef6d8272e5da1b3967dee036d03",
+    "configurationDigest": "d213ca5dd371adcea382769b656cd9b3d7b6543ea157dbf63e9a3f50eaeb3f21",
+    "product": {
+      "kind": "released"
+    },
+    "scannerId": "redact-secret-core",
+    "scannerVersion": "0.1.0-beta.12"
+  },
+  "scannersLaunched": 0,
+  "schema": "pii-eval-semantic-outcome-delta/1",
+  "snapshotId": "public-pii-phi/2026-10-07/9d4e8e036bbb",
+  "unchangedOutcomeRows": 120,
+  "unexplainedDeltas": 0,
+  "visibility": "public-synthetic"
+}

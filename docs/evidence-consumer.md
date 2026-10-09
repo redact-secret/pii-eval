@@ -271,3 +271,37 @@ semantic difference is then a finding to investigate, not a failure to hide.
   which release was read, not that its expectations are right.
 * One population, one scanner, one platform, one host. No claim extends past them.
 * Every evidence case is project-maintained and `unreviewed`; the measurement inherits that.
+
+## Preserving PHI and context (issue #37)
+
+Opt into mapping revision 3 with:
+
+```sh
+pii-eval-evidence import --snapshot-dir DIR --pin FILE --out OUT --mapping-revision 3
+```
+
+This produces schema 1.5 / population version 3. `pii-eval-evidence plan` then
+binds protocol revision 3. The default import and existing measurements keep
+their original bytes. The active evidence pin stays unchanged; importing the
+proposed broader snapshot does not authorize its adoption.
+
+`evidence` on expectations and outcome rows retains authored domains (including
+PHI), context identifiers, authored sensitivity and text-negative scope.
+Context-dependent sensitivity remains explicitly authored and is measured
+unresolved, never guessed from a binary scanner flag. Nineteen span-less negative
+expectations on the active pin become text-wide family/jurisdiction assertions
+with no fabricated range or removal verdict. All five previously recorded mapping
+losses become zero. See [ADR 0020](adr/0020-phi-context-semantics-and-protocol-3.md),
+[mapping delta](migration/phi-context-mapping-delta-37.json) and
+[same-observation delta](migration/phi-context-outcome-delta-37.json) for the
+version gates, exact measurement rules and classified changes.
+
+Consumers must explicitly pin schema 1.5, protocol 3 and the new population
+digest/version. The reference consumer accepts the new shape with those pins;
+old pins reject it. This is an evaluator migration, not a product support verdict
+or a snapshot v2 activation. Test the migration offline with:
+
+```sh
+cargo test -p pii-eval-cli --locked --test evidence_semantics
+cargo test -p pii-eval-contracts -p pii-eval-kernel --locked --test evidence_semantics
+```

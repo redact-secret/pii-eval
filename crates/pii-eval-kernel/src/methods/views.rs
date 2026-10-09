@@ -128,7 +128,8 @@ impl ViewRoster {
                     match e.sensitivity {
                         SensitivityExpectation::Sensitive => out.sensitive += 1,
                         SensitivityExpectation::NonSensitive => out.non_sensitive += 1,
-                        SensitivityExpectation::NotEstablished => out.not_established += 1,
+                        SensitivityExpectation::NotEstablished
+                        | SensitivityExpectation::ContextDependent => out.not_established += 1,
                     }
                 }
             }

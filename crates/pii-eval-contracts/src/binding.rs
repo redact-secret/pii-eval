@@ -44,6 +44,9 @@ pub fn validate_manifest_against_snapshot(
     let body = Path::ROOT.field("semantic");
     let m = &manifest.semantic;
     let s = &snapshot.semantic;
+    if s.authors_evidence_semantics() && m.protocol != crate::ProtocolIdentity::CANONICAL_V3 {
+        c.push(ReasonCode::ProtocolBindingMismatch, &body.field("protocol"));
+    }
     if !m.run_class.matches(s.population.visibility) {
         c.push(ReasonCode::RunClassMismatch, &body.field("runClass"));
     }
@@ -263,6 +266,7 @@ pub fn validate_artifact_against_manifest(
 }
 
 struct RowView<'a> {
+    evidence: Option<&'a crate::corpus::EvidenceSemantics>,
     scanner_id: &'a crate::ident::ScannerId,
     case_id: &'a Id,
     variant_id: &'a Id,
@@ -354,6 +358,15 @@ fn check_snapshot_parts(parts: &SnapshotParts<'_>, snapshot: &CorpusSnapshot) ->
             continue;
         };
         let expectation = &variant.expectations[k];
+        if expectation.is_text_negative()
+            && (o.row.range != crate::RangeState::NotApplicable
+                || o.row.action != crate::ActionOutcome::NotMeasured)
+        {
+            c.push(ReasonCode::OutcomeContradiction, &p);
+        }
+        if o.evidence != expectation.evidence.as_ref() {
+            c.push(ReasonCode::OutcomeContradiction, &p.field("evidence"));
+        }
         let Some((_, status, capabilities)) =
             parts.scanners.iter().find(|(id, _, _)| *id == o.scanner_id)
         else {
@@ -382,6 +395,7 @@ macro_rules! row_views {
         $outcomes
             .iter()
             .map(|o| RowView {
+                evidence: o.evidence.as_ref(),
                 scanner_id: &o.scanner_id,
                 case_id: &o.case_id,
                 variant_id: &o.variant_id,

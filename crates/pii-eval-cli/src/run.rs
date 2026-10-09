@@ -50,7 +50,9 @@ impl std::fmt::Display for RunError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RunError::InvalidPlan => f.write_str("invalid plan"),
-            RunError::UnsupportedProtocol => f.write_str("only protocol revision 2 can be run"),
+            RunError::UnsupportedProtocol => {
+                f.write_str("only canonical protocol revisions can be run")
+            }
             RunError::AdapterMismatch => f.write_str("adapters do not match the manifest"),
             RunError::Exec(e) => write!(f, "{e}"),
             RunError::Assemble(e) => write!(f, "{e}"),

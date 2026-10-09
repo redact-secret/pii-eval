@@ -39,7 +39,7 @@ pub const SCHEMA_MAJOR: u16 = 1;
 /// 1.4 (ADR 0018) adds the authored `not-established` range: an occurrence whose
 /// location the corpus authors did not establish carries no `range`, and its
 /// range axis is observed as `unresolved`. Opt-in in the same way.
-pub const SCHEMA_MINOR: u16 = 4;
+pub const SCHEMA_MINOR: u16 = 5;
 
 /// The five document kinds. The string is the `schema` field value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -125,6 +125,9 @@ impl SchemaVersion {
 
     /// Schema 1.4: the authored `not-established` range (ADR 0018).
     pub const V1_4: SchemaVersion = SchemaVersion { major: 1, minor: 4 };
+
+    /// Evidence semantics and text-level negatives (ADR 0020).
+    pub const V1_5: SchemaVersion = SchemaVersion { major: 1, minor: 5 };
 
     /// Parse `"<major>.<minor>"`: ASCII digits, no sign, no leading zeros.
     pub fn parse(text: &str) -> Option<Self> {
@@ -238,7 +241,8 @@ mod tests {
         assert_eq!(v(1, 2).readable(), Ok(()));
         assert_eq!(v(1, 3).readable(), Ok(()));
         assert_eq!(v(1, 4).readable(), Ok(()));
-        assert_eq!(v(1, 5).readable(), Err(ReasonCode::SchemaMinorTooNew));
+        assert_eq!(v(1, 5).readable(), Ok(()));
+        assert_eq!(v(1, 6).readable(), Err(ReasonCode::SchemaMinorTooNew));
         assert_eq!(v(2, 0).readable(), Err(ReasonCode::IncompatibleSchemaMajor));
         assert_eq!(v(0, 9).readable(), Err(ReasonCode::IncompatibleSchemaMajor));
     }

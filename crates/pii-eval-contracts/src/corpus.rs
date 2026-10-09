@@ -112,18 +112,68 @@ pub struct ValidatorRef {
     pub version: u32,
 }
 
-/// One authored expected occurrence inside a variant's text. The four axes are
-/// separate fields and none is derived from another.
+/// Scanner-neutral authored evidence semantics (schema 1.5, ADR 0020).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EvidenceSemantics {
+    /// Authored domains, independent of detector family and scanner support.
+    pub domains: Vec<EvidenceDomain>,
+    /// Exact authored context identifiers, sorted and unique. These are evidence
+    /// labels, not claims that a scanner observed or understood medical context.
+    pub contexts: Vec<String>,
+    /// Text-wide negative assertion rather than an unlocated occurrence.
+    pub text_negative: bool,
+    /// Authored sensitivity retained in artifacts even when the result is unresolved.
+    pub authored_sensitivity: SensitivityExpectation,
+}
+
+/// Evidence domain. PHI does not imply a scanner capability or product verdict.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
+#[serde(rename_all = "kebab-case")]
+pub enum EvidenceDomain {
+    /// Personally identifiable information.
+    Pii,
+    /// Protected health information in authored evidence context.
+    Phi,
+}
+
+impl EvidenceSemantics {
+    pub(crate) fn validate(&self, path: &Path<'_>, c: &mut Collector) {
+        if self.domains.is_empty()
+            || self.domains.len() > 2
+            || self.domains.windows(2).any(|w| w[0] >= w[1])
+            || self.contexts.len() > 64
+            || self.contexts.windows(2).any(|w| w[0] >= w[1])
+            || self.contexts.iter().any(|id| {
+                id.is_empty()
+                    || id.len() > 128
+                    || !id.bytes().all(|b| {
+                        b.is_ascii_lowercase() || b.is_ascii_digit() || b"-_/".contains(&b)
+                    })
+            })
+        {
+            c.push(ReasonCode::ProtocolBindingMismatch, path);
+        }
+    }
+}
+
+/// One authored expectation, with independent type, sensitivity, range and action axes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Expectation {
+    /// Optional authored evidence semantics, introduced in schema 1.5.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence: Option<EvidenceSemantics>,
     /// Identifier unique within the variant.
     pub occurrence_id: Id,
     /// Expected byte range in the variant text. Absent when the authors did
     /// not establish where the occurrence is (schema 1.4, ADR 0018): then the
-    /// type identity and the sensitivity must be `not-established` too, the
-    /// case must be `schema-only`, and the range axis is observed as
-    /// `unresolved`. The engine never invents a range.
+    /// type identity and sensitivity must be `not-established`, except explicit
+    /// schema-1.5 text-negative assertions and context-dependent uncertainty.
+    /// Cases must be `schema-only`; no range is invented. An unlocated occurrence
+    /// observes `unresolved`; a text-negative assertion observes `not-applicable`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub range: Option<ByteRange>,
     /// Expected family. Its scope must agree with the case jurisdiction.
@@ -240,6 +290,9 @@ impl_document!(@impl
     crate::version::DocumentKind::CorpusSnapshot,
     {
         fn validate_gates(&self, c: &mut Collector) {
+            if self.semantic.authors_evidence_semantics() && self.schema_version < SchemaVersion::V1_5 {
+                c.push(ReasonCode::ProtocolBindingMismatch, &Path::ROOT.field("schemaVersion"));
+            }
             // An authored `not-established` identity exists from schema 1.3 on
             // (ADR 0017): an older reader must not meet a value it cannot read.
             if self.semantic.authors_not_established_range()
@@ -268,7 +321,9 @@ impl CorpusSnapshot {
     /// that authors a `not-established` identity is sealed under 1.3 (ADR 0017);
     /// every other population keeps the current version and its bytes.
     pub fn unsealed(semantic: CorpusSnapshotBody) -> Self {
-        let schema_version = if semantic.authors_not_established_range() {
+        let schema_version = if semantic.authors_evidence_semantics() {
+            SchemaVersion::V1_5
+        } else if semantic.authors_not_established_range() {
             SchemaVersion::V1_4
         } else if semantic.authors_not_established_identity() {
             SchemaVersion::V1_3
@@ -285,6 +340,11 @@ impl CorpusSnapshot {
 }
 
 impl Expectation {
+    /// Whether the assertion applies to the entire text, with no invented span.
+    pub fn is_text_negative(&self) -> bool {
+        self.evidence.as_ref().is_some_and(|e| e.text_negative)
+    }
+
     fn validate(
         &self,
         text: &str,
@@ -292,13 +352,39 @@ impl Expectation {
         path: &Path<'_>,
         c: &mut Collector,
     ) {
+        if self.sensitivity == SensitivityExpectation::ContextDependent && self.evidence.is_none() {
+            c.push(ReasonCode::ProtocolBindingMismatch, &path.field("evidence"));
+        }
+        if let Some(evidence) = &self.evidence {
+            evidence.validate(&path.field("evidence"), c);
+            if evidence.authored_sensitivity != self.sensitivity {
+                c.push(ReasonCode::OutcomeContradiction, &path.field("evidence"));
+            }
+            if evidence.text_negative
+                && (self.range.is_some()
+                    || self.type_expectation == ExpectedType::Valid
+                    || self.sensitivity == SensitivityExpectation::Sensitive
+                    || (self.type_expectation != ExpectedType::Invalid
+                        && self.sensitivity != SensitivityExpectation::NonSensitive))
+            {
+                c.push(
+                    ReasonCode::RangeNotEstablishedInvalid,
+                    &path.field("evidence"),
+                );
+            }
+        }
         match &self.range {
             Some(range) => range.check(text, &path.field("range"), c),
             None => {
                 // Nothing locates the occurrence, so no judgment about its
                 // identity or sensitivity could be anchored to a span.
-                if self.type_expectation != ExpectedType::NotEstablished
-                    || self.sensitivity != SensitivityExpectation::NotEstablished
+                if !self.is_text_negative()
+                    && (self.type_expectation != ExpectedType::NotEstablished
+                        || !matches!(
+                            self.sensitivity,
+                            SensitivityExpectation::NotEstablished
+                                | SensitivityExpectation::ContextDependent
+                        ))
                 {
                     c.push(ReasonCode::RangeNotEstablishedInvalid, &path.field("range"));
                 }
@@ -454,6 +540,17 @@ impl Case {
 }
 
 impl CorpusSnapshotBody {
+    /// Whether this population requires the schema 1.5 / protocol 3 path.
+    pub fn authors_evidence_semantics(&self) -> bool {
+        self.cases
+            .iter()
+            .flat_map(|c| &c.variants)
+            .flat_map(|v| &v.expectations)
+            .any(|e| {
+                e.evidence.is_some() || e.sensitivity == SensitivityExpectation::ContextDependent
+            })
+    }
+
     /// Whether any expectation authors a `not-established` type identity.
     pub fn authors_not_established_identity(&self) -> bool {
         self.cases

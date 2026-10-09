@@ -418,7 +418,7 @@
     },
     "ProtocolIdentity": {
       "additionalProperties": false,
-      "description": "Protocol identity bound into every plan and artifact.\n\nTwo values are valid: [`ProtocolIdentity::LEGACY_V1`] (revision 1, no\n`rules`, the oracle's semantics) and [`ProtocolIdentity::CANONICAL_V2`]\n(revision 2 with the rule identities it was produced under). Anything else\nis `protocol-binding-mismatch`; a revision-2 document must also declare\nschema 1.1 or later.",
+      "description": "Protocol identity bound into every plan and artifact.\n\nLegacy and canonical revisions are valid: [`ProtocolIdentity::LEGACY_V1`] (revision 1, no\n`rules`, the oracle's semantics) and [`ProtocolIdentity::CANONICAL_V2`]\n(revision 2 with its frozen rules), plus [`ProtocolIdentity::CANONICAL_V3`]\n(schema 1.5 evidence semantics). Anything else\nis `protocol-binding-mismatch`; a revision-2 document must also declare\nschema 1.1 or later.",
       "properties": {
         "accounting": {
           "$ref": "#/$defs/AccountingId",
@@ -437,10 +437,10 @@
               "type": "null"
             }
           ],
-          "description": "Rule identities; present exactly for revision 2."
+          "description": "Rule identities; present for canonical revisions 2 and 3."
         },
         "version": {
-          "description": "Protocol revision: 1 (legacy) or 2 (canonical).",
+          "description": "Protocol revision: 1 (legacy), 2 (canonical) or 3 (evidence semantics).",
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
@@ -784,7 +784,7 @@
       "type": "string"
     }
   },
-  "$id": "urn:pii-eval:schema:run-manifest:1.4",
+  "$id": "urn:pii-eval:schema:run-manifest:1.5",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "A run manifest document. Its `semanticDigest` is the plan digest.",
