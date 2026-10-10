@@ -112,7 +112,7 @@ jobs:
             echo "- binary sha256: \`$(awk '$2 == "pii-eval" { print $1 }' "$RUNNER_TEMP/engine/SHA256SUMS")\`"
             echo "- internal artifact (30 days on main, 3 elsewhere); not a release (docs/ci-artifacts.md)"
           } >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pii-eval-engine-${{ github.sha }}-linux-x86_64
           path: ${{ runner.temp }}/engine
