@@ -26,7 +26,7 @@ pii-eval-compat = { path = "crates/pii-eval-compat" }
 # determine serialization, schema output and digests.
 serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
 serde_json = { version = "=1.0.151", default-features = false, features = ["std"] }
-schemars = { version = "=1.2.2", default-features = false, features = ["derive", "std"] }
+schemars = { version = "=1.2.3", default-features = false, features = ["derive", "std"] }
 sha2 = { version = "=0.11.0", default-features = false, features = ["alloc"] }
 # Process-group signalling, `killpg` and a group-liveness probe (adapters only; P7, ADR 0009).
 # Safe wrappers over syscalls std does not expose; first-party crates stay
