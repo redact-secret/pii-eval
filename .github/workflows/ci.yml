@@ -38,7 +38,7 @@ jobs:
         run: rustc --version --verbose && node --version
       # Same cache action credential-eval uses, pinned by SHA; keyed by the
       # lockfile and the toolchain.
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
@@ -177,7 +177,7 @@ jobs:
       # Keep in sync with workspace.package.rust-version in Cargo.toml.
       - name: Install MSRV toolchain
         run: rustup toolchain install 1.85.0 --profile minimal
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: msrv-1.85
       - name: Test on MSRV
